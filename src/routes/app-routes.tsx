@@ -1,5 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useAuth } from '@/contexts/auth-context'
+import { ProtectedRoute } from '@/routes/protected-route'
 
 const LandingPage = lazy(() => import('@/pages/landing/landing-page').then((module) => ({ default: module.LandingPage })))
 const LoginPage = lazy(() => import('@/pages/login/login-page').then((module) => ({ default: module.LoginPage })))
@@ -11,17 +13,21 @@ const ReportsPage = lazy(() => import('@/pages/reports/reports-page').then((modu
 const SettingsPage = lazy(() => import('@/pages/settings/settings-page').then((module) => ({ default: module.SettingsPage })))
 
 export function AppRoutes() {
+  const { isAuthenticated } = useAuth()
+
   return (
     <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background text-sm font-medium text-slate-500">Carregando Vaija...</div>}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/orders" element={<OrdersPage />} />
-        <Route path="/pos" element={<PosPage />} />
-        <Route path="/menu" element={<MenuPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/pos" element={<PosPage />} />
+          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { OrderColumn } from '@/components/orders/order-column'
 import { OrderDetailsPanel } from '@/components/orders/order-details-panel'
 import { orders as mockOrders, type Order, type OrderStatus } from '@/data/mock-orders'
-import { notifyOrderStatusUpdate } from '@/lib/order-status-webhook'
+import { fetchOrders, saveOrders } from '@/lib/orders-api'
 
 const COLUMN_STATUS = {
   Pendente: 'Pendente',
@@ -30,9 +30,27 @@ export function OrdersPage() {
     [orders],
   )
 
-  const syncOrderStatus = (order: Order) => {
-    void notifyOrderStatusUpdate(order).catch(() => {
-      toast.error('Pedido atualizado, mas o envio para WhatsApp falhou.')
+  useEffect(() => {
+    void fetchOrders()
+      .then((loadedOrders) => {
+        if (loadedOrders.length === 0) {
+          return
+        }
+
+        setOrders(loadedOrders)
+        setSelected((current) => loadedOrders.find((order) => order.id === current.id) ?? loadedOrders[0])
+      })
+      .catch(() => {
+        toast.error('Nao foi possivel carregar os pedidos do backend.')
+      })
+  }, [])
+
+  const persistOrders = (nextOrders: Order[], nextSelected: Order) => {
+    setOrders(nextOrders)
+    setSelected(nextSelected)
+
+    void saveOrders(nextOrders).catch(() => {
+      toast.error('Pedidos atualizados localmente, mas o backend falhou ao salvar.')
     })
   }
 
@@ -48,18 +66,16 @@ export function OrdersPage() {
       status: nextStatus,
     }
 
-    setOrders((current) =>
-      current.map((order) =>
+    const nextOrders = orders.map((order) =>
         order.id === selected.id
           ? {
               ...order,
               status: nextStatus,
             }
           : order,
-      ),
     )
-    setSelected(updatedSelected)
-    syncOrderStatus(updatedSelected)
+
+    persistOrders(nextOrders, updatedSelected)
     toast.success('Status do pedido atualizado com sucesso.')
   }
 
@@ -86,36 +102,37 @@ export function OrdersPage() {
       return
     }
 
-    setOrders((current) => {
-      const draggedOrder = current.find((order) => order.id === orderId)
-      if (!draggedOrder) {
-        return current
+    const draggedOrder = orders.find((order) => order.id === orderId)
+    if (!draggedOrder) {
+      resetDragState()
+      return
+    }
+
+    const remainingOrders = orders.filter((order) => order.id !== orderId)
+    const reorderedOrder = { ...draggedOrder, status: nextStatus }
+
+    if (targetOrderId !== undefined) {
+      const targetIndex = remainingOrders.findIndex((order) => order.id === targetOrderId)
+
+      if (targetIndex >= 0) {
+        remainingOrders.splice(targetIndex, 0, reorderedOrder)
+      } else {
+        remainingOrders.push(reorderedOrder)
       }
-
-      const remainingOrders = current.filter((order) => order.id !== orderId)
-      const reorderedOrder = { ...draggedOrder, status: nextStatus }
-
-      if (targetOrderId !== undefined) {
-        const targetIndex = remainingOrders.findIndex((order) => order.id === targetOrderId)
-
-        if (targetIndex >= 0) {
-          remainingOrders.splice(targetIndex, 0, reorderedOrder)
-          return remainingOrders
-        }
-      }
-
+    } else {
       remainingOrders.push(reorderedOrder)
-      return remainingOrders
-    })
+    }
 
     const updatedOrder = {
       ...currentOrder,
       status: nextStatus,
     }
 
-    setSelected((current) => (current.id === orderId ? updatedOrder : current))
+    const nextOrders = remainingOrders
+    const nextSelected = selected.id === orderId ? updatedOrder : selected
+
+    persistOrders(nextOrders, nextSelected)
     resetDragState()
-    syncOrderStatus(updatedOrder)
 
     if (movedToAnotherColumn) {
       toast.success(`Pedido #${orderId} movido para ${column}.`)

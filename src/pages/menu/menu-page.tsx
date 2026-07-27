@@ -1,12 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
-import { menuCategories, products as initialProducts, type Product, type ProductCategory } from '@/data/mock-products'
+import { products as initialProducts, type Product, type ProductCategory } from '@/data/mock-products'
 import { CategoryTabs } from '@/components/pos/category-tabs'
 import { MenuProductCard } from '@/components/menu/menu-product-card'
+import { fetchCategories, fetchProducts, saveProducts, type CategoryRecord } from '@/lib/catalog-api'
 
 function matchesFilters(product: Product, category: string, query: string, availability: 'all' | 'available' | 'unavailable') {
   return (category === 'Todas' ? true : product.category === category)
@@ -16,6 +17,7 @@ function matchesFilters(product: Product, category: string, query: string, avail
 
 export function MenuPage() {
   const [products, setProducts] = useState(initialProducts)
+  const [categories, setCategories] = useState<CategoryRecord[]>([])
   const [category, setCategory] = useState('Todas')
   const [query, setQuery] = useState('')
   const [availability, setAvailability] = useState<'all' | 'available' | 'unavailable'>('all')
@@ -28,10 +30,34 @@ export function MenuPage() {
     [products, category, query, availability],
   )
 
+  const menuCategories = useMemo(
+    () => ['Todas', ...categories.filter((item) => item.menuEnabled).map((item) => item.name)],
+    [categories],
+  )
+
+  useEffect(() => {
+    void Promise.all([fetchProducts(), fetchCategories()])
+      .then(([loadedProducts, loadedCategories]) => {
+        setProducts(loadedProducts)
+        setCategories(loadedCategories)
+      })
+      .catch(() => {
+        toast.error('Nao foi possivel carregar o cardapio do backend.')
+      })
+  }, [])
+
   const resetDragState = () => {
     setDraggedProductId(null)
     setDropTargetProductId(null)
     setDropTargetCategory(null)
+  }
+
+  const persistProducts = (nextProducts: Product[]) => {
+    setProducts(nextProducts)
+
+    void saveProducts(nextProducts).catch(() => {
+      toast.error('Produtos atualizados localmente, mas o backend falhou ao salvar.')
+    })
   }
 
   const handleReorderProducts = (draggedId: string, targetId?: string) => {
@@ -40,49 +66,53 @@ export function MenuPage() {
       return
     }
 
-    setProducts((current) => {
-      const draggedProduct = current.find((product) => product.id === draggedId)
-      if (!draggedProduct) {
-        return current
+    const draggedProduct = products.find((product) => product.id === draggedId)
+    if (!draggedProduct) {
+      resetDragState()
+      return
+    }
+
+    const remainingProducts = products.filter((product) => product.id !== draggedId)
+
+    if (targetId) {
+      const targetIndex = remainingProducts.findIndex((product) => product.id === targetId)
+      if (targetIndex >= 0) {
+        remainingProducts.splice(targetIndex, 0, draggedProduct)
+        persistProducts(remainingProducts)
+        resetDragState()
+        toast.success('Ordem do cardápio atualizada.')
+        return
       }
+    }
 
-      const remainingProducts = current.filter((product) => product.id !== draggedId)
-
-      if (targetId) {
-        const targetIndex = remainingProducts.findIndex((product) => product.id === targetId)
-        if (targetIndex >= 0) {
-          remainingProducts.splice(targetIndex, 0, draggedProduct)
-          return remainingProducts
-        }
-      }
-
-      const visibleIds = current
+    const visibleIds = products
         .filter((product) => product.id !== draggedId && matchesFilters(product, category, query, availability))
         .map((product) => product.id)
 
-      const lastVisibleId = visibleIds.at(-1)
-      if (!lastVisibleId) {
-        return [...remainingProducts, draggedProduct]
-      }
+    const lastVisibleId = visibleIds.at(-1)
+    if (!lastVisibleId) {
+      persistProducts([...remainingProducts, draggedProduct])
+      resetDragState()
+      toast.success('Ordem do cardápio atualizada.')
+      return
+    }
 
-      const insertAfterIndex = remainingProducts.findIndex((product) => product.id === lastVisibleId)
-      remainingProducts.splice(insertAfterIndex + 1, 0, draggedProduct)
-      return remainingProducts
-    })
+    const insertAfterIndex = remainingProducts.findIndex((product) => product.id === lastVisibleId)
+    remainingProducts.splice(insertAfterIndex + 1, 0, draggedProduct)
+    persistProducts(remainingProducts)
 
     resetDragState()
     toast.success('Ordem do cardápio atualizada.')
   }
 
   const handleMoveToCategory = (draggedId: string, nextCategory: ProductCategory) => {
-    setProducts((current) => {
-      const draggedProduct = current.find((product) => product.id === draggedId)
-      if (!draggedProduct || draggedProduct.category === nextCategory) {
-        return current
-      }
+    const draggedProduct = products.find((product) => product.id === draggedId)
+    if (!draggedProduct || draggedProduct.category === nextCategory) {
+      resetDragState()
+      return
+    }
 
-      return current.map((product) => (product.id === draggedId ? { ...product, category: nextCategory } : product))
-    })
+    persistProducts(products.map((product) => (product.id === draggedId ? { ...product, category: nextCategory } : product)))
 
     resetDragState()
     toast.success('Categoria do item atualizada.')
@@ -144,7 +174,7 @@ export function MenuPage() {
             onDragEnter={() => setDropTargetProductId(product.id)}
             onDrop={() => handleReorderProducts(draggedProductId ?? product.id, product.id)}
             onToggle={() => {
-              setProducts((current) => current.map((item) => item.id === product.id ? { ...item, available: !item.available } : item))
+              persistProducts(products.map((item) => item.id === product.id ? { ...item, available: !item.available } : item))
               toast.success('Disponibilidade atualizada.')
             }}
           />

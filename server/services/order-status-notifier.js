@@ -1,12 +1,10 @@
-import type { Order } from '@/data/mock-orders'
+const webhookUrl = process.env.N8N_ORDER_STATUS_WEBHOOK_URL
 
-const webhookUrl = import.meta.env.VITE_N8N_ORDER_STATUS_WEBHOOK_URL
-
-function normalizePhone(phone: string) {
-  return phone.replace(/\D/g, '')
+function normalizePhone(phone) {
+  return String(phone ?? '').replace(/\D/g, '')
 }
 
-export async function notifyOrderStatusUpdate(order: Order) {
+export async function notifyOrderStatusUpdate(order) {
   if (!webhookUrl) {
     return
   }

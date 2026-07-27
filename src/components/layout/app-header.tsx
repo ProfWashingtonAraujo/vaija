@@ -1,5 +1,5 @@
 import { Bell, Menu } from 'lucide-react'
-import { adminUser } from '@/data/mock-users'
+import { useAuth } from '@/contexts/auth-context'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,8 @@ import { MobileDrawer } from '@/components/shared/mobile-drawer'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 
 export function AppHeader({ title, description }: { title: string; description: string }) {
+  const { user } = useAuth()
+
   return (
     <header className="mb-6 flex flex-col gap-4 rounded-[30px] border border-orange-100 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.06)] sm:p-5 xl:flex-row xl:items-center xl:justify-between">
       <div className="flex items-start gap-3 lg:hidden">
@@ -37,11 +39,11 @@ export function AppHeader({ title, description }: { title: string; description: 
         </div>
         <div className="flex shrink-0 items-center gap-2 rounded-[24px] border border-orange-100 bg-[#fffaf5] px-2 py-1.5 shadow-[0_8px_24px_rgba(255,107,0,0.06)] sm:px-2.5 sm:py-2 xl:px-3">
           <div className="scale-90 xl:scale-100">
-            <UserAvatar name={adminUser.name} />
+            <UserAvatar name={user?.name ?? 'Usuario'} />
           </div>
           <div className="hidden min-w-0 text-left xl:block">
-            <p className="text-sm font-semibold leading-tight text-slate-900">Perfil Admin</p>
-            <p className="text-xs leading-tight text-slate-500">{adminUser.name}</p>
+            <p className="text-sm font-semibold leading-tight text-slate-900">{user?.role ?? 'Perfil'}</p>
+            <p className="text-xs leading-tight text-slate-500">{user?.name ?? 'Usuario'}</p>
           </div>
         </div>
       </div>

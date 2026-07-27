@@ -3,8 +3,9 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -17,15 +18,22 @@ type FormValues = z.infer<typeof schema>
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { email: 'contato@taperaspizzaria.com.br', password: '123456' },
   })
 
-  const onSubmit = () => {
-    toast.success('Login realizado com sucesso.')
-    navigate('/dashboard')
+  const onSubmit = async (values: FormValues) => {
+    try {
+      await login(values.email, values.password)
+      toast.success('Login realizado com sucesso.')
+      navigate(location.state?.from?.pathname ?? '/dashboard', { replace: true })
+    } catch {
+      toast.error('E-mail ou senha invalidos.')
+    }
   }
 
   return (
@@ -72,7 +80,7 @@ export function LoginPage() {
                 <a href="#" className="font-medium text-orange-700">Esqueci minha senha</a>
                 <div className="inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700"><LockKeyhole className="h-3 w-3" />Ambiente seguro</div>
               </div>
-              <Button type="submit" className="mt-8 w-full shadow-[0_16px_30px_rgba(255,107,0,0.22)]">Entrar no Sistema</Button>
+              <Button type="submit" disabled={isSubmitting} className="mt-8 w-full shadow-[0_16px_30px_rgba(255,107,0,0.22)]">{isSubmitting ? 'Entrando...' : 'Entrar no Sistema'}</Button>
               <div className="my-6 flex items-center gap-4 text-sm text-slate-400"><div className="h-px flex-1 bg-orange-100" />ou<div className="h-px flex-1 bg-orange-100" /></div>
               <Button variant="outline" className="w-full border-orange-200 bg-white/90">Falar com consultor</Button>
               <div className="mt-6 flex items-center justify-center gap-2 text-sm text-slate-500"><ShieldCheck className="h-4 w-4 text-orange-500" />Ambiente seguro e protegido</div>
