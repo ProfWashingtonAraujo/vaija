@@ -56,6 +56,8 @@ Scripts:
 - `npm run dev` inicia o frontend
 - `npm run dev:server` inicia o backend em `http://localhost:3001`
 - `npm run server` inicia o backend sem Vite
+- `./scripts/start-local.ps1` sobe banco, backend e frontend
+- `./scripts/stop-local.ps1` derruba a stack local
 
 Banco local com Docker:
 
