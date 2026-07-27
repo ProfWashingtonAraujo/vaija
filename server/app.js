@@ -1,6 +1,7 @@
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import express from 'express'
+import { frontendOrigin } from './lib/env.js'
 import { requireAuth } from './middlewares/auth-middleware.js'
 import { authRouter } from './routes/auth-routes.js'
 import { catalogRouter } from './routes/catalog-routes.js'
@@ -10,7 +11,22 @@ import { usersRouter } from './routes/users-routes.js'
 export function createApp() {
   const app = express()
 
-  app.use(cors({ credentials: true, origin: true }))
+  app.use(cors({
+    credentials: true,
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true)
+        return
+      }
+
+      if (!frontendOrigin || origin === frontendOrigin) {
+        callback(null, true)
+        return
+      }
+
+      callback(new Error('Not allowed by CORS'))
+    },
+  }))
   app.use(cookieParser())
   app.use(express.json())
 

@@ -96,6 +96,8 @@ Variaveis do backend:
 - `AUTH_JWT_SECRET`: segredo do token JWT
 - `AUTH_REFRESH_DAYS`: duracao do refresh token em dias
 - `AUTH_COOKIE_SECURE`: usar cookie secure em producao
+- `COOKIE_SAME_SITE`: politica SameSite dos cookies de auth
+- `FRONTEND_ORIGIN`: origem permitida no CORS para o frontend
 - `N8N_ORDER_STATUS_WEBHOOK_URL`: webhook do n8n
 
 O backend cria as tabelas automaticamente na inicializacao e faz seed inicial quando necessario.
@@ -125,6 +127,27 @@ Auth atual:
 - `refresh token` em cookie HTTP-only com rotacao
 - refresh automatico no frontend quando a API retorna `401`
 - papeis com permissoes: `admin`, `manager`, `operator`
+
+## Deploy Render + Vercel
+
+Arquitetura recomendada:
+
+- frontend no Vercel
+- backend no Render
+- Postgres no Render
+
+Arquivos de deploy:
+
+- `render.yaml`
+
+Passos:
+
+1. No Render, crie o serviço a partir de `render.yaml`.
+2. No Render, defina `FRONTEND_ORIGIN` com a URL do Vercel, por exemplo `https://vaija.vercel.app`.
+3. No Vercel, defina `VITE_API_BASE_URL` com a URL pública do backend no Render.
+4. Em produção, mantenha `AUTH_COOKIE_SECURE=true` e `COOKIE_SAME_SITE=none`.
+
+Sem isso, o login com cookies entre Vercel e Render nao funciona corretamente.
 
 ## n8n + WhatsApp
 
