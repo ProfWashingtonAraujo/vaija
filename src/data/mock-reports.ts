@@ -18,14 +18,14 @@ export const dailyRevenue = [
 
 export const orderStatusSeries = [
   { name: 'Entregue', value: 62 },
-  { name: 'Em producao', value: 21 },
+  { name: 'Em produção', value: 21 },
   { name: 'Pendente', value: 11 },
   { name: 'Cancelado', value: 6 },
 ]
 
 export const paymentSeries = [
   { name: 'Pix', value: 44 },
-  { name: 'Cartao', value: 38 },
+  { name: 'Cartão', value: 38 },
   { name: 'Dinheiro', value: 18 },
 ]
 
@@ -40,7 +40,7 @@ export const productsPerformance = [
   },
   {
     product: 'Margherita D.O.P',
-    category: 'Pizzas Salgadas',
+    category: 'Pizzas Tradicionais',
     quantity: 98,
     revenue: 'R$ 5.684,00',
     averageTicket: 'R$ 58,00',

@@ -1,4 +1,5 @@
 import type { Product } from '@/data/mock-products'
+import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
 
@@ -7,13 +8,15 @@ type MenuProductCardProps = {
   dragging?: boolean
   dropTarget?: boolean
   onToggle: () => void
+  onEdit: () => void
+  onDelete: () => void
   onDragStart: () => void
   onDragEnd: () => void
   onDragEnter: () => void
   onDrop: () => void
 }
 
-export function MenuProductCard({ product, dragging, dropTarget, onToggle, onDragStart, onDragEnd, onDragEnter, onDrop }: MenuProductCardProps) {
+export function MenuProductCard({ product, dragging, dropTarget, onToggle, onEdit, onDelete, onDragStart, onDragEnd, onDragEnter, onDrop }: MenuProductCardProps) {
   return (
     <div
       draggable
@@ -46,9 +49,22 @@ export function MenuProductCard({ product, dragging, dropTarget, onToggle, onDra
         </div>
         <h3 className="mt-3 font-heading text-xl font-bold text-slate-900">{product.name}</h3>
         <p className="mt-2 text-sm leading-6 text-slate-500">{product.description}</p>
+        {product.sizePrices?.length ? (
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {product.sizePrices.map((item) => (
+              <div key={item.size} className="rounded-2xl border border-orange-100 bg-white px-2 py-2 text-center text-sm font-semibold text-slate-700">
+                {item.size} <span className="block font-mono text-xs text-slate-500">{formatCurrency(item.price)}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className="mt-4 flex items-center justify-between">
           <span className="font-mono text-lg font-bold text-slate-900">{formatCurrency(product.price)}</span>
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${product.available ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{product.available ? 'Disponível' : 'Indisponível'}</span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button type="button" variant="outline" onClick={onEdit}>Editar</Button>
+          <Button type="button" variant="outline" className="border-rose-200 text-rose-700 hover:border-rose-300 hover:text-rose-800" onClick={onDelete}>Excluir</Button>
         </div>
       </div>
     </div>

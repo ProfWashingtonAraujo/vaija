@@ -24,5 +24,5 @@ export const categorySeries = [
   { name: 'Pizzas', value: 52 },
   { name: 'Bebidas', value: 18 },
   { name: 'Burgers', value: 16 },
-  { name: 'Sobremesas', value: 14 },
+  { name: 'Batatas Fritas', value: 14 },
 ]

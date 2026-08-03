@@ -19,8 +19,8 @@ export function ReportsPage() {
             <p className="mt-1 font-heading text-2xl font-bold text-slate-900">Exportações e leitura rápida dos indicadores</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="border-orange-200 bg-white/90" onClick={() => toast.success('Exportacao PDF iniciada.')}>Exportar PDF</Button>
-            <Button variant="outline" className="border-orange-200 bg-white/90" onClick={() => toast.success('Exportacao CSV iniciada.')}>Exportar CSV</Button>
+            <Button variant="outline" className="border-orange-200 bg-white/90" onClick={() => toast.success('Exportação PDF iniciada.')}>Exportar PDF</Button>
+            <Button variant="outline" className="border-orange-200 bg-white/90" onClick={() => toast.success('Exportação CSV iniciada.')}>Exportar CSV</Button>
           </div>
         </div>
       </div>
@@ -29,7 +29,7 @@ export function ReportsPage() {
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <ReportChartCard title="Receita por dia">
-          <ResponsiveContainer width="100%" height="100%"><BarChart data={dailyRevenue}><XAxis dataKey="day" tickLine={false} axisLine={false} /><Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} /><Bar dataKey="value" fill="#ff6b00" radius={[10, 10, 0, 0]} /></BarChart></ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%"><BarChart data={dailyRevenue}><XAxis dataKey="day" tickLine={false} axisLine={false} /><Tooltip formatter={(value: unknown) => formatCurrency(Number(value ?? 0))} /><Bar dataKey="value" fill="#ff6b00" radius={[10, 10, 0, 0]} /></BarChart></ResponsiveContainer>
         </ReportChartCard>
         <ReportChartCard title="Pedidos por status">
           <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={orderStatusSeries} dataKey="value" nameKey="name" innerRadius={60} outerRadius={95}>{orderStatusSeries.map((entry, index) => <Cell key={entry.name} fill={['#ff6b00', '#ffb26b', '#fed7aa', '#fdba74'][index]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer>

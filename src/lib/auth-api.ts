@@ -1,5 +1,3 @@
-import { apiFetch } from '@/lib/api-client'
-
 export type AuthUser = {
   id: number
   name: string
@@ -7,35 +5,129 @@ export type AuthUser = {
   roleKey: string
   shift: string
   email: string
+  restaurantId: string
+  isPlatformAdmin?: boolean
   permissions: string[]
 }
 
-export async function loginRequest(email: string, password: string) {
-  const response = await apiFetch('/api/auth/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password }),
-  })
+const localSessionKey = 'vaija.localSession'
+const localUsersKey = 'vaija.users'
 
-  if (!response.ok) {
+type StoredUser = AuthUser & { password: string }
+
+const rolePermissions: Record<string, string[]> = {
+  admin: ['users:read', 'users:create', 'users:update', 'users:change-password', 'catalog:write', 'orders:write'],
+  manager: ['users:read', 'users:change-password', 'catalog:write', 'orders:write'],
+  operator: ['users:change-password', 'catalog:write', 'orders:write'],
+}
+
+const defaultUsers: StoredUser[] = [
+  {
+    id: 1,
+    name: 'Washington',
+    role: 'Administrador SaaS',
+    roleKey: 'admin',
+    shift: 'Administração Vaija',
+    email: 'admin@vaija.com.br',
+    restaurantId: 'vaija-saas',
+    isPlatformAdmin: true,
+    permissions: rolePermissions.admin,
+    password: '123456',
+  },
+  {
+    id: 2,
+    name: 'Admin Taperas',
+    role: 'Administrador',
+    roleKey: 'admin',
+    shift: 'Administração - Ativo',
+    email: 'admin@taperaspizzaria.com.br',
+    restaurantId: 'taperas-pizzaria',
+    permissions: rolePermissions.admin,
+    password: '123456',
+  },
+  {
+    id: 3,
+    name: 'Gerente Teste',
+    role: 'Gerente',
+    roleKey: 'manager',
+    shift: 'Gerência - Aberto',
+    email: 'gerente@taperaspizzaria.com.br',
+    restaurantId: 'taperas-pizzaria',
+    permissions: rolePermissions.manager,
+    password: '123456',
+  },
+  {
+    id: 4,
+    name: 'Operador Teste',
+    role: 'Operador',
+    roleKey: 'operator',
+    shift: 'Caixa 02 - Aberto',
+    email: 'operador@taperaspizzaria.com.br',
+    restaurantId: 'taperas-pizzaria',
+    permissions: rolePermissions.operator,
+    password: '123456',
+  },
+]
+
+function getPublicUser(user: StoredUser): AuthUser {
+  const { password: _password, ...publicUser } = user
+  return publicUser
+}
+
+function ensureDefaultUsers(users: StoredUser[]) {
+  let nextUsers = users.map((user) => user.email.toLowerCase() === 'contato@taperaspizzaria.com.br' || user.isPlatformAdmin ? { ...user, email: 'admin@vaija.com.br', restaurantId: 'vaija-saas', isPlatformAdmin: true, role: 'Administrador SaaS', shift: 'Administração Vaija' } : { ...user, restaurantId: user.restaurantId ?? 'taperas-pizzaria' })
+
+  for (const defaultUser of defaultUsers) {
+    if (!nextUsers.some((user) => user.email.toLowerCase() === defaultUser.email.toLowerCase())) {
+      const nextId = Math.max(0, ...nextUsers.map((user) => user.id)) + 1
+      nextUsers = [...nextUsers, { ...defaultUser, id: nextId }]
+    }
+  }
+
+  return nextUsers
+}
+
+function readUsers() {
+  const storedUsers = localStorage.getItem(localUsersKey)
+  if (!storedUsers) {
+    localStorage.setItem(localUsersKey, JSON.stringify(defaultUsers))
+    return defaultUsers
+  }
+
+  const users = JSON.parse(storedUsers) as StoredUser[]
+  const usersWithDefaults = ensureDefaultUsers(users)
+
+  if (JSON.stringify(usersWithDefaults) !== JSON.stringify(users)) {
+    localStorage.setItem(localUsersKey, JSON.stringify(usersWithDefaults))
+  }
+
+  return usersWithDefaults
+}
+
+export async function loginRequest(email: string, password: string) {
+  const users = readUsers()
+  const matchedUser = users.find((user) => user.email.toLowerCase() === email.toLowerCase() && user.password === password)
+
+  if (!matchedUser) {
     throw new Error('failed_to_login')
   }
 
-  return response.json() as Promise<{ user: AuthUser }>
+  const publicUser = getPublicUser(matchedUser)
+  localStorage.setItem(localSessionKey, JSON.stringify(publicUser))
+
+  return { user: publicUser }
 }
 
 export async function fetchMe() {
-  const response = await apiFetch('/api/auth/me')
+  const storedUser = localStorage.getItem(localSessionKey)
 
-  if (!response.ok) {
+  if (!storedUser) {
     throw new Error('failed_to_fetch_me')
   }
 
-  return response.json() as Promise<{ user: AuthUser }>
+  return { user: JSON.parse(storedUser) as AuthUser }
 }
 
 export async function logoutRequest() {
-  await apiFetch('/api/auth/logout', { method: 'POST' }, false)
+  localStorage.removeItem(localSessionKey)
 }

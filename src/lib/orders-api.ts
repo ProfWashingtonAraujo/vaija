@@ -1,30 +1,13 @@
-import type { Order } from '@/data/mock-orders'
-import { apiFetch } from '@/lib/api-client'
+import { orders as mockOrders, type Order } from '@/data/mock-orders'
+import { readTenantStorage, writeTenantStorage } from '@/lib/tenant-storage'
+
+const localOrdersKey = 'vaija.orders'
 
 export async function fetchOrders() {
-  const response = await apiFetch('/api/orders')
-
-  if (!response.ok) {
-    throw new Error('failed_to_fetch_orders')
-  }
-
-  const data = await response.json() as { orders: Order[] }
-  return data.orders
+  return readTenantStorage(localOrdersKey, mockOrders)
 }
 
 export async function saveOrders(orders: Order[]) {
-  const response = await apiFetch('/api/orders', {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ orders }),
-  })
-
-  if (!response.ok) {
-    throw new Error('failed_to_save_orders')
-  }
-
-  const data = await response.json() as { orders: Order[] }
-  return data.orders
+  writeTenantStorage(localOrdersKey, orders)
+  return orders
 }

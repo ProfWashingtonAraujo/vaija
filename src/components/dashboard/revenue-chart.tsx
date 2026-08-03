@@ -7,7 +7,7 @@ export function RevenueChart({ data }: { data: Array<{ day: string; revenue: num
       <BarChart data={data}>
         <CartesianGrid vertical={false} stroke="#fde7d1" />
         <XAxis dataKey="day" tickLine={false} axisLine={false} />
-        <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} cursor={{ fill: '#fff7ed' }} />
+        <Tooltip formatter={(value: unknown) => formatCurrency(Number(value ?? 0))} cursor={{ fill: '#fff7ed' }} />
         <Bar dataKey="revenue" radius={[12, 12, 0, 0]} fill="#ff6b00" />
       </BarChart>
     </ResponsiveContainer>

@@ -5,7 +5,7 @@ import { PageContainer } from '@/components/layout/page-container'
 import { Button } from '@/components/ui/button'
 import { MobileDrawer } from '@/components/shared/mobile-drawer'
 
-const nav = ['Início', 'Recursos', 'Dashboard', 'Planos', 'Depoimentos', 'FAQ']
+const nav = ['Início', 'Recursos', 'Painel Geral', 'Planos', 'Depoimentos', 'FAQ']
 
 export function LandingHeader() {
   const [scrolled, setScrolled] = useState(false)

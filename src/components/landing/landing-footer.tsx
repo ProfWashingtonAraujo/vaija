@@ -10,7 +10,7 @@ export function LandingFooter() {
             <p className="mt-3 font-medium text-orange-700">Gestão gastronômica em movimento.</p>
             <p className="mt-4 text-sm leading-7 text-slate-600">Plataforma premium de PDV, delivery, cardápio digital e gestão para restaurantes modernos.</p>
           </div>
-          <div><p className="font-heading text-lg font-bold text-slate-900">Produto</p><div className="mt-4 space-y-3 text-sm text-slate-600"><p>Dashboard</p><p>PDV</p><p>Cardápio</p><p>Pedidos</p><p>Relatórios</p></div></div>
+          <div><p className="font-heading text-lg font-bold text-slate-900">Produto</p><div className="mt-4 space-y-3 text-sm text-slate-600"><p>Painel Geral</p><p>PDV</p><p>Cardápio</p><p>Pedidos</p><p>Relatórios</p></div></div>
           <div><p className="font-heading text-lg font-bold text-slate-900">Empresa</p><div className="mt-4 space-y-3 text-sm text-slate-600"><p>Sobre</p><p>Planos</p><p>Contato</p><p>Demonstração</p></div></div>
           <div><p className="font-heading text-lg font-bold text-slate-900">Legal</p><div className="mt-4 space-y-3 text-sm text-slate-600"><p>Termos de Uso</p><p>Política de Privacidade</p></div></div>
         </div>

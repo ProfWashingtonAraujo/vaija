@@ -9,10 +9,10 @@ import { formatCurrency } from '@/lib/formatters'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { cn } from '@/lib/utils'
 
-const tabs = ['Dashboard', 'Pedidos', 'PDV'] as const
+const tabs = ['Painel Geral', 'Pedidos', 'PDV'] as const
 
 export function DashboardPreview() {
-  const [tab, setTab] = useState<(typeof tabs)[number]>('Dashboard')
+  const [tab, setTab] = useState<(typeof tabs)[number]>('Painel Geral')
   const previewOrders = useMemo(() => orders.slice(0, 3), [])
 
   return (
@@ -28,7 +28,7 @@ export function DashboardPreview() {
             <aside className="border-b border-orange-100 bg-gradient-to-b from-[#fffaf5] to-white p-6 lg:border-b-0 lg:border-r">
               <p className="font-heading text-2xl font-bold text-slate-900">Vaija</p>
               <div className="mt-6 space-y-2">
-                {['Dashboard', 'Pedidos', 'PDV', 'Cardápio', 'Relatórios', 'Configurações'].map((item) => (
+                {['Painel Geral', 'Pedidos', 'PDV', 'Cardápio', 'Relatórios', 'Configurações'].map((item) => (
                   <div key={item} className={cn('rounded-2xl border px-4 py-3 text-sm font-semibold transition-all duration-200', item === tab ? 'border-orange-300 bg-white text-orange-700 shadow-[0_8px_18px_rgba(255,107,0,0.08)]' : 'border-transparent text-slate-500')}>
                     {item}
                   </div>
@@ -38,7 +38,7 @@ export function DashboardPreview() {
             <div className="p-6 lg:p-8">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <p className="font-heading text-2xl font-bold text-slate-900">Dashboard Geral</p>
+                  <p className="font-heading text-2xl font-bold text-slate-900">Painel Geral</p>
                   <p className="mt-1 text-sm text-slate-500">Últimos 7 dias • Perfil Admin</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -51,7 +51,7 @@ export function DashboardPreview() {
               </div>
               <AnimatePresence mode="wait">
                 <motion.div key={tab} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} className="mt-8">
-                  {tab === 'Dashboard' ? (
+                  {tab === 'Painel Geral' ? (
                     <div className="space-y-6">
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                         {[
@@ -67,7 +67,7 @@ export function DashboardPreview() {
                         ))}
                       </div>
                       <div className="grid gap-6 xl:grid-cols-2">
-                        <div className="rounded-[28px] border border-orange-100 bg-white/80 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]"><ResponsiveContainer width="100%" height={260}><BarChart data={revenueSeries}><XAxis dataKey="day" tickLine={false} axisLine={false} /><Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} /><Bar dataKey="revenue" fill="#ff6b00" radius={[10, 10, 0, 0]} /></BarChart></ResponsiveContainer></div>
+                        <div className="rounded-[28px] border border-orange-100 bg-white/80 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]"><ResponsiveContainer width="100%" height={260}><BarChart data={revenueSeries}><XAxis dataKey="day" tickLine={false} axisLine={false} /><Tooltip formatter={(value: unknown) => formatCurrency(Number(value ?? 0))} /><Bar dataKey="revenue" fill="#ff6b00" radius={[10, 10, 0, 0]} /></BarChart></ResponsiveContainer></div>
                         <div className="rounded-[28px] border border-orange-100 bg-white/80 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]"><ResponsiveContainer width="100%" height={260}><PieChart><Pie data={categorySeries} dataKey="value" nameKey="name" innerRadius={60} outerRadius={92}>{categorySeries.map((entry, index) => <Cell key={entry.name} fill={['#ff6b00', '#ffb26b', '#ffd4ad', '#fed7aa'][index]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer></div>
                       </div>
                     </div>
