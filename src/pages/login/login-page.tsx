@@ -24,7 +24,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: 'contato@taperaspizzaria.com.br', password: '123456' },
+    defaultValues: { email: '', password: '' },
   })
 
   const onSubmit = async (values: FormValues) => {
