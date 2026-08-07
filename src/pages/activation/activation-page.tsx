@@ -458,7 +458,7 @@ export function ActivationPage() {
         <div className="flex items-center gap-3"><CreditCard className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Planos</h2></div>
         <Button type="button" onClick={savePlansConfiguration}>Salvar alterações</Button>
       </div>
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+      <div className="mt-5 grid gap-4 lg:grid-cols-4">
         {planConfigs.map((config) => (
           <div key={config.key} className="rounded-[24px] border border-orange-100 bg-orange-50/30 p-4">
             <p className="font-heading text-xl font-bold text-slate-900">{planLabels[config.key]}</p>
