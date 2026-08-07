@@ -2,6 +2,85 @@ import type { Order } from '@/data/mock-orders'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { formatCurrency } from '@/lib/formatters'
+import { readSettings } from '@/lib/settings'
+
+function printCupom(order: Order) {
+  const settings = readSettings().restaurant
+  const source = order.source ?? 'Online'
+  const deliveryFee = order.deliveryFee ?? (source === 'Online' ? 8 : 0)
+  const subtotal = order.value - deliveryFee
+
+  const now = new Date()
+  const dateStr = now.toLocaleDateString('pt-BR')
+  const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+
+  const cupomText = `
+${'='.repeat(40)}
+${settings.name.toUpperCase().padStart(20 + settings.name.length / 2)}
+${settings.address || ''}
+${settings.phone || ''}
+${'='.repeat(40)}
+
+CUPOM NAO FISCAL
+Pedido: #${order.id}
+Data: ${dateStr}  Hora: ${timeStr}
+Atendente: ${settings.name}
+
+${'-'.repeat(40)}
+ITENS
+${'-'.repeat(40)}
+${order.items.map((item) => `  ${item}`).join('\n')}
+
+${'-'.repeat(40)}
+SUBTOTAL:           ${formatCurrency(subtotal)}
+${source === 'Mesa' ? 'TAXA MESA' : 'TAXA ENTREGA'}:  ${formatCurrency(deliveryFee)}
+${'='.repeat(40)}
+TOTAL:              ${formatCurrency(order.value)}
+${'='.repeat(40)}
+
+Pagamento: ${order.payment}
+${order.phone ? `Telefone: ${order.phone}` : ''}
+${order.address ? `Endereco: ${order.address}` : ''}
+${order.tableNumber ? `Mesa: ${order.tableNumber}` : ''}
+
+${order.notes ? `\nOBS: ${order.notes}\n` : ''}
+${'-'.repeat(40)}
+Obrigado pela preferencia!
+${settings.name}
+${'='.repeat(40)}
+`.trim()
+
+  const printWindow = window.open('', '_blank', 'width=320,height=600')
+  if (printWindow) {
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Cupom #${order.id}</title>
+          <style>
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              margin: 0;
+              padding: 10px;
+              white-space: pre;
+              line-height: 1.4;
+            }
+            @media print {
+              body { margin: 0; padding: 5px; }
+            }
+          </style>
+        </head>
+        <body>${cupomText}</body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    setTimeout(() => {
+      printWindow.print()
+      printWindow.close()
+    }, 250)
+  }
+}
 
 export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp }: { order: Order; onAdvance: () => void; onEdit: () => void; onOpenWhatsapp: () => void }) {
   const source = order.source ?? 'Online'
@@ -49,7 +128,7 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp }: 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {canManageOrder ? <Button variant="outline" className="border-orange-200 bg-white/90" onClick={onEdit}>Editar pedido</Button> : null}
         {canManageOrder ? <Button variant="secondary" onClick={onOpenWhatsapp}>Conversar no WhatsApp</Button> : null}
-        <Button variant="outline" className="border-orange-200 bg-white/90">Imprimir Cupom</Button>
+        <Button variant="outline" className="border-orange-200 bg-white/90" onClick={() => printCupom(order)}>Imprimir Cupom</Button>
         <Button onClick={onAdvance}>{nextStepLabel}</Button>
       </div>
     </div>
