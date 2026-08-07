@@ -18,6 +18,20 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: vaija-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   payments:
     build: ./services/payments
     container_name: vaija-payments
@@ -36,5 +50,20 @@ services:
       postgres:
         condition: service_healthy
 
+  print-worker:
+    build: ./services/print-worker
+    container_name: vaija-print-worker
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+      PRINTER_IP: ${PRINTER_IP:-192.168.1.100}
+      PRINTER_PORT: ${PRINTER_PORT:-9100}
+      PRINTER_MODEL: ${PRINTER_MODEL:-epson}
+      PRINT_COPIES: ${PRINT_COPIES:-1}
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres_data:
+  redis_data:

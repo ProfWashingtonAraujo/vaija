@@ -27,6 +27,8 @@ services:
         fromDatabase:
           name: vaija-postgres
           property: connectionString
+      - key: REDIS_URL
+        sync: false
 
   - type: web
     name: vaija-payments
@@ -50,6 +52,24 @@ services:
         sync: false
       - key: BACKEND_INTERNAL_URL
         sync: false
+
+  - type: worker
+    name: vaija-print-worker
+    runtime: python
+    plan: free
+    buildCommand: cd services/print-worker && pip install -r requirements.txt
+    startCommand: cd services/print-worker && python main.py
+    envVars:
+      - key: REDIS_URL
+        sync: false
+      - key: PRINTER_IP
+        sync: false
+      - key: PRINTER_PORT
+        value: 9100
+      - key: PRINTER_MODEL
+        value: epson
+      - key: PRINT_COPIES
+        value: 1
 
 databases:
   - name: vaija-postgres
