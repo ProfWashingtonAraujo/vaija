@@ -1,12 +1,12 @@
 import { listOrders, replaceOrders } from '../repositories/orders-repository.js'
 import { notifyOrderStatusUpdate } from './order-status-notifier.js'
 
-export async function getOrders() {
-  return listOrders()
+export async function getOrders(tenantId = 'default') {
+  return listOrders(tenantId)
 }
 
-export async function updateOrders(nextOrders) {
-  const { orders, changedOrders } = await replaceOrders(nextOrders)
+export async function updateOrders(nextOrders, tenantId = 'default') {
+  const { orders, changedOrders } = await replaceOrders(nextOrders, tenantId)
   const notificationResults = await Promise.allSettled(changedOrders.map((order) => notifyOrderStatusUpdate(order)))
 
   return {

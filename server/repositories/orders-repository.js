@@ -13,14 +13,16 @@ function mapRowToOrder(row) {
     status: row.status,
     payment: row.payment,
     time: row.time,
+    tenantId: row.tenant_id,
   }
 }
 
-async function upsertOrder(client, order, index) {
+async function upsertOrder(client, order, index, tenantId) {
   await client.query(
     `
       insert into orders (
         id,
+        tenant_id,
         customer,
         phone,
         address,
@@ -32,8 +34,9 @@ async function upsertOrder(client, order, index) {
         time,
         sort_index
       )
-      values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10, $11)
+      values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12)
       on conflict (id) do update set
+        tenant_id = excluded.tenant_id,
         customer = excluded.customer,
         phone = excluded.phone,
         address = excluded.address,
@@ -48,6 +51,7 @@ async function upsertOrder(client, order, index) {
     `,
     [
       order.id,
+      tenantId,
       order.customer,
       order.phone,
       order.address,
@@ -66,6 +70,7 @@ export async function initializeOrdersTable() {
   await pool.query(`
     create table if not exists orders (
       id integer primary key,
+      tenant_id text not null default 'default',
       customer text not null,
       phone text not null,
       address text not null,
@@ -82,6 +87,7 @@ export async function initializeOrdersTable() {
   `)
 
   await pool.query('create index if not exists orders_sort_index_idx on orders (sort_index)')
+  await pool.query('create index if not exists orders_tenant_idx on orders (tenant_id)')
 
   const existing = await pool.query('select count(*)::int as count from orders')
   if (existing.rows[0]?.count > 0) {
@@ -89,12 +95,13 @@ export async function initializeOrdersTable() {
   }
 
   const client = await pool.connect()
+  const defaultTenantId = 'default'
 
   try {
     await client.query('begin')
 
     for (const [index, order] of initialOrders.entries()) {
-      await upsertOrder(client, order, index)
+      await upsertOrder(client, order, index, defaultTenantId)
     }
 
     await client.query('commit')
@@ -106,33 +113,40 @@ export async function initializeOrdersTable() {
   }
 }
 
-export async function listOrders() {
-  const result = await pool.query(`
-    select id, customer, phone, address, items, elapsed, value, status, payment, time
-    from orders
-    order by sort_index asc, id desc
-  `)
+export async function listOrders(tenantId = 'default') {
+  const result = await pool.query(
+    `
+      select id, tenant_id, customer, phone, address, items, elapsed, value, status, payment, time
+      from orders
+      where tenant_id = $1
+      order by sort_index asc, id desc
+    `,
+    [tenantId],
+  )
 
   return result.rows.map(mapRowToOrder)
 }
 
-export async function replaceOrders(nextOrders) {
+export async function replaceOrders(nextOrders, tenantId = 'default') {
   const client = await pool.connect()
 
   try {
     await client.query('begin')
 
-    const previous = await client.query('select id, status from orders')
+    const previous = await client.query('select id, status from orders where tenant_id = $1', [tenantId])
     const previousStatusById = new Map(previous.rows.map((row) => [row.id, row.status]))
 
     for (const [index, order] of nextOrders.entries()) {
-      await upsertOrder(client, order, index)
+      await upsertOrder(client, order, index, tenantId)
     }
 
     if (nextOrders.length > 0) {
-      await client.query('delete from orders where not (id = any($1::int[]))', [nextOrders.map((order) => order.id)])
+      await client.query(
+        'delete from orders where tenant_id = $1 and not (id = any($2::int[]))',
+        [tenantId, nextOrders.map((order) => order.id)],
+      )
     } else {
-      await client.query('delete from orders')
+      await client.query('delete from orders where tenant_id = $1', [tenantId])
     }
 
     await client.query('commit')

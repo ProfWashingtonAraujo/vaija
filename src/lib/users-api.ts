@@ -1,3 +1,5 @@
+import { getTenantId } from '@/lib/tenant-storage'
+
 export type AppUser = {
   id: number
   name: string
@@ -6,6 +8,7 @@ export type AppUser = {
   shift: string
   email: string
   restaurantId: string
+  tenantId?: string
   isPlatformAdmin?: boolean
   permissions: string[]
 }
@@ -45,6 +48,7 @@ const defaultUsers: StoredUser[] = [
     shift: 'Administração Vaija',
     email: 'admin@vaija.com.br',
     restaurantId: 'vaija-saas',
+    tenantId: 'admin',
     isPlatformAdmin: true,
     permissions: platformPermissions,
     password: '123456',
@@ -57,6 +61,7 @@ const defaultUsers: StoredUser[] = [
     shift: 'Administração - Ativo',
     email: 'admin@taperaspizzaria.com.br',
     restaurantId: 'taperas-pizzaria',
+    tenantId: 'default',
     permissions: rolePermissions.admin,
     password: '123456',
   },
@@ -68,6 +73,7 @@ const defaultUsers: StoredUser[] = [
     shift: 'Gerência - Aberto',
     email: 'gerente@taperaspizzaria.com.br',
     restaurantId: 'taperas-pizzaria',
+    tenantId: 'default',
     permissions: rolePermissions.manager,
     password: '123456',
   },
@@ -79,10 +85,16 @@ const defaultUsers: StoredUser[] = [
     shift: 'Caixa 02 - Aberto',
     email: 'operador@taperaspizzaria.com.br',
     restaurantId: 'taperas-pizzaria',
+    tenantId: 'default',
     permissions: rolePermissions.operator,
     password: '123456',
   },
 ]
+
+function getTenantHeaders(): HeadersInit {
+  const tenantId = getTenantId()
+  return { 'X-Tenant-Id': tenantId }
+}
 
 function getPublicUser(user: StoredUser): AppUser {
   const { password: _password, ...publicUser } = user
@@ -90,7 +102,7 @@ function getPublicUser(user: StoredUser): AppUser {
 }
 
 function ensureDefaultUsers(users: StoredUser[]) {
-  let nextUsers = users.map((user) => user.email.toLowerCase() === 'contato@taperaspizzaria.com.br' || user.isPlatformAdmin ? { ...user, email: 'admin@vaija.com.br', restaurantId: 'vaija-saas', isPlatformAdmin: true, role: 'Administrador SaaS', shift: 'Administração Vaija', permissions: user.permissions.some((permission) => permission.startsWith('saas:')) ? user.permissions : platformPermissions } : { ...user, restaurantId: user.restaurantId ?? 'taperas-pizzaria' })
+  let nextUsers = users.map((user) => user.email.toLowerCase() === 'contato@taperaspizzaria.com.br' || user.isPlatformAdmin ? { ...user, email: 'admin@vaija.com.br', restaurantId: 'vaija-saas', tenantId: 'admin', isPlatformAdmin: true, role: 'Administrador SaaS', shift: 'Administração Vaija', permissions: user.permissions.some((permission) => permission.startsWith('saas:')) ? user.permissions : platformPermissions } : { ...user, restaurantId: user.restaurantId ?? 'taperas-pizzaria', tenantId: user.tenantId ?? 'default' })
 
   for (const defaultUser of defaultUsers) {
     if (!nextUsers.some((user) => user.email.toLowerCase() === defaultUser.email.toLowerCase())) {
@@ -126,7 +138,8 @@ function saveStoredUsers(users: StoredUser[]) {
 export async function fetchUsers() {
   const storedSession = localStorage.getItem(localSessionKey)
   const session = storedSession ? JSON.parse(storedSession) as AppUser : null
-  const users = readStoredUsers().filter((user) => !session || user.restaurantId === session.restaurantId)
+  const tenantId = getTenantId()
+  const users = readStoredUsers().filter((user) => (!session || user.restaurantId === session.restaurantId) && user.tenantId === tenantId)
 
   return { ok: true, users: users.map(getPublicUser) } as const
 }
@@ -140,8 +153,9 @@ export async function createUser(input: { name: string; roleKey: string; shift: 
   const storedSession = localStorage.getItem(localSessionKey)
   const session = storedSession ? JSON.parse(storedSession) as AppUser : null
   const email = input.email.trim().toLowerCase()
+  const tenantId = getTenantId()
 
-  if (users.some((user) => user.email.toLowerCase() === email)) {
+  if (users.some((user) => user.email.toLowerCase() === email && user.tenantId === tenantId)) {
     throw new Error('email_already_exists')
   }
 
@@ -153,6 +167,7 @@ export async function createUser(input: { name: string; roleKey: string; shift: 
     shift: input.shift.trim(),
     email,
     restaurantId: session?.restaurantId ?? 'taperas-pizzaria',
+    tenantId,
     permissions: rolePermissions[input.roleKey] ?? [],
     password: input.password,
   }
@@ -166,7 +181,7 @@ export async function createTenantAdminUser(input: { tenantId: string; name: str
   const users = readStoredUsers()
   const email = input.email.trim().toLowerCase()
 
-  if (users.some((user) => user.email.toLowerCase() === email)) {
+  if (users.some((user) => user.email.toLowerCase() === email && user.tenantId === input.tenantId)) {
     throw new Error('email_already_exists')
   }
 
@@ -178,6 +193,7 @@ export async function createTenantAdminUser(input: { tenantId: string; name: str
     shift: 'Administrador - Ativo',
     email,
     restaurantId: input.tenantId,
+    tenantId: input.tenantId,
     permissions: rolePermissions.admin,
     password: input.password,
   }
@@ -202,6 +218,7 @@ export async function createPlatformUser(input: { name: string; email: string; p
     shift: 'Administração Vaija',
     email,
     restaurantId: 'vaija-saas',
+    tenantId: 'admin',
     isPlatformAdmin: true,
     permissions: platformPermissions,
     password: input.password,

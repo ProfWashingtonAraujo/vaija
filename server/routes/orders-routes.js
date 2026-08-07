@@ -6,8 +6,9 @@ import { addPrintJob } from '../lib/queue.js'
 
 export const ordersRouter = Router()
 
-ordersRouter.get('/orders', async (_request, response) => {
-  const orders = await getOrders()
+ordersRouter.get('/orders', async (request, response) => {
+  const tenantId = request.auth?.tenantId || 'default'
+  const orders = await getOrders(tenantId)
   response.json({ orders })
 })
 
@@ -17,12 +18,13 @@ ordersRouter.put('/orders', async (request, response) => {
     return
   }
 
-  const previousOrders = await getOrders()
+  const tenantId = request.auth?.tenantId || 'default'
+  const previousOrders = await getOrders(tenantId)
   const previousMap = new Map(previousOrders.map((o) => [o.id, o]))
 
-  const result = await updateOrders(request.body.orders)
+  const result = await updateOrders(request.body.orders, tenantId)
 
-  const currentOrders = await getOrders()
+  const currentOrders = await getOrders(tenantId)
   for (const order of currentOrders) {
     const prev = previousMap.get(order.id)
 

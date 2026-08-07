@@ -2,17 +2,18 @@ import bcrypt from 'bcryptjs'
 import crypto from 'node:crypto'
 import jwt from 'jsonwebtoken'
 import { authJwtSecret, authRefreshDays } from '../lib/env.js'
-import { createUser, findUserById, findUserWithPasswordByEmail, findUserWithPasswordById, listUsers, updateUserPassword } from '../repositories/users-repository.js'
+import { createUser, findUserById, findUserWithPasswordByEmail, findUserWithPasswordById, listUsers, updateUserPassword, findUserByEmailGlobal } from '../repositories/users-repository.js'
 import { getPermissionsForRole } from '../lib/permissions.js'
 import { pool } from '../lib/db.js'
 
-function signAccessToken(user) {
+function signAccessToken(user, tenantId) {
   return jwt.sign(
     {
       sub: String(user.id),
       email: user.email,
       role: user.role,
       roleKey: user.roleKey,
+      tenantId: tenantId,
     },
     authJwtSecret,
     { expiresIn: '15m' },
@@ -59,14 +60,25 @@ function toProfile(user) {
     roleKey: user.roleKey ?? user.role_key,
     shift: user.shift,
     email: user.email,
+    tenantId: user.tenant_id,
     permissions: getPermissionsForRole(user.roleKey ?? user.role_key),
   }
 }
 
-export async function loginWithEmailAndPassword(email, password) {
-  const user = await findUserWithPasswordByEmail(email)
-  if (!user) {
-    return null
+export async function loginWithEmailAndPassword(email, password, tenantId = 'default') {
+  let user
+
+  if (tenantId === 'admin') {
+    user = await findUserByEmailGlobal(email)
+    if (!user) {
+      return null
+    }
+    tenantId = user.tenant_id || 'default'
+  } else {
+    user = await findUserWithPasswordByEmail(email, tenantId)
+    if (!user) {
+      return null
+    }
   }
 
   const passwordMatches = await bcrypt.compare(password, user.password_hash)
@@ -78,14 +90,15 @@ export async function loginWithEmailAndPassword(email, password) {
   const refreshToken = await createRefreshSession(profile.id)
 
   return {
-    accessToken: signAccessToken(profile),
+    accessToken: signAccessToken(profile, tenantId),
     refreshToken,
     user: profile,
+    tenantId,
   }
 }
 
-export async function getAuthenticatedUser(userId) {
-  return findUserById(userId)
+export async function getAuthenticatedUser(userId, tenantId = 'default') {
+  return findUserById(userId, tenantId)
 }
 
 export async function refreshSession(refreshToken) {
@@ -93,7 +106,7 @@ export async function refreshSession(refreshToken) {
 
   const session = await pool.query(
     `
-      select s.id, s.expires_at, u.id as user_id_full, u.name, u.role, u.role_key, u.shift, u.email
+      select s.id, s.expires_at, u.id as user_id_full, u.name, u.role, u.role_key, u.shift, u.email, u.tenant_id
       from auth_sessions s
       join users u on u.id = s.user_id
       where s.refresh_token_hash = $1
@@ -109,6 +122,7 @@ export async function refreshSession(refreshToken) {
 
   await pool.query('delete from auth_sessions where id = $1', [row.id])
 
+  const tenantId = row.tenant_id || 'default'
   const user = toProfile({
     id: row.user_id_full,
     name: row.name,
@@ -116,12 +130,14 @@ export async function refreshSession(refreshToken) {
     role_key: row.role_key,
     shift: row.shift,
     email: row.email,
+    tenant_id: tenantId,
   })
 
   return {
-    accessToken: signAccessToken(user),
+    accessToken: signAccessToken(user, tenantId),
     refreshToken: await createRefreshSession(user.id),
     user,
+    tenantId,
   }
 }
 
@@ -134,11 +150,11 @@ export async function logoutSession(refreshToken) {
   await pool.query('delete from auth_sessions where refresh_token_hash = $1', [hashRefreshToken(refreshToken)])
 }
 
-export async function getAllUsers() {
-  return listUsers()
+export async function getAllUsers(tenantId = 'default') {
+  return listUsers(tenantId)
 }
 
-export async function createUserAccount({ name, roleKey, shift, email, password }) {
+export async function createUserAccount({ name, roleKey, shift, email, password, tenantId = 'default' }) {
   if (!['admin', 'manager', 'operator'].includes(roleKey)) {
     throw new Error('invalid_role')
   }
@@ -148,15 +164,15 @@ export async function createUserAccount({ name, roleKey, shift, email, password 
   }
 
   const passwordHash = await bcrypt.hash(password, 10)
-  return createUser({ name, role: getRoleLabel(roleKey), roleKey, shift, email, passwordHash })
+  return createUser({ name, role: getRoleLabel(roleKey), roleKey, shift, email, passwordHash, tenantId })
 }
 
-export async function updateOwnPassword(userId, currentPassword, nextPassword) {
+export async function updateOwnPassword(userId, currentPassword, nextPassword, tenantId = 'default') {
   if (String(nextPassword).length < 6) {
     throw new Error('password_too_short')
   }
 
-  const user = await findUserWithPasswordById(userId)
+  const user = await findUserWithPasswordById(userId, tenantId)
   if (!user) {
     throw new Error('user_not_found')
   }
@@ -166,5 +182,5 @@ export async function updateOwnPassword(userId, currentPassword, nextPassword) {
     throw new Error('invalid_current_password')
   }
 
-  await updateUserPassword(userId, await bcrypt.hash(nextPassword, 10))
+  await updateUserPassword(userId, await bcrypt.hash(nextPassword, 10), tenantId)
 }

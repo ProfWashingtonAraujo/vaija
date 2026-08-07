@@ -1,14 +1,19 @@
-import { listCategories, listProducts, replaceProducts } from '../repositories/products-repository.js'
+import { listCategories, listProducts, replaceProducts, replaceCategories } from '../repositories/products-repository.js'
 
-export async function getCategories() {
-  return listCategories()
+export async function getCategories(tenantId = 'default') {
+  return listCategories(tenantId)
 }
 
-export async function getProducts() {
-  return listProducts()
+export async function getProducts(tenantId = 'default') {
+  return listProducts(tenantId)
 }
 
-export async function updateProducts(nextProducts) {
-  const products = await replaceProducts(nextProducts)
+export async function updateProducts(nextProducts, tenantId = 'default') {
+  const products = await replaceProducts(nextProducts, tenantId)
   return { products }
+}
+
+export async function updateCategories(nextCategories, tenantId = 'default') {
+  const categories = await replaceCategories(nextCategories, tenantId)
+  return { categories }
 }

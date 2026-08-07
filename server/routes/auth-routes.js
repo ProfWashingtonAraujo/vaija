@@ -8,20 +8,21 @@ export const authRouter = Router()
 authRouter.post('/auth/login', async (request, response) => {
   const email = String(request.body?.email ?? '')
   const password = String(request.body?.password ?? '')
+  const tenantId = request.headers['x-tenant-id'] || request.body?.tenantId || 'default'
 
   if (!email || !password) {
     response.status(400).json({ ok: false, error: 'missing_credentials' })
     return
   }
 
-  const session = await loginWithEmailAndPassword(email, password)
+  const session = await loginWithEmailAndPassword(email, password, tenantId)
   if (!session) {
     response.status(401).json({ ok: false, error: 'invalid_credentials' })
     return
   }
 
   setAuthCookies(response, session.accessToken, session.refreshToken)
-  response.json({ ok: true, user: session.user })
+  response.json({ ok: true, user: session.user, tenantId: session.tenantId })
 })
 
 authRouter.post('/auth/refresh', async (request, response) => {
@@ -39,7 +40,7 @@ authRouter.post('/auth/refresh', async (request, response) => {
   }
 
   setAuthCookies(response, session.accessToken, session.refreshToken)
-  response.json({ ok: true, user: session.user })
+  response.json({ ok: true, user: session.user, tenantId: session.tenantId })
 })
 
 authRouter.post('/auth/logout', async (request, response) => {
@@ -49,12 +50,13 @@ authRouter.post('/auth/logout', async (request, response) => {
 })
 
 authRouter.get('/auth/me', requireAuth, async (request, response) => {
-  const user = await getAuthenticatedUser(request.auth.userId)
+  const tenantId = request.auth?.tenantId || 'default'
+  const user = await getAuthenticatedUser(request.auth.userId, tenantId)
 
   if (!user) {
     response.status(404).json({ ok: false, error: 'user_not_found' })
     return
   }
 
-  response.json({ ok: true, user })
+  response.json({ ok: true, user, tenantId })
 })

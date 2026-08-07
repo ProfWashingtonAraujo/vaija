@@ -4,6 +4,7 @@ const localSessionKey = 'vaija.localSession'
 
 export const platformTenantId = 'vaija-saas'
 export const defaultTenantStorageId = 'taperas-pizzaria'
+export const defaultTenantId = 'default'
 
 export function getCurrentTenantId() {
   const storedSession = localStorage.getItem(localSessionKey)
@@ -14,6 +15,26 @@ export function getCurrentTenantId() {
 
   const session = JSON.parse(storedSession) as Pick<AuthUser, 'restaurantId'>
   return session.restaurantId || defaultTenantStorageId
+}
+
+export function getTenantId(): string {
+  const storedSession = localStorage.getItem(localSessionKey)
+
+  if (!storedSession) {
+    return defaultTenantId
+  }
+
+  const session = JSON.parse(storedSession) as { tenantId?: string; restaurantId?: string }
+  return session.tenantId || defaultTenantId
+}
+
+export function setTenantId(tenantId: string) {
+  const storedSession = localStorage.getItem(localSessionKey)
+  if (storedSession) {
+    const session = JSON.parse(storedSession)
+    session.tenantId = tenantId
+    localStorage.setItem(localSessionKey, JSON.stringify(session))
+  }
 }
 
 export function getTenantStorageKey(key: string, tenantId = getCurrentTenantId()) {

@@ -1,5 +1,5 @@
 import { products as initialProducts, type Product } from '@/data/mock-products'
-import { readTenantFlag, readTenantStorage, writeTenantFlag, writeTenantStorage } from '@/lib/tenant-storage'
+import { readTenantFlag, readTenantStorage, writeTenantFlag, writeTenantStorage, getTenantId } from '@/lib/tenant-storage'
 
 export type CategoryRecord = {
   name: string
@@ -8,6 +8,7 @@ export type CategoryRecord = {
 }
 
 const localProductsKey = 'vaija.products'
+const localCategoriesKey = 'vaija.categories'
 const specialPizzasSeedKey = 'vaija.products.seed.special-pizzas-v3'
 const pizzaSizesSeedKey = 'vaija.products.seed.pizza-sizes-v1'
 const premiumCategorySeedKey = 'vaija.products.seed.premium-category-v1'
@@ -122,11 +123,70 @@ const traditionalProductIds = [
   'prod-hamburguer-2',
 ]
 
-export async function fetchCategories() {
-  return localCategories
+function getTenantHeaders(): HeadersInit {
+  const tenantId = getTenantId()
+  return { 'X-Tenant-Id': tenantId }
 }
 
-export async function fetchProducts() {
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+
+export async function fetchCategories(): Promise<CategoryRecord[]> {
+  try {
+    if (API_BASE) {
+      const response = await fetch(`${API_BASE}/api/categories`, {
+        headers: getTenantHeaders(),
+        credentials: 'include',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        return data.categories || localCategories
+      }
+    }
+  } catch {
+    // Fallback to localStorage
+  }
+  return readTenantStorage(localCategoriesKey, localCategories)
+}
+
+export async function saveCategories(categories: CategoryRecord[]): Promise<CategoryRecord[]> {
+  try {
+    if (API_BASE) {
+      const response = await fetch(`${API_BASE}/api/categories`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({ categories }),
+      })
+      if (response.ok) {
+        return categories
+      }
+    }
+  } catch {
+    // Fallback to localStorage
+  }
+  writeTenantStorage(localCategoriesKey, categories)
+  return categories
+}
+
+export async function fetchProducts(): Promise<Product[]> {
+  try {
+    if (API_BASE) {
+      const response = await fetch(`${API_BASE}/api/products`, {
+        headers: getTenantHeaders(),
+        credentials: 'include',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const products = data.products || []
+        if (products.length > 0) {
+          return products
+        }
+      }
+    }
+  } catch {
+    // Fallback to localStorage
+  }
+
   const products = readTenantStorage(localProductsKey, initialProducts)
 
   if (!readTenantFlag(specialPizzasSeedKey)) {
@@ -197,7 +257,22 @@ export async function fetchProducts() {
   return products
 }
 
-export async function saveProducts(products: Product[]) {
+export async function saveProducts(products: Product[]): Promise<Product[]> {
+  try {
+    if (API_BASE) {
+      const response = await fetch(`${API_BASE}/api/products`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({ products }),
+      })
+      if (response.ok) {
+        return products
+      }
+    }
+  } catch {
+    // Fallback to localStorage
+  }
   writeTenantStorage(localProductsKey, products)
   return products
 }
