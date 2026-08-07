@@ -5,7 +5,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { formatCurrency } from '@/lib/formatters'
 import { readSettings } from '@/lib/settings'
 
-function buildCupomHtml(order: Order) {
+function buildCupomHtml(order: Order, includeLogo = false) {
   const settings = readSettings().restaurant
   const source = order.source ?? 'Online'
   const deliveryFee = order.deliveryFee ?? (source === 'Online' ? 8 : 0)
@@ -14,42 +14,52 @@ function buildCupomHtml(order: Order) {
   const dateStr = now.toLocaleDateString('pt-BR')
   const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
-  const logoHtml = settings.logo
-    ? `<div style="text-align:center;margin-bottom:10px"><img src="${settings.logo}" style="max-width:180px;max-height:80px;object-fit:contain" /></div>`
+  const logoHtml = includeLogo && settings.logo
+    ? `<div style="text-align:center;margin-bottom:8px"><img src="${settings.logo}" style="max-width:160px;max-height:70px;object-fit:contain" /></div>`
     : ''
 
   return `
-    <div style="font-family:'Courier New',monospace;font-size:12px;max-width:280px;margin:0 auto;padding:10px;white-space:pre-wrap;line-height:1.5">
-      ${logoHtml}
-      <div style="text-align:center;font-weight:bold;font-size:14px">${settings.name.toUpperCase()}</div>
-      ${settings.phone ? `<div style="text-align:center">${settings.phone}</div>` : ''}
-      <hr style="border:none;border-top:1px dashed #999;margin:10px 0" />
-      <div style="text-align:center;font-weight:bold">CUPOM NAO FISCAL</div>
-      <div>Pedido: #${order.id}</div>
-      <div>Data: ${dateStr}  Hora: ${timeStr}</div>
-      <hr style="border:none;border-top:1px dashed #999;margin:10px 0" />
-      <div style="font-weight:bold">ITENS</div>
-      ${order.items.map((item) => `<div style="padding:2px 0">  ${item}</div>`).join('')}
-      <hr style="border:none;border-top:1px dashed #999;margin:10px 0" />
-      <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>${formatCurrency(subtotal)}</span></div>
-      <div style="display:flex;justify-content:space-between"><span>${source === 'Mesa' ? 'Taxa mesa' : 'Taxa entrega'}</span><span>${formatCurrency(deliveryFee)}</span></div>
-      <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;border-top:1px solid #333;padding-top:5px;margin-top:5px"><span>TOTAL</span><span>${formatCurrency(order.value)}</span></div>
-      <hr style="border:none;border-top:1px dashed #999;margin:10px 0" />
-      <div>Pagamento: ${order.payment}</div>
-      ${order.phone ? `<div>Telefone: ${order.phone}</div>` : ''}
-      ${order.address ? `<div>Endereco: ${order.address}</div>` : ''}
-      ${order.tableNumber ? `<div>Mesa: ${order.tableNumber}</div>` : ''}
-      ${order.notes ? `<div style="margin-top:5px;padding:5px;border:1px dashed #999">OBS: ${order.notes}</div>` : ''}
-      <hr style="border:none;border-top:1px dashed #999;margin:10px 0" />
-      <div style="text-align:center;font-size:11px">Obrigado pela preferencia!</div>
-      <div style="text-align:center;font-size:11px">${settings.name}</div>
+    ${logoHtml}
+    <div style="text-align:center;font-weight:bold;font-size:15px;letter-spacing:1px">${settings.name.toUpperCase()}</div>
+    ${settings.phone ? `<div style="text-align:center;font-size:11px;color:#555">${settings.phone}</div>` : ''}
+    <div style="border-top:2px dashed #ccc;margin:12px 0"></div>
+    <div style="text-align:center;font-weight:bold;font-size:11px;letter-spacing:0.5px">--- CUPOM NAO FISCAL ---</div>
+    <div style="margin-top:10px;font-size:11px">
+      <div><b>Pedido:</b> #${order.id}</div>
+      <div><b>Data:</b> ${dateStr}  <b>Hora:</b> ${timeStr}</div>
     </div>
+    <div style="border-top:1px dashed #ccc;margin:10px 0"></div>
+    <div style="font-weight:bold;font-size:11px;letter-spacing:0.5px">ITENS</div>
+    <div style="margin-top:6px">
+      ${order.items.map((item, i) => `<div style="padding:3px 0;font-size:11px;border-bottom:1px dotted #eee">${i + 1}. ${item}</div>`).join('')}
+    </div>
+    <div style="border-top:1px dashed #ccc;margin:10px 0"></div>
+    <div style="font-size:11px">
+      <div style="display:flex;justify-content:space-between;padding:2px 0"><span>Subtotal</span><span>${formatCurrency(subtotal)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0"><span>${source === 'Mesa' ? 'Taxa mesa' : 'Taxa entrega'}</span><span>${formatCurrency(deliveryFee)}</span></div>
+    </div>
+    <div style="border-top:2px solid #333;margin:8px 0"></div>
+    <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;padding:4px 0">
+      <span>TOTAL</span>
+      <span>${formatCurrency(order.value)}</span>
+    </div>
+    <div style="border-bottom:2px solid #333;margin:8px 0"></div>
+    <div style="font-size:11px;margin-top:8px">
+      <div><b>Pagamento:</b> ${order.payment}</div>
+      ${order.phone ? `<div><b>Telefone:</b> ${order.phone}</div>` : ''}
+      ${order.address ? `<div><b>Endereco:</b> ${order.address}</div>` : ''}
+      ${order.tableNumber ? `<div><b>Mesa:</b> ${order.tableNumber}</div>` : ''}
+    </div>
+    ${order.notes ? `<div style="margin-top:8px;padding:6px;border:1px dashed #999;font-size:10px;background:#fffdf5"><b>OBS:</b> ${order.notes}</div>` : ''}
+    <div style="border-top:2px dashed #ccc;margin:12px 0"></div>
+    <div style="text-align:center;font-size:10px;color:#666">Obrigado pela preferencia!</div>
+    <div style="text-align:center;font-size:10px;font-weight:bold;color:#333;margin-top:2px">${settings.name}</div>
   `
 }
 
 function CupomPreview({ order, onPrint, onClose }: { order: Order; onPrint: () => void; onClose: () => void }) {
   const settings = readSettings().restaurant
-  const cupomHtml = buildCupomHtml(order)
+  const cupomHtml = buildCupomHtml(order, false)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
@@ -61,10 +71,10 @@ function CupomPreview({ order, onPrint, onClose }: { order: Order; onPrint: () =
           </button>
         </div>
 
-        <div className="rounded-2xl border border-orange-100 bg-[#fffdf9] p-4 shadow-inner">
+        <div className="rounded-2xl border border-orange-100 bg-[#fffdf9] p-5 shadow-inner">
           {settings.logo && (
-            <div className="mb-3 flex justify-center">
-              <img src={settings.logo} alt={settings.name} className="max-h-16 object-contain" />
+            <div className="mb-2 flex justify-center">
+              <img src={settings.logo} alt={settings.name} className="max-h-20 object-contain" />
             </div>
           )}
           <div className="font-mono text-xs leading-relaxed text-slate-700" dangerouslySetInnerHTML={{ __html: cupomHtml }} />
@@ -80,15 +90,16 @@ function CupomPreview({ order, onPrint, onClose }: { order: Order; onPrint: () =
 }
 
 function printCupom(order: Order) {
-  const settings = readSettings().restaurant
-  const cupomHtml = buildCupomHtml(order)
+  const cupomHtml = buildCupomHtml(order, true)
 
   const printWindow = window.open('', '_blank', 'width=320,height=600')
   if (printWindow) {
     printWindow.document.write(`
       <html>
         <head><title>Cupom #${order.id}</title></head>
-        <body style="margin:0;padding:0">${cupomHtml}</body>
+        <body style="margin:0;padding:10px;font-family:'Courier New',monospace;font-size:12px;max-width:280px;margin:0 auto">
+          ${cupomHtml}
+        </body>
       </html>
     `)
     printWindow.document.close()
