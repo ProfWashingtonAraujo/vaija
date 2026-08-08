@@ -83,7 +83,14 @@ export function LoginPage() {
               </div>
               <Button type="submit" disabled={isSubmitting} className="mt-8 w-full shadow-[0_16px_30px_rgba(255,107,0,0.22)]">{isSubmitting ? 'Entrando...' : 'Entrar no Sistema'}</Button>
               <div className="my-6 flex items-center gap-4 text-sm text-slate-400"><div className="h-px flex-1 bg-orange-100" />ou<div className="h-px flex-1 bg-orange-100" /></div>
-              <Button variant="outline" className="w-full border-orange-200 bg-white/90">Falar com consultor</Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-orange-200 bg-white/90"
+                onClick={() => window.open('https://wa.me/5588998838079?text=Ol%C3%A1%21%20Conheci%20a%20Vaija%20e%20gostaria%20de%20falar%20com%20um%20consultor.', '_blank', 'noopener,noreferrer')}
+              >
+                Falar com consultor
+              </Button>
               <div className="mt-6 flex items-center justify-center gap-2 text-sm text-slate-500"><ShieldCheck className="h-4 w-4 text-orange-500" />Ambiente seguro e protegido</div>
               <p className="mt-6 text-center text-sm text-slate-500">Voltar para a <Link to="/" className="font-semibold text-orange-700">Página Inicial</Link></p>
             </form>
