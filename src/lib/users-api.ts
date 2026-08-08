@@ -91,18 +91,13 @@ const defaultUsers: StoredUser[] = [
   },
 ]
 
-function getTenantHeaders(): HeadersInit {
-  const tenantId = getTenantId()
-  return { 'X-Tenant-Id': tenantId }
-}
-
 function getPublicUser(user: StoredUser): AppUser {
   const { password: _password, ...publicUser } = user
   return publicUser
 }
 
 function ensureDefaultUsers(users: StoredUser[]) {
-  let nextUsers = users.map((user) => user.email.toLowerCase() === 'contato@taperaspizzaria.com.br' || user.isPlatformAdmin ? { ...user, email: 'admin@vaija.com.br', restaurantId: 'vaija-saas', tenantId: 'admin', isPlatformAdmin: true, role: 'Administrador SaaS', shift: 'Administração Vaija', permissions: user.permissions.some((permission) => permission.startsWith('saas:')) ? user.permissions : platformPermissions } : { ...user, restaurantId: user.restaurantId ?? 'taperas-pizzaria', tenantId: user.tenantId ?? 'default' })
+  let nextUsers: StoredUser[] = users.map((user) => user.email.toLowerCase() === 'contato@taperaspizzaria.com.br' || user.isPlatformAdmin ? { ...user, email: 'admin@vaija.com.br', restaurantId: 'vaija-saas', tenantId: 'admin', isPlatformAdmin: true, role: 'Administrador SaaS', shift: 'Administração Vaija', permissions: user.permissions.some((permission) => permission.startsWith('saas:')) ? user.permissions : platformPermissions } : { ...user, restaurantId: user.restaurantId ?? 'taperas-pizzaria', tenantId: user.tenantId ?? 'default' })
 
   for (const defaultUser of defaultUsers) {
     if (!nextUsers.some((user) => user.email.toLowerCase() === defaultUser.email.toLowerCase())) {
