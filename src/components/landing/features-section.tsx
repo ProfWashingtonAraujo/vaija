@@ -11,13 +11,13 @@ const features: Array<{ icon: LucideIcon; title: string; text: string }> = [
   { icon: LayoutPanelTop, title: 'Controle de caixa', text: 'Visualize operação, valores e rotinas de fechamento.' },
   { icon: Bike, title: 'Operação de delivery', text: 'Acompanhe a esteira completa do pedido até a entrega.' },
   { icon: Users, title: 'Gestão de equipe', text: 'Experiência simples para operadores, caixas e gestores.' },
-  { icon: ShieldCheck, title: 'Experiencia premium', text: 'Interface refinada, clara e pronta para apresentacao comercial.' },
+  { icon: ShieldCheck, title: 'Experiência intuitiva', text: 'Interface clara e responsiva para a equipe aprender sem complicação.' },
 ]
 
 export function FeaturesSection() {
   return (
     <section id="recursos" className="bg-section py-20">
-      <PageContainer>
+      <PageContainer constrained>
         <SectionHeader title="Tudo que seu restaurante precisa para vender com mais controle." description="Da entrada do pedido até o relatório final, a Vaija organiza sua operação em uma experiência rápida, elegante e intuitiva." />
         <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {features.map(({ icon: Icon, title, text }) => (

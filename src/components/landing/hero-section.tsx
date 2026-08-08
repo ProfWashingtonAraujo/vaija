@@ -1,5 +1,6 @@
 import { ArrowRight, CirclePlay } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { PageContainer } from '@/components/layout/page-container'
 import { formatCurrency } from '@/lib/formatters'
@@ -18,18 +19,18 @@ export function HeroSection() {
     <section id="inicio" className="relative overflow-hidden py-16 lg:py-24">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,178,107,0.22),_transparent_40%),radial-gradient(circle_at_right,_rgba(255,107,0,0.12),_transparent_35%)]" />
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-200 to-transparent" />
-      <PageContainer className="relative grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+      <PageContainer constrained className="relative grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-          <span className="inline-flex rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-700">Plataforma premium para restaurantes modernos</span>
-          <h1 className="mt-6 font-heading text-5xl font-extrabold tracking-tight text-slate-900 md:text-7xl">Controle seu delivery, PDV e restaurante em uma <span className="text-orange-500">única plataforma</span>.</h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">A Vaija une pedidos, caixa, cardápio digital, relatórios e operação em tempo real para restaurantes que querem vender mais com organização e velocidade.</p>
+          <span className="inline-flex rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-700">Do pedido ao resultado, tudo conectado</span>
+          <h1 className="mt-6 font-heading text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl md:text-7xl">Seu restaurante no controle. <span className="text-orange-500">Seu atendimento em movimento.</span></h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">Centralize delivery, balcão, caixa e cardápio em uma operação simples. Menos retrabalho para a equipe, mais clareza para você vender e decidir.</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button className="gap-2 shadow-[0_18px_34px_rgba(255,107,0,0.22)]">Começar agora <ArrowRight className="h-4 w-4" /></Button>
+            <Link to="/comprar?plano=Free"><Button className="w-full gap-2 shadow-[0_18px_34px_rgba(255,107,0,0.22)] sm:w-auto">Começar grátis <ArrowRight className="h-4 w-4" /></Button></Link>
             <a href="#dashboard"><Button variant="outline" className="gap-2 border-orange-200 bg-white/90"><CirclePlay className="h-4 w-4" />Ver demonstração</Button></a>
           </div>
-          <p className="mt-4 text-sm text-slate-500">Sem instalação complexa • Interface rápida • Ideal para delivery, salão e balcão</p>
+          <p className="mt-4 text-sm text-slate-500">Plano gratuito • Sem instalação complexa • Cancele quando quiser</p>
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {['Implantação visual imediata', 'Operação em tempo real', 'Demonstração pronta para venda'].map((item) => (
+            {['Pedidos em um só lugar', 'Operação em tempo real', 'Dados para decidir melhor'].map((item) => (
               <div key={item} className="rounded-[24px] border border-orange-100 bg-white/75 px-4 py-3 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur-sm">
                 {item}
               </div>
@@ -43,7 +44,7 @@ export function HeroSection() {
           <div className="relative rounded-[34px] border border-orange-200 bg-white/92 p-4 shadow-[0_30px_80px_rgba(255,107,0,0.12)] backdrop-blur-sm">
             <div className="relative overflow-hidden rounded-[28px] border border-orange-100 bg-[#fffaf5]">
               <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(31,41,55,0.05),rgba(255,107,0,0.18))]" />
-              <img src={heroImage} alt="Equipe operando restaurante com atendimento e produção integrados" className="h-[540px] w-full object-cover" />
+              <img src={heroImage} alt="Equipe operando restaurante com atendimento e produção integrados" fetchPriority="high" decoding="async" className="h-[460px] w-full object-cover sm:h-[540px]" />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,253,248,0.06),rgba(31,41,55,0.48))]" />
 
               <div className="absolute left-5 top-5 max-w-[210px] rounded-[24px] border border-orange-200/80 bg-white/90 p-3.5 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur-sm">

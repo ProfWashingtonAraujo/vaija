@@ -17,7 +17,7 @@ export function DashboardPreview() {
 
   return (
     <section id="dashboard" className="py-20">
-      <PageContainer>
+      <PageContainer constrained>
         <SectionHeader
           badge="Veja a Vaija em operação"
           title="Um painel inteligente para acompanhar vendas, pedidos, caixa e desempenho do seu restaurante em tempo real."
@@ -38,12 +38,12 @@ export function DashboardPreview() {
             <div className="p-6 lg:p-8">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <p className="font-heading text-2xl font-bold text-slate-900">Painel Geral</p>
+                  <p className="font-heading text-2xl font-bold text-slate-900">{tab}</p>
                   <p className="mt-1 text-sm text-slate-500">Últimos 7 dias • Perfil Admin</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {tabs.map((item) => (
-                    <button key={item} onClick={() => setTab(item)} className={cn('rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200', tab === item ? 'border-orange-300 bg-orange-50 text-orange-700 shadow-[0_8px_18px_rgba(255,107,0,0.08)]' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-200')}>
+                    <button key={item} type="button" aria-pressed={tab === item} onClick={() => setTab(item)} className={cn('rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-200', tab === item ? 'border-orange-300 bg-orange-50 text-orange-700 shadow-[0_8px_18px_rgba(255,107,0,0.08)]' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-200')}>
                       {item}
                     </button>
                   ))}

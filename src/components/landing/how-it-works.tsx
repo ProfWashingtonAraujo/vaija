@@ -14,7 +14,7 @@ const steps: Array<{ number: number; icon: LucideIcon; title: string }> = [
 export function HowItWorks() {
   return (
     <section className="bg-section py-20">
-      <PageContainer>
+      <PageContainer constrained>
         <SectionHeader title="Da venda ao relatório em poucos passos." description="Fluxo simples para equipes operarem com velocidade e para gestores acompanharem o negócio com clareza." />
         <div className="relative mt-12 grid gap-5 lg:grid-cols-4">
           <div className="absolute left-[12.5%] right-[12.5%] top-16 hidden h-px bg-orange-200 lg:block" />

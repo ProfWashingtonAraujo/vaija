@@ -15,7 +15,7 @@ const benefits = [
 export function BenefitsSection() {
   return (
     <section className="py-20">
-      <PageContainer className="grid items-center gap-12 lg:grid-cols-2">
+      <PageContainer constrained className="grid items-center gap-12 lg:grid-cols-2">
         <div>
           <SectionHeader align="left" title="Menos bagunça. Mais pedidos. Mais controle." description="A Vaija foi criada para reduzir erros, acelerar o atendimento e dar ao gestor uma visão clara da operação, seja no balcão, salão, cozinha ou delivery." />
           <div className="mt-8 grid gap-4">

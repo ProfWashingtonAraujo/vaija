@@ -1,11 +1,11 @@
 export const faqItems = [
   {
-    question: 'A Vaija ja tem backend?',
-    answer: 'Esta demonstração foi criada como frontend-only para apresentar a experiência da plataforma com dados simulados.',
+    question: 'Preciso instalar algum programa?',
+    answer: 'Não. A Vaija funciona pelo navegador e pode ser acessada no computador, tablet ou celular.',
   },
   {
     question: 'Funciona para pizzarias?',
-    answer: 'Sim. A proposta visual e operacional foi desenhada para pizzarias, hamburguerias, lanchonetes e delivery.',
+    answer: 'Sim. A operação foi desenhada para pizzarias, hamburguerias, lanchonetes, restaurantes e delivery.',
   },
   {
     question: 'Posso usar no balcão e no delivery?',
@@ -13,10 +13,10 @@ export const faqItems = [
   },
   {
     question: 'A interface funciona no celular?',
-    answer: 'Sim. Toda a aplicacao foi pensada para funcionar em desktop, tablet e mobile.',
+    answer: 'Sim. Toda a aplicação foi pensada para funcionar em desktop, tablet e celular.',
   },
   {
-    question: 'Existe plano personalizado?',
-    answer: 'Sim. A landing inclui CTA comercial para solicitacao de proposta personalizada.',
+    question: 'Posso começar sem pagar?',
+    answer: 'Sim. O plano Free permite testar os primeiros fluxos sem mensalidade e fazer upgrade quando sua operação precisar.',
   },
 ]

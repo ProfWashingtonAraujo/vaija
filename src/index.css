@@ -54,6 +54,16 @@ a {
   text-decoration: none;
 }
 
+a:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+section[id] {
+  scroll-margin-top: 5rem;
+}
+
 button,
 input,
 select,
@@ -88,4 +98,19 @@ textarea {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: rgba(255, 107, 0, 0.25);
   border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

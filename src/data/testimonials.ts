@@ -1,17 +1,17 @@
 export const testimonials = [
   {
-    name: 'Taperas Pizzaria',
-    type: 'Pizzaria',
-    quote: 'A Vaija deixou nosso atendimento mais rápido e reduziu os erros nos pedidos.',
+    name: 'Delivery em horário de pico',
+    type: 'Pizzarias e hamburguerias',
+    quote: 'Pedidos centralizados e status visíveis para toda a equipe, do recebimento à entrega.',
   },
   {
-    name: 'Villa Brasa Burger',
-    type: 'Hamburgueria',
-    quote: 'O PDV é simples, bonito e a equipe aprendeu a usar rapidamente.',
+    name: 'Atendimento no balcão',
+    type: 'Lanchonetes e cafeterias',
+    quote: 'Um PDV direto para registrar vendas com poucos toques e manter a fila em movimento.',
   },
   {
-    name: 'Forno Nobre',
-    type: 'Restaurante',
-    quote: 'Agora conseguimos acompanhar vendas, pedidos e produção em uma única tela.',
+    name: 'Gestão da operação',
+    type: 'Restaurantes e dark kitchens',
+    quote: 'Vendas, pedidos e desempenho reunidos em uma visão clara para decisões mais rápidas.',
   },
 ]

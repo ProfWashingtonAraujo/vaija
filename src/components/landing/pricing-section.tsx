@@ -19,7 +19,7 @@ export function PricingSection() {
 
   return (
     <section id="planos" className="py-20">
-      <PageContainer>
+      <PageContainer constrained>
         <SectionHeader title="Escolha o plano ideal para o seu restaurante." description="Comece simples e evolua conforme sua operação cresce." />
         <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => (

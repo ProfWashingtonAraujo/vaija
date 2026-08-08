@@ -6,8 +6,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 export function FAQSection() {
   return (
     <section id="faq" className="py-20">
-      <PageContainer>
-        <SectionHeader title="Perguntas frequentes" description="Respostas objetivas para acelerar a apresentacao comercial da Vaija." />
+      <PageContainer constrained>
+        <SectionHeader title="Perguntas frequentes" description="Tudo o que você precisa saber antes de colocar sua operação em movimento." />
         <div className="mx-auto mt-12 max-w-4xl rounded-[30px] border border-orange-100 bg-white shadow-sm">
           <Accordion type="single" collapsible>
             {faqItems.map((item, index) => (
