@@ -1,93 +1,146 @@
-import { ArrowRight, CirclePlay } from 'lucide-react'
+import { ArrowRight, CirclePlay, TrendingUp, CheckCircle2, ShoppingBag } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { PageContainer } from '@/components/layout/page-container'
 import { formatCurrency } from '@/lib/formatters'
 
-const floatingHighlights = [
-  { label: 'Faturamento hoje', value: formatCurrency(2840) },
-  { label: 'Pedidos hoje', value: '42 pedidos' },
-  { label: 'Operação', value: 'Pedido #4852 enviado para produção' },
-]
-
-const heroImage =
-  'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1400&q=80'
+const heroImage = 'https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=2000&q=80'
 
 export function HeroSection() {
   return (
-    <section id="inicio" className="relative overflow-hidden py-16 lg:py-24">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,178,107,0.22),_transparent_40%),radial-gradient(circle_at_right,_rgba(255,107,0,0.12),_transparent_35%)]" />
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-200 to-transparent" />
-      <PageContainer constrained className="relative grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-          <span className="inline-flex rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-700">Do pedido ao resultado, tudo conectado</span>
-          <h1 className="mt-6 font-heading text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl md:text-7xl">Seu restaurante no controle. <span className="text-orange-500">Seu atendimento em movimento.</span></h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">Centralize delivery, balcão, caixa e cardápio em uma operação simples. Menos retrabalho para a equipe, mais clareza para você vender e decidir.</p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link to="/comprar?plano=Free"><Button className="w-full gap-2 shadow-[0_18px_34px_rgba(255,107,0,0.22)] sm:w-auto">Começar grátis <ArrowRight className="h-4 w-4" /></Button></Link>
-            <a href="#dashboard"><Button variant="outline" className="gap-2 border-orange-200 bg-white/90"><CirclePlay className="h-4 w-4" />Ver demonstração</Button></a>
+    <section id="inicio" className="relative flex min-h-[90vh] items-center overflow-hidden bg-[#fffaf5] pt-20 pb-16 lg:pt-28 lg:pb-24">
+      {/* Background Image on the right blending into the left */}
+      <div className="absolute inset-0 w-full opacity-90">
+        <img
+          src={heroImage}
+          alt="Fachada de restaurante com mesas na calçada"
+          fetchPriority="high"
+          className="h-full w-full object-cover"
+        />
+        {/* Gradients to blend smoothly with the left side and bottom */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#fffaf5] via-[#fffaf5]/75 to-transparent lg:via-[#fffaf5]/70" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#fffaf5] via-transparent to-transparent lg:hidden" />
+        {/* Soft orange/dark overlay to make glassmorphism pop */}
+        <div className="absolute inset-0 bg-gradient-to-bl from-orange-900/20 to-transparent" />
+      </div>
+
+      <PageContainer constrained className="relative z-10 grid gap-12 lg:grid-cols-[1.1fr_0.9fr] items-center">
+        {/* Left Side: Text Content */}
+        <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, ease: "easeOut" }}>
+          <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-orange-700 shadow-sm backdrop-blur-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
+            </span>
+            Do pedido ao resultado
+          </span>
+
+          <h1 className="mt-8 font-heading text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl md:text-7xl lg:leading-[1.1]">
+            Seu restaurante no <span className="text-orange-500">controle.</span> <br />
+            Seu atendimento em <span className="text-orange-500">movimento.</span>
+          </h1>
+
+          <p className="mt-6 max-w-lg text-lg leading-relaxed text-slate-700 font-medium">
+            Centralize delivery, balcão, caixa e cardápio em uma operação simples. Menos retrabalho para a equipe, mais clareza para você vender e decidir.
+          </p>
+
+          <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+            <Link to="/comprar?plano=Free">
+              <Button className="h-14 w-full gap-2 rounded-2xl text-base shadow-[0_8px_24px_rgba(255,107,0,0.25)] transition-all hover:translate-y-[-2px] hover:shadow-[0_12px_32px_rgba(255,107,0,0.35)] sm:w-auto">
+                Começar grátis <ArrowRight className="h-5 w-5" />
+              </Button>
+            </Link>
+            <a href="#dashboard">
+              <Button variant="outline" className="h-14 w-full gap-2 rounded-2xl border-orange-200 bg-white/80 text-base backdrop-blur-sm transition-all hover:bg-white sm:w-auto">
+                <CirclePlay className="h-5 w-5 text-orange-500" /> Ver demonstração
+              </Button>
+            </a>
           </div>
-          <p className="mt-4 text-sm text-slate-500">Plano gratuito • Sem instalação complexa • Cancele quando quiser</p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {['Pedidos em um só lugar', 'Operação em tempo real', 'Dados para decidir melhor'].map((item) => (
-              <div key={item} className="rounded-[24px] border border-orange-100 bg-white/75 px-4 py-3 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.04)] backdrop-blur-sm">
+
+          <p className="mt-5 text-sm font-medium text-slate-500">Plano gratuito • Sem instalação complexa • Cancele quando quiser</p>
+
+          <div className="mt-12 flex flex-wrap gap-3">
+            {['Pedidos unificados', 'Tempo real', 'Dados precisos'].map((item) => (
+              <div key={item} className="flex items-center gap-2 rounded-full border border-orange-100 bg-white/60 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm">
+                <CheckCircle2 className="h-4 w-4 text-orange-500" />
                 {item}
               </div>
             ))}
           </div>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 36 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }} className="relative">
-          <div className="absolute left-10 top-8 h-28 w-28 rounded-full bg-orange-200/50 blur-3xl" />
-          <div className="absolute right-10 top-20 h-36 w-36 rounded-full bg-orange-300/35 blur-3xl" />
-          <div className="absolute inset-x-12 bottom-6 h-24 rounded-full bg-orange-400/20 blur-3xl" />
-          <div className="relative rounded-[34px] border border-orange-200 bg-white/92 p-4 shadow-[0_30px_80px_rgba(255,107,0,0.12)] backdrop-blur-sm">
-            <div className="relative overflow-hidden rounded-[28px] border border-orange-100 bg-[#fffaf5]">
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(31,41,55,0.05),rgba(255,107,0,0.18))]" />
-              <img src={heroImage} alt="Equipe operando restaurante com atendimento e produção integrados" fetchPriority="high" decoding="async" className="h-[460px] w-full object-cover sm:h-[540px]" />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,253,248,0.06),rgba(31,41,55,0.48))]" />
 
-              <div className="absolute left-5 top-5 max-w-[210px] rounded-[24px] border border-orange-200/80 bg-white/90 p-3.5 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur-sm">
-                <p className="text-[11px] text-slate-500">Fluxo operacional</p>
-                <div className="mt-2.5 space-y-2">
-                  {['Pedido recebido', 'Em produção', 'Pronto para retirada', 'Saiu para entrega'].map((step) => (
-                    <div key={step} className="rounded-2xl border border-orange-100 bg-orange-50/70 px-3 py-2 text-[11px] font-semibold text-slate-700 sm:text-xs">
-                      {step}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="absolute inset-x-5 top-5 hidden gap-3 md:grid md:grid-cols-3 md:pl-[240px]">
-                {floatingHighlights.map((item) => (
-                  <motion.div
-                    key={item.label}
-                    animate={{ y: [0, -6, 0] }}
-                    transition={{ repeat: Number.POSITIVE_INFINITY, duration: 4, ease: 'easeInOut' }}
-                    className="min-w-0 rounded-2xl border border-orange-200/80 bg-white/88 p-2.5 text-slate-700 shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-sm"
-                  >
-                    <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-orange-700/80">{item.label}</p>
-                    <p className="mt-1 text-[11px] leading-4 font-semibold break-words text-slate-800 sm:text-xs">{item.value}</p>
-                  </motion.div>
-                ))}
-              </div>
-
-              <div className="absolute bottom-5 left-5 right-5 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-                <div className="min-w-0 rounded-[24px] border border-orange-200/80 bg-white/92 p-3.5 shadow-[0_18px_40px_rgba(15,23,42,0.14)] backdrop-blur-sm">
-                  <p className="text-[11px] text-slate-500">Vendas hoje</p>
-                  <p className="mt-1.5 break-words font-mono text-lg font-bold tracking-[-0.04em] text-slate-900 sm:text-xl">{formatCurrency(2840)}</p>
-                </div>
-                <div className="min-w-0 rounded-[24px] border border-orange-200/80 bg-white/92 p-3.5 shadow-[0_18px_40px_rgba(15,23,42,0.14)] backdrop-blur-sm">
-                   <p className="text-[11px] text-slate-500">Ticket médio</p>
-                  <p className="mt-1.5 break-words font-mono text-lg font-bold tracking-[-0.04em] text-slate-900 sm:text-xl">{formatCurrency(67.6)}</p>
-                </div>
-                <div className="hidden rounded-[24px] border border-orange-200/80 bg-slate-900/78 px-4 py-3.5 text-white shadow-[0_18px_40px_rgba(15,23,42,0.2)] backdrop-blur-sm md:block">
-                  <p className="text-[9px] uppercase tracking-[0.18em] text-orange-200">Status ao vivo</p>
-                  <p className="mt-1.5 text-xs font-semibold">42 pedidos hoje</p>
-                </div>
+        {/* Right Side: Floating Glass Widgets over the background image */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 0.2 }}
+          className="relative h-[500px] w-full hidden lg:block"
+        >
+          {/* Main Operational Flow Card */}
+          <motion.div
+            animate={{ y: [-5, 5, -5] }}
+            transition={{ duration: 6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+            className="absolute left-0 top-12 w-[260px] rounded-[28px] border border-white/50 bg-white/30 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.12)] backdrop-blur-xl"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-800">Fluxo da Cozinha</p>
+              <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-1">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-emerald-700">AO VIVO</span>
               </div>
             </div>
-          </div>
+
+            <div className="space-y-3">
+              {[
+                { step: 'Pedido #4852', status: 'Em produção', color: 'bg-orange-500' },
+                { step: 'Pedido #4853', status: 'Pronto p/ retirada', color: 'bg-emerald-500' },
+                { step: 'Pedido #4854', status: 'Saiu p/ entrega', color: 'bg-sky-500' }
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-2xl bg-white/70 p-3 shadow-sm transition-all hover:bg-white/90">
+                  <div className={`h-2.5 w-2.5 rounded-full ${item.color} shadow-sm`} />
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">{item.step}</p>
+                    <p className="text-[10px] font-semibold text-slate-500">{item.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Revenue Card */}
+          <motion.div
+            animate={{ y: [5, -5, 5] }}
+            transition={{ duration: 7, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut", delay: 1 }}
+            className="absolute -right-4 top-32 rounded-[28px] border border-white/50 bg-white/30 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.12)] backdrop-blur-xl"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30">
+                <TrendingUp className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-800">Vendas Hoje</p>
+                <p className="font-mono text-2xl font-extrabold tracking-tight text-slate-900">{formatCurrency(2840)}</p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Orders Counter Card */}
+          <motion.div
+            animate={{ y: [-5, 5, -5] }}
+            transition={{ duration: 5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut", delay: 2 }}
+            className="absolute bottom-20 left-20 rounded-[28px] border border-white/50 bg-slate-900/40 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] backdrop-blur-xl"
+          >
+             <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500 shadow-lg shadow-orange-500/30">
+                <ShoppingBag className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-orange-200">Pedidos Concluídos</p>
+                <p className="font-mono text-2xl font-extrabold tracking-tight text-white">42</p>
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
       </PageContainer>
     </section>
