@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Building2, CheckCircle2, CreditCard, KeyRound, TrendingUp, UserCog, UserPlus, Users } from 'lucide-react'
+import { Building2, CheckCircle2, CreditCard, KeyRound, Pencil, TrendingUp, UserCog, UserPlus, Users, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { SaasLayout } from '@/components/layout/saas-layout'
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { planLabels, type PlanKey } from '@/lib/plan-access'
 import { createTenant, readTenants, updateTenant, type Tenant, type TenantStatus } from '@/lib/tenants-api'
 import { platformTenantId } from '@/lib/tenant-storage'
-import { createPlatformUser, createTenantAdminUser, fetchAllUsers, impersonateUser, platformPermissionLabels, resetUserPassword, updatePlatformUserPermissions, type AppUser } from '@/lib/users-api'
+import { createPlatformUser, createTenantAdminUser, fetchAllUsers, impersonateUser, platformPermissionLabels, resetUserPassword, updatePlatformUser, updatePlatformUserPermissions, type AppUser } from '@/lib/users-api'
 import { formatCurrency } from '@/lib/formatters'
 import { addAuditLog, createSupportTicket, readAuditLogs, readBillingInvoices, readPlanConfigs, readSupportTickets, savePlanConfigs, syncCurrentBillingInvoices, updateBillingInvoice, updateSupportTicket, type BillingInvoice, type PlanConfig, type SupportTicket } from '@/lib/saas-admin-api'
 
@@ -44,7 +44,11 @@ export function ActivationPage() {
   const [supportPriority, setSupportPriority] = useState<SupportTicket['priority']>('Média')
   const [platformUserName, setPlatformUserName] = useState('')
   const [platformUserEmail, setPlatformUserEmail] = useState('')
-  const [platformUserPassword, setPlatformUserPassword] = useState('123456')
+  const [platformUserPassword, setPlatformUserPassword] = useState('')
+  const [editingPlatformUserId, setEditingPlatformUserId] = useState<number | null>(null)
+  const [editingPlatformUserName, setEditingPlatformUserName] = useState('')
+  const [editingPlatformUserEmail, setEditingPlatformUserEmail] = useState('')
+  const [editingPlatformUserPassword, setEditingPlatformUserPassword] = useState('')
 
   useEffect(() => {
     void fetchAllUsers().then((result) => setUsers(result.users))
@@ -216,8 +220,8 @@ export function ActivationPage() {
 
   const createSaasUser = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!platformUserName.trim() || !platformUserEmail.trim() || platformUserPassword.length < 6) {
-      toast.error('Informe nome, e-mail e senha com 6 caracteres ou mais.')
+    if (!platformUserName.trim() || !platformUserEmail.trim() || platformUserPassword.length < 8) {
+      toast.error('Informe nome, e-mail e senha com 8 caracteres ou mais.')
       return
     }
 
@@ -225,12 +229,50 @@ export function ActivationPage() {
       await createPlatformUser({ name: platformUserName, email: platformUserEmail, password: platformUserPassword })
       setPlatformUserName('')
       setPlatformUserEmail('')
-      setPlatformUserPassword('123456')
+      setPlatformUserPassword('')
       refreshData()
       logAction('Usuário SaaS criado', platformUserEmail)
       toast.success('Usuário interno do SaaS criado.')
     } catch (error) {
       toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um usuário com esse e-mail.' : 'Não foi possível criar o usuário SaaS.')
+    }
+  }
+
+  const startEditingPlatformUser = (user: AppUser) => {
+    setEditingPlatformUserId(user.id)
+    setEditingPlatformUserName(user.name)
+    setEditingPlatformUserEmail(user.email)
+    setEditingPlatformUserPassword('')
+  }
+
+  const cancelEditingPlatformUser = () => {
+    setEditingPlatformUserId(null)
+    setEditingPlatformUserName('')
+    setEditingPlatformUserEmail('')
+    setEditingPlatformUserPassword('')
+  }
+
+  const savePlatformUser = async (event: FormEvent<HTMLFormElement>, user: AppUser) => {
+    event.preventDefault()
+    if (!editingPlatformUserName.trim() || !editingPlatformUserEmail.trim() || (editingPlatformUserPassword && editingPlatformUserPassword.length < 8)) {
+      toast.error('Informe nome e e-mail. A nova senha deve ter pelo menos 8 caracteres.')
+      return
+    }
+
+    try {
+      const updatedEmail = editingPlatformUserEmail.trim().toLowerCase()
+      await updatePlatformUser(user.id, {
+        name: editingPlatformUserName,
+        email: updatedEmail,
+        password: editingPlatformUserPassword || undefined,
+        permissions: user.permissions,
+      })
+      cancelEditingPlatformUser()
+      refreshData()
+      logAction('Usuário SaaS atualizado', updatedEmail)
+      toast.success('Usuário SaaS atualizado.')
+    } catch (error) {
+      toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um usuário com esse e-mail.' : 'Não foi possível atualizar o usuário SaaS.')
     }
   }
 
@@ -585,8 +627,27 @@ export function ActivationPage() {
         <div className="mt-5 grid gap-3 md:grid-cols-2">
           {platformUsers.map((user) => (
             <div key={user.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4">
-              <p className="font-semibold text-slate-900">{user.name}</p>
-              <p className="mt-1 text-sm text-slate-500">{user.email}</p>
+              {editingPlatformUserId === user.id ? (
+                <form onSubmit={(event) => { void savePlatformUser(event, user) }} className="grid gap-3">
+                  <Input value={editingPlatformUserName} onChange={(event) => setEditingPlatformUserName(event.target.value)} placeholder="Nome do usuário" />
+                  <Input value={editingPlatformUserEmail} onChange={(event) => setEditingPlatformUserEmail(event.target.value)} placeholder="E-mail" type="email" />
+                  <Input value={editingPlatformUserPassword} onChange={(event) => setEditingPlatformUserPassword(event.target.value)} placeholder="Nova senha (opcional)" type="password" />
+                  <div className="flex gap-2">
+                    <Button type="submit" className="flex-1">Salvar alterações</Button>
+                    <Button type="button" variant="outline" onClick={cancelEditingPlatformUser} aria-label="Cancelar edição"><X className="h-4 w-4" /></Button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-slate-900">{user.name}</p>
+                    <p className="mt-1 text-sm text-slate-500">{user.email}</p>
+                  </div>
+                  <button type="button" onClick={() => startEditingPlatformUser(user)} className="inline-flex items-center gap-1 rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs font-semibold text-orange-700 transition-colors hover:bg-orange-50">
+                    <Pencil className="h-3.5 w-3.5" /> Editar
+                  </button>
+                </div>
+              )}
               <div className="mt-4 grid gap-2">
                 {Object.entries(platformPermissionLabels).map(([permission, label]) => (
                   <label key={permission} className="flex items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
@@ -595,7 +656,6 @@ export function ActivationPage() {
                   </label>
                 ))}
               </div>
-              <button type="button" onClick={() => resetPassword(user)} className="mt-3 text-xs font-semibold text-orange-700">Resetar senha para 123456</button>
             </div>
           ))}
         </div>

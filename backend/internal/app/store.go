@@ -43,7 +43,9 @@ func (s *Store) Initialize(ctx context.Context, seedDemoData bool) error {
 		`alter table users drop constraint if exists users_email_key`,
 		`create unique index if not exists users_tenant_email_idx on users (tenant_id, lower(email))`,
 		`alter table users add column if not exists role_key text not null default 'operator'`,
+		`alter table users add column if not exists permissions jsonb not null default '[]'::jsonb`,
 		`update users set role_key='admin', role='Administrador' where lower(email)=lower('contato@taperaspizzaria.com.br') and role_key='operator'`,
+		`update users set permissions='["saas:clients","saas:billing","saas:support","saas:settings"]'::jsonb where tenant_id='admin' and permissions='[]'::jsonb`,
 		`create table if not exists auth_sessions (
 			id bigserial primary key, user_id bigint not null references users(id) on delete cascade,
 			refresh_token_hash text not null unique, expires_at timestamptz not null,
@@ -103,13 +105,23 @@ func (s *Store) EnsureBootstrapAdmin(ctx context.Context, email, password string
 	if email == "" || password == "" {
 		return nil
 	}
+	var exists bool
+	if err := s.pool.QueryRow(ctx, `select exists(select 1 from users where tenant_id='admin' and role_key='admin')`).Scan(&exists); err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
 		return err
 	}
-	_, err = s.pool.Exec(ctx, `insert into users (tenant_id,name,role,role_key,shift,email,password_hash)
-		values ('admin','Administrador SaaS','Administrador SaaS','admin','Administracao Vaija',$1,$2)
-		on conflict (tenant_id,lower(email)) do update set password_hash=excluded.password_hash,updated_at=now()`, strings.ToLower(email), string(hash))
+	permissionsJSON, err := json.Marshal(platformPermissions)
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `insert into users (tenant_id,name,role,role_key,shift,email,password_hash,permissions)
+		values ('admin','Administrador SaaS','Administrador SaaS','admin','Administracao Vaija',$1,$2,$3::jsonb)`, strings.ToLower(email), string(hash), permissionsJSON)
 	return err
 }
 
@@ -194,32 +206,38 @@ func (s *Store) seed(ctx context.Context) error {
 }
 
 func (s *Store) UserByEmail(ctx context.Context, email, tenant string, global bool) (User, error) {
-	query := `select id,name,role,role_key,shift,email,tenant_id,password_hash from users where lower(email)=lower($1) and tenant_id=$2 limit 1`
+	query := `select id,name,role,role_key,shift,email,tenant_id,password_hash,permissions from users where lower(email)=lower($1) and tenant_id=$2 limit 1`
 	args := []any{email, tenant}
 	if global {
-		query, args = `select id,name,role,role_key,shift,email,tenant_id,password_hash from users where lower(email)=lower($1) limit 1`, []any{email}
+		query, args = `select id,name,role,role_key,shift,email,tenant_id,password_hash,permissions from users where lower(email)=lower($1) limit 1`, []any{email}
 	}
 	var user User
-	err := s.pool.QueryRow(ctx, query, args...).Scan(&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &user.PasswordHash)
-	user.Permissions = permissions(user.RoleKey)
+	var storedPermissions []byte
+	err := s.pool.QueryRow(ctx, query, args...).Scan(&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &user.PasswordHash, &storedPermissions)
+	if err == nil {
+		err = setUserPermissions(&user, storedPermissions)
+	}
 	return user, err
 }
 
 func (s *Store) UserByID(ctx context.Context, id int64, tenant string, password bool) (User, error) {
-	query := `select id,name,role,role_key,shift,email,tenant_id from users where id=$1 and tenant_id=$2 limit 1`
+	query := `select id,name,role,role_key,shift,email,tenant_id,permissions from users where id=$1 and tenant_id=$2 limit 1`
 	var user User
+	var storedPermissions []byte
 	var err error
 	if password {
-		err = s.pool.QueryRow(ctx, `select id,name,role,role_key,shift,email,tenant_id,password_hash from users where id=$1 and tenant_id=$2 limit 1`, id, tenant).Scan(&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &user.PasswordHash)
+		err = s.pool.QueryRow(ctx, `select id,name,role,role_key,shift,email,tenant_id,password_hash,permissions from users where id=$1 and tenant_id=$2 limit 1`, id, tenant).Scan(&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &user.PasswordHash, &storedPermissions)
 	} else {
-		err = s.pool.QueryRow(ctx, query, id, tenant).Scan(&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID)
+		err = s.pool.QueryRow(ctx, query, id, tenant).Scan(&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &storedPermissions)
 	}
-	user.Permissions = permissions(user.RoleKey)
+	if err == nil {
+		err = setUserPermissions(&user, storedPermissions)
+	}
 	return user, err
 }
 
 func (s *Store) Users(ctx context.Context, tenant string) ([]User, error) {
-	rows, err := s.pool.Query(ctx, `select id,name,role,role_key,shift,email,tenant_id from users where tenant_id=$1 order by id`, tenant)
+	rows, err := s.pool.Query(ctx, `select id,name,role,role_key,shift,email,tenant_id,permissions from users where tenant_id=$1 order by id`, tenant)
 	if err != nil {
 		return nil, err
 	}
@@ -227,13 +245,62 @@ func (s *Store) Users(ctx context.Context, tenant string) ([]User, error) {
 	users := []User{}
 	for rows.Next() {
 		var user User
-		if err := rows.Scan(&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID); err != nil {
+		var storedPermissions []byte
+		if err := rows.Scan(&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &storedPermissions); err != nil {
 			return nil, err
 		}
-		user.Permissions = permissions(user.RoleKey)
+		if err := setUserPermissions(&user, storedPermissions); err != nil {
+			return nil, err
+		}
 		users = append(users, user)
 	}
 	return users, rows.Err()
+}
+
+func setUserPermissions(user *User, stored []byte) error {
+	if err := json.Unmarshal(stored, &user.Permissions); err != nil {
+		return err
+	}
+	user.IsPlatformAdmin = user.TenantID == "admin" && user.RoleKey == "admin"
+	if len(user.Permissions) == 0 {
+		if user.IsPlatformAdmin {
+			user.Permissions = append([]string(nil), platformPermissions...)
+		} else {
+			user.Permissions = permissions(user.RoleKey)
+		}
+	}
+	return nil
+}
+
+func (s *Store) CreatePlatformUser(ctx context.Context, user User) (User, error) {
+	permissionsJSON, err := json.Marshal(user.Permissions)
+	if err != nil {
+		return User{}, err
+	}
+	err = s.pool.QueryRow(ctx, `insert into users (tenant_id,name,role,role_key,shift,email,password_hash,permissions)
+		values ('admin',$1,'Administrador SaaS','admin','Administracao Vaija',$2,$3,$4::jsonb) returning id`, user.Name, user.Email, user.PasswordHash, permissionsJSON).Scan(&user.ID)
+	user.TenantID = "admin"
+	user.Role = "Administrador SaaS"
+	user.RoleKey = "admin"
+	user.Shift = "Administracao Vaija"
+	user.IsPlatformAdmin = true
+	return user, err
+}
+
+func (s *Store) UpdatePlatformUser(ctx context.Context, id int64, name, email, passwordHash string, userPermissions []string) (User, error) {
+	permissionsJSON, err := json.Marshal(userPermissions)
+	if err != nil {
+		return User{}, err
+	}
+	if passwordHash == "" {
+		_, err = s.pool.Exec(ctx, `update users set name=$1,email=$2,permissions=$3::jsonb,updated_at=now() where id=$4 and tenant_id='admin'`, name, email, permissionsJSON, id)
+	} else {
+		_, err = s.pool.Exec(ctx, `update users set name=$1,email=$2,password_hash=$3,permissions=$4::jsonb,updated_at=now() where id=$5 and tenant_id='admin'`, name, email, passwordHash, permissionsJSON, id)
+	}
+	if err != nil {
+		return User{}, err
+	}
+	return s.UserByID(ctx, id, "admin", false)
 }
 
 func (s *Store) CreateUser(ctx context.Context, user User) (User, error) {
@@ -266,7 +333,8 @@ func (s *Store) RotateSession(ctx context.Context, token string) (User, error) {
 	var sessionID int64
 	var expires time.Time
 	var user User
-	err = tx.QueryRow(ctx, `select s.id,s.expires_at,u.id,u.name,u.role,u.role_key,u.shift,u.email,u.tenant_id from auth_sessions s join users u on u.id=s.user_id where s.refresh_token_hash=$1 for update`, refreshHash(token)).Scan(&sessionID, &expires, &user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID)
+	var storedPermissions []byte
+	err = tx.QueryRow(ctx, `select s.id,s.expires_at,u.id,u.name,u.role,u.role_key,u.shift,u.email,u.tenant_id,u.permissions from auth_sessions s join users u on u.id=s.user_id where s.refresh_token_hash=$1 for update`, refreshHash(token)).Scan(&sessionID, &expires, &user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &storedPermissions)
 	if err != nil {
 		return User{}, err
 	}
@@ -279,7 +347,9 @@ func (s *Store) RotateSession(ctx context.Context, token string) (User, error) {
 	if err := tx.Commit(ctx); err != nil {
 		return User{}, err
 	}
-	user.Permissions = permissions(user.RoleKey)
+	if err := setUserPermissions(&user, storedPermissions); err != nil {
+		return User{}, err
+	}
 	return user, nil
 }
 

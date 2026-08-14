@@ -67,6 +67,9 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/api/users", s.getUsers)
 		r.Post("/api/users", s.createUser)
 		r.Post("/api/users/change-password", s.changePassword)
+		r.Get("/api/platform/users", s.getPlatformUsers)
+		r.Post("/api/platform/users", s.createPlatformUser)
+		r.Put("/api/platform/users/{userID}", s.updatePlatformUser)
 		r.Get("/api/printer/config", s.getPrinterConfig)
 		r.Put("/api/printer/config", s.putPrinterConfig)
 		r.Post("/api/printer/test", s.testPrinter)
@@ -448,6 +451,122 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 201, map[string]any{"ok": true, "user": user})
+}
+
+func platformAdmin(r *http.Request) bool {
+	auth := currentAuth(r)
+	return auth.TenantID == "admin" && auth.RoleKey == "admin"
+}
+
+func validPlatformPermissions(values []string) bool {
+	allowed := make(map[string]bool, len(platformPermissions))
+	for _, permission := range platformPermissions {
+		allowed[permission] = true
+	}
+	for _, permission := range values {
+		if !allowed[permission] {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Server) getPlatformUsers(w http.ResponseWriter, r *http.Request) {
+	if !platformAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "forbidden"})
+		return
+	}
+	users, err := s.store.Users(r.Context(), "admin")
+	if err != nil {
+		internalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "users": users})
+}
+
+func (s *Server) createPlatformUser(w http.ResponseWriter, r *http.Request) {
+	if !platformAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "forbidden"})
+		return
+	}
+	var body struct {
+		Name        string   `json:"name"`
+		Email       string   `json:"email"`
+		Password    string   `json:"password"`
+		Permissions []string `json:"permissions"`
+	}
+	if !decodeJSON(w, r, &body) {
+		return
+	}
+	body.Name = strings.TrimSpace(body.Name)
+	body.Email = strings.ToLower(strings.TrimSpace(body.Email))
+	if body.Name == "" || !strings.Contains(body.Email, "@") || len(body.Password) < 8 || !validPlatformPermissions(body.Permissions) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_platform_user"})
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 12)
+	if err != nil {
+		internalError(w, err)
+		return
+	}
+	user, err := s.store.CreatePlatformUser(r.Context(), User{Name: body.Name, Email: body.Email, PasswordHash: string(hash), Permissions: body.Permissions})
+	if err != nil {
+		var databaseError *pgconn.PgError
+		if errors.As(err, &databaseError) && databaseError.Code == "23505" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "email_already_exists"})
+			return
+		}
+		internalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "user": user})
+}
+
+func (s *Server) updatePlatformUser(w http.ResponseWriter, r *http.Request) {
+	if !platformAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "forbidden"})
+		return
+	}
+	userID, err := parseInt64(chi.URLParam(r, "userID"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_user_id"})
+		return
+	}
+	var body struct {
+		Name        string   `json:"name"`
+		Email       string   `json:"email"`
+		Password    string   `json:"password"`
+		Permissions []string `json:"permissions"`
+	}
+	if !decodeJSON(w, r, &body) {
+		return
+	}
+	body.Name = strings.TrimSpace(body.Name)
+	body.Email = strings.ToLower(strings.TrimSpace(body.Email))
+	if body.Name == "" || !strings.Contains(body.Email, "@") || (body.Password != "" && len(body.Password) < 8) || !validPlatformPermissions(body.Permissions) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_platform_user"})
+		return
+	}
+	passwordHash := ""
+	if body.Password != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 12)
+		if err != nil {
+			internalError(w, err)
+			return
+		}
+		passwordHash = string(hash)
+	}
+	user, err := s.store.UpdatePlatformUser(r.Context(), userID, body.Name, body.Email, passwordHash, body.Permissions)
+	if err != nil {
+		var databaseError *pgconn.PgError
+		if errors.As(err, &databaseError) && databaseError.Code == "23505" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "email_already_exists"})
+			return
+		}
+		internalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": user})
 }
 
 func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {

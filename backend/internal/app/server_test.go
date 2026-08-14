@@ -65,3 +65,12 @@ func TestOrderValidation(t *testing.T) {
 		t.Fatal("expected unknown status to be invalid")
 	}
 }
+
+func TestPlatformPermissionValidation(t *testing.T) {
+	if !validPlatformPermissions([]string{"saas:clients", "saas:settings"}) {
+		t.Fatal("expected known platform permissions to be valid")
+	}
+	if validPlatformPermissions([]string{"users:create"}) {
+		t.Fatal("expected tenant permission to be rejected for platform users")
+	}
+}

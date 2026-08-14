@@ -23,6 +23,7 @@ type StoredUser = AppUser & { password: string }
 
 const localUsersKey = 'vaija.users'
 const localSessionKey = 'vaija.localSession'
+const offlineMode = import.meta.env.VITE_OFFLINE_MODE === 'true'
 
 const roleLabels: Record<string, string> = {
   admin: 'Administrador',
@@ -152,6 +153,12 @@ export async function fetchUsers() {
 }
 
 export async function fetchAllUsers() {
+  if (!offlineMode) {
+    const response = await apiFetch('/api/platform/users')
+    if (!response.ok) throw new Error(`failed_to_fetch_platform_users:${response.status}`)
+    const result = await response.json() as { ok: true; users: AppUser[] }
+    return { ...result, users: result.users.map(normalizeRemoteUser) }
+  }
   return { ok: true, users: readStoredUsers().map(getPublicUser) } as const
 }
 
@@ -223,6 +230,19 @@ export async function createTenantAdminUser(input: { tenantId: string; name: str
 }
 
 export async function createPlatformUser(input: { name: string; email: string; password: string }) {
+  if (!offlineMode) {
+    const response = await apiFetch('/api/platform/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...input, permissions: platformPermissions }),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => null) as { error?: string } | null
+      throw new Error(error?.error ?? `failed_to_create_platform_user:${response.status}`)
+    }
+    const result = await response.json() as { ok: true; user: AppUser }
+    return { ...result, user: normalizeRemoteUser(result.user) }
+  }
   const users = readStoredUsers()
   const email = input.email.trim().toLowerCase()
 
@@ -249,10 +269,50 @@ export async function createPlatformUser(input: { name: string; email: string; p
 }
 
 export async function updatePlatformUserPermissions(userId: number, permissions: string[]) {
+  if (!offlineMode) {
+    const users = await fetchAllUsers()
+    const user = users.users.find((current) => current.id === userId)
+    if (!user) throw new Error('user_not_found')
+    await updatePlatformUser(userId, { name: user.name, email: user.email, permissions })
+    return fetchAllUsers()
+  }
   const users = readStoredUsers()
   const nextUsers = users.map((user) => user.id === userId && user.isPlatformAdmin ? { ...user, permissions } : user)
   saveStoredUsers(nextUsers)
   return { ok: true, users: nextUsers.map(getPublicUser) } as const
+}
+
+export async function updatePlatformUser(userId: number, input: { name: string; email: string; password?: string; permissions: string[] }) {
+  if (!offlineMode) {
+    const response = await apiFetch(`/api/platform/users/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => null) as { error?: string } | null
+      throw new Error(error?.error ?? `failed_to_update_platform_user:${response.status}`)
+    }
+    const result = await response.json() as { ok: true; user: AppUser }
+    return { ...result, user: normalizeRemoteUser(result.user) }
+  }
+
+  const users = readStoredUsers()
+  const email = input.email.trim().toLowerCase()
+  if (users.some((user) => user.id !== userId && user.email.toLowerCase() === email)) {
+    throw new Error('email_already_exists')
+  }
+  const nextUsers = users.map((user) => user.id === userId && user.isPlatformAdmin ? {
+    ...user,
+    name: input.name.trim(),
+    email,
+    permissions: input.permissions,
+    password: input.password || user.password,
+  } : user)
+  saveStoredUsers(nextUsers)
+  const user = nextUsers.find((current) => current.id === userId)
+  if (!user) throw new Error('user_not_found')
+  return { ok: true, user: getPublicUser(user) } as const
 }
 
 export async function resetUserPassword(userId: number, nextPassword: string) {

@@ -6,16 +6,19 @@ import (
 )
 
 type User struct {
-	ID           int64    `json:"id"`
-	Name         string   `json:"name"`
-	Role         string   `json:"role"`
-	RoleKey      string   `json:"roleKey"`
-	Shift        string   `json:"shift"`
-	Email        string   `json:"email"`
-	TenantID     string   `json:"tenantId"`
-	Permissions  []string `json:"permissions"`
-	PasswordHash string   `json:"-"`
+	ID              int64    `json:"id"`
+	Name            string   `json:"name"`
+	Role            string   `json:"role"`
+	RoleKey         string   `json:"roleKey"`
+	Shift           string   `json:"shift"`
+	Email           string   `json:"email"`
+	TenantID        string   `json:"tenantId"`
+	IsPlatformAdmin bool     `json:"isPlatformAdmin,omitempty"`
+	Permissions     []string `json:"permissions"`
+	PasswordHash    string   `json:"-"`
 }
+
+var platformPermissions = []string{"saas:clients", "saas:billing", "saas:support", "saas:settings"}
 
 type Category struct {
 	Name        string `json:"name"`
