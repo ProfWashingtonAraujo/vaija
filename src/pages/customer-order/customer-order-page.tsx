@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/shared/search-input'
 import { CategoryTabs } from '@/components/pos/category-tabs'
 import { formatCurrency } from '@/lib/formatters'
-import { fetchProducts } from '@/lib/catalog-api'
+import { fetchPublicProducts } from '@/lib/catalog-api'
 import { products as initialProducts, type Product } from '@/data/mock-products'
 import { readSettings } from '@/lib/settings'
 import { cashRegisterUpdatedEvent, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
@@ -63,7 +63,7 @@ export function CustomerOrderPage() {
   const settings = readSettings()
 
   useEffect(() => {
-    void fetchProducts()
+    void fetchPublicProducts()
       .then((loadedProducts) => setProducts(loadedProducts.filter((product) => product.available)))
       .catch(() => toast.error('Não foi possível carregar o cardápio.'))
   }, [])

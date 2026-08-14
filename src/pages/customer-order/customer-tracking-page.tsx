@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { formatCurrency } from '@/lib/formatters'
-import { fetchOrders } from '@/lib/orders-api'
+import { findPublicOrders } from '@/lib/orders-api'
 import type { Order, OrderStatus } from '@/data/mock-orders'
 import { readSettings } from '@/lib/settings'
 
@@ -35,7 +35,9 @@ export function CustomerTrackingPage() {
   const [restaurantSettings] = useState(() => readSettings().restaurant)
 
   useEffect(() => {
-    void fetchOrders()
+    const initialQuery = searchParams.get('pedido')
+    if (!initialQuery) return
+    void findPublicOrders(initialQuery)
       .then((loadedOrders) => {
         setOrders(loadedOrders)
         const orderId = Number(searchParams.get('pedido'))
@@ -60,19 +62,23 @@ export function CustomerTrackingPage() {
   const selectedOrder = orders.find((order) => order.id === selectedOrderId) ?? foundOrders[0]
   const activeStep = selectedOrder ? getStepIndex(selectedOrder.status) : 0
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!query.trim()) {
       toast.error('Informe o número do pedido ou WhatsApp.')
       return
     }
 
-    if (foundOrders.length === 0) {
-      setSelectedOrderId(null)
-      toast.error('Nenhum pedido encontrado com esses dados.')
-      return
+    try {
+      const loadedOrders = await findPublicOrders(query.trim())
+      setOrders(loadedOrders)
+      setSelectedOrderId(loadedOrders[0]?.id ?? null)
+      if (loadedOrders.length === 0) {
+        toast.error('Pedido não encontrado.')
+      }
+    } catch {
+      toast.error('Não foi possível consultar o pedido.')
     }
 
-    setSelectedOrderId(foundOrders[0].id)
   }
 
   return (

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     backend_internal_url: str = "http://localhost:3001"
+    internal_api_key: str = "vaija-dev-internal-secret"
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     class Config:

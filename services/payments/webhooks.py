@@ -51,7 +51,7 @@ async def mercadopago_webhook(request: Request, db: AsyncSession = Depends(get_d
                 payment.gateway_data = mp_payment
 
                 if payment.status == "approved":
-                    await notify_backend_order_paid(payment.order_id)
+                    await notify_backend_order_paid(payment.order_id, payment.tenant_id)
 
                 await db.flush()
                 logger.info(f"Payment {payment.id} updated to {payment.status}")
@@ -77,7 +77,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             if payment:
                 payment.status = "approved"
                 payment.gateway_data = data_object
-                await notify_backend_order_paid(payment.order_id)
+                await notify_backend_order_paid(payment.order_id, payment.tenant_id)
                 await db.flush()
 
     elif event_type == "payment_intent.payment_failed":

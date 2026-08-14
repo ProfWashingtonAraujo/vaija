@@ -32,6 +32,35 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build: ./backend
+    container_name: vaija-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-vaija}
+      REDIS_URL: redis://redis:6379
+      BACKEND_PORT: 3001
+      APP_ENV: development
+      SEED_DEMO_DATA: "true"
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-vaija-dev-secret}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-vaija-dev-internal-secret}
+      AUTH_REFRESH_DAYS: ${AUTH_REFRESH_DAYS:-7}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+      N8N_ORDER_STATUS_WEBHOOK_URL: ${N8N_ORDER_STATUS_WEBHOOK_URL:-}
+      PRINTER_IP: ${PRINTER_IP:-192.168.1.100}
+      PRINTER_PORT: ${PRINTER_PORT:-9100}
+      PRINTER_MODEL: ${PRINTER_MODEL:-epson}
+      PRINT_COPIES: ${PRINT_COPIES:-1}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   payments:
     build: ./services/payments
     container_name: vaija-payments
@@ -42,13 +71,16 @@ services:
       MERCADO_PAGO_PUBLIC_KEY: ${MERCADO_PAGO_PUBLIC_KEY}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      BACKEND_INTERNAL_URL: http://node-backend:3001
+      BACKEND_INTERNAL_URL: http://api:3001
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-vaija-dev-internal-secret}
       CORS_ORIGINS: http://localhost:5173,http://localhost:3000
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
+      api:
+        condition: service_started
 
   print-worker:
     build: ./services/print-worker

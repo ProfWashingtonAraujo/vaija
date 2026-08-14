@@ -1,16 +1,19 @@
 services:
   - type: web
     name: vaija-api
-    runtime: node
+    runtime: go
+    rootDir: backend
     plan: free
-    buildCommand: npm install
-    startCommand: npm run server
+    buildCommand: mkdir -p bin && go build -trimpath -o bin/api ./cmd/api
+    startCommand: ./bin/api
     healthCheckPath: /api/health
     envVars:
-      - key: NODE_VERSION
-        value: 22
-      - key: BACKEND_PORT
-        value: 3001
+      - key: GO_VERSION
+        value: 1.23.6
+      - key: APP_ENV
+        value: production
+      - key: SEED_DEMO_DATA
+        value: false
       - key: AUTH_REFRESH_DAYS
         value: 7
       - key: AUTH_COOKIE_SECURE
@@ -21,6 +24,12 @@ services:
         sync: false
       - key: AUTH_JWT_SECRET
         generateValue: true
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
       - key: N8N_ORDER_STATUS_WEBHOOK_URL
         sync: false
       - key: DATABASE_URL
@@ -51,6 +60,8 @@ services:
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
       - key: BACKEND_INTERNAL_URL
+        sync: false
+      - key: INTERNAL_API_KEY
         sync: false
 
   - type: worker

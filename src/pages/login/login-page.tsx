@@ -32,8 +32,10 @@ export function LoginPage() {
       const loggedUser = await login(values.email, values.password)
       toast.success('Login realizado com sucesso.')
       navigate(location.state?.from?.pathname ?? getHomePathForUser(loggedUser), { replace: true })
-    } catch {
-      toast.error('E-mail ou senha inválidos.')
+    } catch (error) {
+      toast.error(error instanceof Error && error.message === 'invalid_credentials'
+        ? 'E-mail ou senha inválidos.'
+        : 'Servidor indisponível. Tente novamente em alguns instantes.')
     }
   }
 

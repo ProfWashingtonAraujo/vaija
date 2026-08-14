@@ -1,4 +1,4 @@
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
+const apiBaseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL ?? '')
 
 async function request(path: string, init?: RequestInit) {
   return fetch(`${apiBaseUrl}${path}`, {
@@ -10,13 +10,24 @@ async function request(path: string, init?: RequestInit) {
   })
 }
 
+let refreshRequest: Promise<boolean> | null = null
+
+async function refreshSession() {
+  if (!refreshRequest) {
+    refreshRequest = request('/api/auth/refresh', { method: 'POST' })
+      .then((response) => response.ok)
+      .finally(() => {
+        refreshRequest = null
+      })
+  }
+  return refreshRequest
+}
+
 export async function apiFetch(path: string, init?: RequestInit, retryOnAuth = true) {
   const response = await request(path, init)
 
   if (response.status === 401 && retryOnAuth && path !== '/api/auth/login' && path !== '/api/auth/refresh' && path !== '/api/auth/logout') {
-    const refreshed = await request('/api/auth/refresh', { method: 'POST' })
-
-    if (refreshed.ok) {
+    if (await refreshSession()) {
       return request(path, init)
     }
   }

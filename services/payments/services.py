@@ -142,14 +142,15 @@ async def get_financial_summary(db: AsyncSession, tenant_id: str) -> FinancialSu
     )
 
 
-async def notify_backend_order_paid(order_id: int) -> bool:
+async def notify_backend_order_paid(order_id: int, tenant_id: str) -> bool:
     from config import get_settings
     settings = get_settings()
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.put(
                 f"{settings.backend_internal_url}/api/orders/{order_id}/status",
-                json={"status": "Em preparo"},
+                json={"status": "Em preparo", "tenantId": tenant_id},
+                headers={"X-Internal-API-Key": settings.internal_api_key},
                 timeout=5.0,
             )
             return resp.status_code == 200

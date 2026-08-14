@@ -1,5 +1,6 @@
 import { products as initialProducts, type Product } from '@/data/mock-products'
 import { readTenantFlag, readTenantStorage, writeTenantFlag, writeTenantStorage, getTenantId } from '@/lib/tenant-storage'
+import { apiFetch } from '@/lib/api-client'
 
 export type CategoryRecord = {
   name: string
@@ -128,63 +129,41 @@ function getTenantHeaders(): HeadersInit {
   return { 'X-Tenant-Id': tenantId }
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
-
 export async function fetchCategories(): Promise<CategoryRecord[]> {
-  try {
-    if (API_BASE) {
-      const response = await fetch(`${API_BASE}/api/categories`, {
-        headers: getTenantHeaders(),
-        credentials: 'include',
-      })
-      if (response.ok) {
-        const data = await response.json()
-        return data.categories || localCategories
-      }
-    }
-  } catch {
-    // Fallback to localStorage
-  }
-  return readTenantStorage(localCategoriesKey, localCategories)
+  if (import.meta.env.VITE_OFFLINE_MODE === 'true') return readTenantStorage(localCategoriesKey, localCategories)
+  const response = await apiFetch('/api/categories', { headers: getTenantHeaders() })
+  if (!response.ok) throw new Error(`failed_to_fetch_categories:${response.status}`)
+  const data = await response.json()
+  return data.categories || []
+}
+
+export async function fetchPublicCategories(tenantId = 'default'): Promise<CategoryRecord[]> {
+  const response = await apiFetch(`/api/public/${encodeURIComponent(tenantId)}/categories`, undefined, false)
+  if (!response.ok) throw new Error(`failed_to_fetch_public_categories:${response.status}`)
+  const data = await response.json()
+  return data.categories || []
 }
 
 export async function saveCategories(categories: CategoryRecord[]): Promise<CategoryRecord[]> {
-  try {
-    if (API_BASE) {
-      const response = await fetch(`${API_BASE}/api/categories`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
-        credentials: 'include',
-        body: JSON.stringify({ categories }),
-      })
-      if (response.ok) {
-        return categories
-      }
-    }
-  } catch {
-    // Fallback to localStorage
+  if (import.meta.env.VITE_OFFLINE_MODE === 'true') {
+    writeTenantStorage(localCategoriesKey, categories)
+    return categories
   }
-  writeTenantStorage(localCategoriesKey, categories)
+  const response = await apiFetch('/api/categories', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
+    body: JSON.stringify({ categories }),
+  })
+  if (!response.ok) throw new Error(`failed_to_save_categories:${response.status}`)
   return categories
 }
 
 export async function fetchProducts(): Promise<Product[]> {
-  try {
-    if (API_BASE) {
-      const response = await fetch(`${API_BASE}/api/products`, {
-        headers: getTenantHeaders(),
-        credentials: 'include',
-      })
-      if (response.ok) {
-        const data = await response.json()
-        const products = data.products || []
-        if (products.length > 0) {
-          return products
-        }
-      }
-    }
-  } catch {
-    // Fallback to localStorage
+  if (import.meta.env.VITE_OFFLINE_MODE !== 'true') {
+    const response = await apiFetch('/api/products', { headers: getTenantHeaders() })
+    if (!response.ok) throw new Error(`failed_to_fetch_products:${response.status}`)
+    const data = await response.json()
+    return data.products || []
   }
 
   const products = readTenantStorage(localProductsKey, initialProducts)
@@ -257,22 +236,23 @@ export async function fetchProducts(): Promise<Product[]> {
   return products
 }
 
+export async function fetchPublicProducts(tenantId = 'default'): Promise<Product[]> {
+  const response = await apiFetch(`/api/public/${encodeURIComponent(tenantId)}/products`, undefined, false)
+  if (!response.ok) throw new Error(`failed_to_fetch_public_products:${response.status}`)
+  const data = await response.json()
+  return data.products || []
+}
+
 export async function saveProducts(products: Product[]): Promise<Product[]> {
-  try {
-    if (API_BASE) {
-      const response = await fetch(`${API_BASE}/api/products`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
-        credentials: 'include',
-        body: JSON.stringify({ products }),
-      })
-      if (response.ok) {
-        return products
-      }
-    }
-  } catch {
-    // Fallback to localStorage
+  if (import.meta.env.VITE_OFFLINE_MODE === 'true') {
+    writeTenantStorage(localProductsKey, products)
+    return products
   }
-  writeTenantStorage(localProductsKey, products)
+  const response = await apiFetch('/api/products', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
+    body: JSON.stringify({ products }),
+  })
+  if (!response.ok) throw new Error(`failed_to_save_products:${response.status}`)
   return products
 }

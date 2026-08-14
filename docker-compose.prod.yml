@@ -17,5 +17,75 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: vaija-redis-prod
+    restart: always
+    volumes:
+      - redis_prod_data:/data
+
+  api:
+    build: ./backend
+    container_name: vaija-api-prod
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-vaija}
+      REDIS_URL: redis://redis:6379
+      BACKEND_PORT: 3001
+      APP_ENV: production
+      SEED_DEMO_DATA: "false"
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in your environment}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in your environment}
+      AUTH_REFRESH_DAYS: ${AUTH_REFRESH_DAYS:-7}
+      AUTH_COOKIE_SECURE: "true"
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-none}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?set FRONTEND_ORIGIN in your environment}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      N8N_ORDER_STATUS_WEBHOOK_URL: ${N8N_ORDER_STATUS_WEBHOOK_URL:-}
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  payments:
+    build: ./services/payments
+    container_name: vaija-payments-prod
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-vaija}
+      MERCADO_PAGO_ACCESS_TOKEN: ${MERCADO_PAGO_ACCESS_TOKEN:-}
+      MERCADO_PAGO_PUBLIC_KEY: ${MERCADO_PAGO_PUBLIC_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      BACKEND_INTERNAL_URL: http://api:3001
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in your environment}
+      CORS_ORIGINS: ${FRONTEND_ORIGIN}
+    ports:
+      - "${PAYMENTS_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  print-worker:
+    build: ./services/print-worker
+    container_name: vaija-print-worker-prod
+    restart: always
+    environment:
+      REDIS_URL: redis://redis:6379
+      PRINTER_IP: ${PRINTER_IP:?set PRINTER_IP in your environment}
+      PRINTER_PORT: ${PRINTER_PORT:-9100}
+      PRINTER_MODEL: ${PRINTER_MODEL:-epson}
+      PRINT_COPIES: ${PRINT_COPIES:-1}
+    depends_on:
+      redis:
+        condition: service_started
+
 volumes:
   postgres_prod_data:
+  redis_prod_data:

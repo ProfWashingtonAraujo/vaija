@@ -1,4 +1,5 @@
 import { getTenantId } from '@/lib/tenant-storage'
+import { apiFetch } from '@/lib/api-client'
 
 export type AppUser = {
   id: number
@@ -11,6 +12,11 @@ export type AppUser = {
   tenantId?: string
   isPlatformAdmin?: boolean
   permissions: string[]
+}
+
+function normalizeRemoteUser(user: AppUser): AppUser {
+	const tenantId = user.tenantId ?? 'default'
+	return { ...user, tenantId, restaurantId: tenantId === 'default' ? 'taperas-pizzaria' : tenantId }
 }
 
 type StoredUser = AppUser & { password: string }
@@ -133,6 +139,12 @@ function saveStoredUsers(users: StoredUser[]) {
 export async function fetchUsers() {
   const storedSession = localStorage.getItem(localSessionKey)
   const session = storedSession ? JSON.parse(storedSession) as AppUser : null
+	if (!session?.isPlatformAdmin) {
+		const response = await apiFetch('/api/users')
+		if (!response.ok) throw new Error(`failed_to_fetch_users:${response.status}`)
+		const result = await response.json() as { ok: true; users: AppUser[] }
+		return { ...result, users: result.users.map(normalizeRemoteUser) }
+	}
   const tenantId = getTenantId()
   const users = readStoredUsers().filter((user) => (!session || user.restaurantId === session.restaurantId) && user.tenantId === tenantId)
 
@@ -147,6 +159,19 @@ export async function createUser(input: { name: string; roleKey: string; shift: 
   const users = readStoredUsers()
   const storedSession = localStorage.getItem(localSessionKey)
   const session = storedSession ? JSON.parse(storedSession) as AppUser : null
+	if (!session?.isPlatformAdmin) {
+		const response = await apiFetch('/api/users', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(input),
+		})
+		if (!response.ok) {
+			const error = await response.json().catch(() => null) as { error?: string } | null
+			throw new Error(error?.error ?? `failed_to_create_user:${response.status}`)
+		}
+		const result = await response.json() as { ok: true; user: AppUser }
+		return { ...result, user: normalizeRemoteUser(result.user) }
+	}
   const email = input.email.trim().toLowerCase()
   const tenantId = getTenantId()
 
@@ -255,6 +280,18 @@ export async function changeOwnPassword(currentPassword: string, nextPassword: s
   }
 
   const session = JSON.parse(storedSession) as AppUser
+	if (!session.isPlatformAdmin) {
+		const response = await apiFetch('/api/users/change-password', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ currentPassword, nextPassword }),
+		})
+		if (!response.ok) {
+			const error = await response.json().catch(() => null) as { error?: string } | null
+			throw new Error(error?.error ?? `failed_to_change_password:${response.status}`)
+		}
+		return
+	}
   const users = readStoredUsers()
   const user = users.find((current) => current.id === session.id)
 

@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/formatters'
-import { fetchOrders, saveOrders } from '@/lib/orders-api'
+import { createPublicOrder } from '@/lib/orders-api'
 import { parseCurrencyInput, readSettings } from '@/lib/settings'
 import { readCashRegister } from '@/lib/cash-register'
 import type { Order } from '@/data/mock-orders'
@@ -220,10 +220,8 @@ export function CustomerCheckoutPage() {
       return
     }
 
-    const currentOrders = await fetchOrders()
     const now = new Date()
-    const newOrder: Order = {
-      id: Math.max(0, ...currentOrders.map((order) => order.id)) + 1,
+    const newOrder: Omit<Order, 'id'> = {
       customer: trimmedCustomer,
       phone: trimmedPhone,
       address: trimmedReference ? `${trimmedAddress} - Ref: ${trimmedReference}` : trimmedAddress,
@@ -238,10 +236,10 @@ export function CustomerCheckoutPage() {
       notes: trimmedNotes || undefined,
     }
 
-    await saveOrders([newOrder, ...currentOrders])
+    const createdOrder = await createPublicOrder(newOrder)
     persistCart([])
-    toast.success(`Pedido #${newOrder.id} enviado para o restaurante.`)
-    navigate(`/pedido/acompanhar?pedido=${newOrder.id}`)
+    toast.success(`Pedido #${createdOrder.id} enviado para o restaurante.`)
+    navigate(`/pedido/acompanhar?pedido=${createdOrder.id}`)
   }
 
   return (
