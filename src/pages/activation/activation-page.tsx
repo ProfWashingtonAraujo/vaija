@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { planLabels, type PlanKey } from '@/lib/plan-access'
-import { createTenant, readTenants, updateTenant, type Tenant, type TenantStatus } from '@/lib/tenants-api'
+import { createTenant, deleteTenant, readTenants, updateTenant, type Tenant, type TenantStatus } from '@/lib/tenants-api'
 import { platformTenantId } from '@/lib/tenant-storage'
 import { createPlatformUser, createTenantAdminUser, deleteTenantAccess, fetchAllUsers, impersonateUser, platformPermissionLabels, updatePlatformUser, updatePlatformUserPermissions, updateTenantAccess, type AppUser } from '@/lib/users-api'
 import { formatCurrency } from '@/lib/formatters'
-import { addAuditLog, createSupportTicket, readAuditLogs, readBillingInvoices, readPlanConfigs, readSupportTickets, savePlanConfigs, syncCurrentBillingInvoices, updateBillingInvoice, updateSupportTicket, type BillingInvoice, type PlanConfig, type SupportTicket } from '@/lib/saas-admin-api'
+import { addAuditLog, createSupportTicket, readAuditLogs, readBillingInvoices, readPlanConfigs, readSupportTickets, saveBillingInvoices, savePlanConfigs, syncCurrentBillingInvoices, updateBillingInvoice, updateSupportTicket, type BillingInvoice, type PlanConfig, type SupportTicket } from '@/lib/saas-admin-api'
 
 const defaultPlanPrices: Record<PlanKey, number> = {
   Free: 0,
@@ -56,6 +56,12 @@ export function ActivationPage() {
   const [editingAccessRole, setEditingAccessRole] = useState('operator')
   const [editingAccessShift, setEditingAccessShift] = useState('')
   const [editingAccessPassword, setEditingAccessPassword] = useState('')
+  const [editingTenantId, setEditingTenantId] = useState<string | null>(null)
+  const [editingRestaurantName, setEditingRestaurantName] = useState('')
+  const [editingOwnerName, setEditingOwnerName] = useState('')
+  const [editingTenantEmail, setEditingTenantEmail] = useState('')
+  const [editingTenantPhone, setEditingTenantPhone] = useState('')
+  const [editingTenantCity, setEditingTenantCity] = useState('')
 
   useEffect(() => {
     void fetchAllUsers().then((result) => setUsers(result.users))
@@ -331,6 +337,58 @@ export function ActivationPage() {
     }
   }
 
+  const startEditingTenant = (tenant: Tenant) => {
+    setEditingTenantId(tenant.id)
+    setEditingRestaurantName(tenant.restaurantName)
+    setEditingOwnerName(tenant.ownerName)
+    setEditingTenantEmail(tenant.email)
+    setEditingTenantPhone(tenant.phone)
+    setEditingTenantCity(tenant.city)
+  }
+
+  const cancelEditingTenant = () => {
+    setEditingTenantId(null)
+    setEditingRestaurantName('')
+    setEditingOwnerName('')
+    setEditingTenantEmail('')
+    setEditingTenantPhone('')
+    setEditingTenantCity('')
+  }
+
+  const saveTenant = (event: FormEvent<HTMLFormElement>, tenant: Tenant) => {
+    event.preventDefault()
+    if (!editingRestaurantName.trim() || !editingOwnerName.trim() || !editingTenantEmail.trim() || !editingTenantPhone.trim() || !editingTenantCity.trim()) {
+      toast.error('Preencha restaurante, responsável, e-mail, telefone e cidade.')
+      return
+    }
+    const updatedRestaurantName = editingRestaurantName.trim()
+    updateTenant(tenant.id, {
+      restaurantName: updatedRestaurantName,
+      ownerName: editingOwnerName.trim(),
+      email: editingTenantEmail.trim().toLowerCase(),
+      phone: editingTenantPhone.trim(),
+      city: editingTenantCity.trim(),
+    })
+    cancelEditingTenant()
+    refreshData()
+    logAction('Cliente atualizado', updatedRestaurantName)
+    toast.success('Cliente atualizado.')
+  }
+
+  const removeTenant = async (tenant: Tenant, tenantUsers: AppUser[]) => {
+    try {
+      await Promise.all(tenantUsers.map((user) => deleteTenantAccess(user.id)))
+      deleteTenant(tenant.id)
+      saveBillingInvoices(readBillingInvoices().filter((invoice) => invoice.tenantId !== tenant.id))
+      if (editingTenantId === tenant.id) cancelEditingTenant()
+      refreshData()
+      logAction('Cliente excluído', tenant.restaurantName)
+      toast.success('Cliente e acessos vinculados excluídos.')
+    } catch {
+      toast.error('Não foi possível excluir o cliente.')
+    }
+  }
+
   const summaryCards = (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
@@ -375,18 +433,32 @@ export function ActivationPage() {
           const tenantUsers = usersByTenant.get(tenant.id) ?? []
           return (
             <div key={tenant.id} className="rounded-[24px] border border-orange-100 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <p className="font-heading text-xl font-bold text-slate-900">{tenant.restaurantName}</p>
-                  <p className="mt-1 text-sm text-slate-500">{tenant.ownerName} · {tenant.email}</p>
-                  <p className="mt-1 text-sm text-slate-500">{tenant.city} · {tenant.phone}</p>
+              {editingTenantId === tenant.id ? (
+                <form onSubmit={(event) => saveTenant(event, tenant)} className="grid gap-3 md:grid-cols-2">
+                  <Input value={editingRestaurantName} onChange={(event) => setEditingRestaurantName(event.target.value)} placeholder="Nome do restaurante" />
+                  <Input value={editingOwnerName} onChange={(event) => setEditingOwnerName(event.target.value)} placeholder="Responsável" />
+                  <Input value={editingTenantEmail} onChange={(event) => setEditingTenantEmail(event.target.value)} placeholder="E-mail" type="email" />
+                  <Input value={editingTenantPhone} onChange={(event) => setEditingTenantPhone(event.target.value)} placeholder="Telefone" />
+                  <Input value={editingTenantCity} onChange={(event) => setEditingTenantCity(event.target.value)} placeholder="Cidade/UF" className="md:col-span-2" />
+                  <div className="flex gap-2 md:col-span-2">
+                    <Button type="submit">Salvar alterações</Button>
+                    <Button type="button" variant="outline" onClick={cancelEditingTenant}>Cancelar</Button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="font-heading text-xl font-bold text-slate-900">{tenant.restaurantName}</p>
+                    <p className="mt-1 text-sm text-slate-500">{tenant.ownerName} · {tenant.email}</p>
+                    <p className="mt-1 text-sm text-slate-500">{tenant.city} · {tenant.phone}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{planLabels[tenant.plan]}</span>
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{tenant.status === 'active' ? 'Ativo' : 'Inativo'}</span>
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{tenantUsers.length} acesso(s)</span>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{planLabels[tenant.plan]}</span>
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{tenant.status === 'active' ? 'Ativo' : 'Inativo'}</span>
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{tenantUsers.length} acesso(s)</span>
-                </div>
-              </div>
+              )}
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 <select value={tenant.plan} onChange={(event) => updateClient(tenant, { plan: event.target.value as PlanKey })} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
                   {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]}</option>)}
@@ -400,6 +472,14 @@ export function ActivationPage() {
                 <Button type="button" variant="outline" onClick={() => navigate(`/saas/clientes/${tenant.id}`)}>Ver detalhe</Button>
                 <Button type="button" variant="outline" onClick={() => accessClient(tenant)}>Acessar como cliente</Button>
                 <Button type="button" variant="outline" onClick={() => updateClient(tenant, { status: tenant.status === 'active' ? 'inactive' : 'active' })}>{tenant.status === 'active' ? 'Suspender assinatura' : 'Reativar assinatura'}</Button>
+                <Button type="button" variant="outline" onClick={() => startEditingTenant(tenant)}><Pencil className="mr-2 h-4 w-4" />Editar</Button>
+                <ConfirmDialog
+                  trigger={<Button type="button" variant="outline" className="border-rose-200 text-rose-600 hover:border-rose-300 hover:text-rose-700"><Trash2 className="mr-2 h-4 w-4" />Excluir</Button>}
+                  title="Excluir cliente?"
+                  description={`O restaurante ${tenant.restaurantName}, seus acessos e cobranças serão removidos. Esta ação não pode ser desfeita.`}
+                  confirmLabel="Excluir cliente"
+                  onConfirm={() => { void removeTenant(tenant, tenantUsers) }}
+                />
               </div>
             </div>
           )

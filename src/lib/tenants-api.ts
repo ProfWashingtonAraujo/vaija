@@ -53,15 +53,11 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, '')
 }
 
-function ensureDefaultTenant(tenants: Tenant[]) {
+function ensurePlatformTenant(tenants: Tenant[]) {
   let nextTenants = tenants
 
   if (!nextTenants.some((tenant) => tenant.id === platformTenantId)) {
     nextTenants = [platformTenant, ...nextTenants]
-  }
-
-  if (!nextTenants.some((tenant) => tenant.id === defaultTenantId)) {
-    nextTenants = [...nextTenants, defaultTenant]
   }
 
   return nextTenants
@@ -74,7 +70,7 @@ export function readTenants() {
     return [platformTenant, defaultTenant]
   }
 
-  const tenants = ensureDefaultTenant(JSON.parse(storedTenants) as Tenant[])
+  const tenants = ensurePlatformTenant(JSON.parse(storedTenants) as Tenant[])
   localStorage.setItem(tenantsKey, JSON.stringify(tenants))
   return tenants
 }
@@ -110,9 +106,22 @@ export function createTenant(input: Omit<Tenant, 'id' | 'createdAt'>) {
   return tenant
 }
 
-export function updateTenant(id: string, values: Partial<Pick<Tenant, 'plan' | 'status'>>) {
+export function updateTenant(id: string, values: Partial<Omit<Tenant, 'id' | 'createdAt'>>) {
   const tenants = readTenants()
   const nextTenants = tenants.map((tenant) => tenant.id === id ? { ...tenant, ...values } : tenant)
   saveTenants(nextTenants)
   return nextTenants.find((tenant) => tenant.id === id)
+}
+
+export function deleteTenant(id: string) {
+  if (id === platformTenantId) {
+    throw new Error('cannot_delete_platform_tenant')
+  }
+  const tenants = readTenants()
+  const tenant = tenants.find((current) => current.id === id)
+  if (!tenant) {
+    throw new Error('tenant_not_found')
+  }
+  saveTenants(tenants.filter((current) => current.id !== id))
+  return tenant
 }
