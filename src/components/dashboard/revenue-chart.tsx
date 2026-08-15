@@ -23,17 +23,6 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   )
 }
 
-function CustomBar(props: { x?: number; y?: number; width?: number; height?: number }) {
-  const { x = 0, y = 0, width = 0, height = 0 } = props
-  const radius = 10
-  return (
-    <path
-      d={`M${x + radius},${y} h${width - radius * 2} a${radius},${radius} 0 0 1 ${radius},${radius} v${height - radius} h-${width} v-${height - radius} a${radius},${radius} 0 0 1 ${radius},-${radius} z`}
-      fill={`url(#${GRADIENT_ID})`}
-    />
-  )
-}
-
 export function RevenueChart({ data }: { data: Array<{ day: string; revenue: number }> }) {
   const hasData = data.length > 0
   return (
@@ -60,7 +49,7 @@ export function RevenueChart({ data }: { data: Array<{ day: string; revenue: num
           tickFormatter={(v: number) => `R$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,107,0,0.06)', radius: 10 }} />
-        <Bar dataKey="revenue" shape={<CustomBar />} isAnimationActive maxBarSize={52}>
+        <Bar dataKey="revenue" radius={[10, 10, 0, 0]} isAnimationActive maxBarSize={52}>
           {hasData && (
             <LabelList
               dataKey="revenue"
