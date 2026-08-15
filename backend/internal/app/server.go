@@ -126,10 +126,13 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if tenant == "" {
 		tenant = body.TenantID
 	}
+	var user User
+	var err error
 	if tenant == "" {
-		tenant = "default"
+		user, err = s.store.UniqueUserByEmail(r.Context(), body.Email)
+	} else {
+		user, err = s.store.UserByEmail(r.Context(), body.Email, tenant, false)
 	}
-	user, err := s.store.UserByEmail(r.Context(), body.Email, tenant, false)
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(body.Password)) != nil {
 		writeJSON(w, 401, map[string]any{"ok": false, "error": "invalid_credentials"})
 		return

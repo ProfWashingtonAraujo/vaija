@@ -122,7 +122,7 @@ export async function loginRequest(email: string, password: string) {
     return { user: publicUser }
   }
 
-  const tenantId = normalizedEmail === 'admin@vaija.com.br' ? 'admin' : 'default'
+  const tenantId = normalizedEmail === 'admin@vaija.com.br' ? 'admin' : undefined
   const response = await apiFetch('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

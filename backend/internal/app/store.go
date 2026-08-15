@@ -220,6 +220,20 @@ func (s *Store) UserByEmail(ctx context.Context, email, tenant string, global bo
 	return user, err
 }
 
+func (s *Store) UniqueUserByEmail(ctx context.Context, email string) (User, error) {
+	var user User
+	var storedPermissions []byte
+	err := s.pool.QueryRow(ctx, `select id,name,role,role_key,shift,email,tenant_id,password_hash,permissions
+		from users where lower(email)=lower($1)
+		and (select count(*) from users where lower(email)=lower($1))=1 limit 1`, email).Scan(
+		&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &user.PasswordHash, &storedPermissions,
+	)
+	if err == nil {
+		err = setUserPermissions(&user, storedPermissions)
+	}
+	return user, err
+}
+
 func (s *Store) UserByID(ctx context.Context, id int64, tenant string, password bool) (User, error) {
 	query := `select id,name,role,role_key,shift,email,tenant_id,permissions from users where id=$1 and tenant_id=$2 limit 1`
 	var user User
