@@ -154,10 +154,14 @@ export async function fetchUsers() {
 
 export async function fetchAllUsers() {
   if (!offlineMode) {
-    const response = await apiFetch('/api/platform/users')
-    if (!response.ok) throw new Error(`failed_to_fetch_platform_users:${response.status}`)
-    const result = await response.json() as { ok: true; users: AppUser[] }
-    return { ...result, users: result.users.map(normalizeRemoteUser) }
+    const [platformResponse, accessesResponse] = await Promise.all([
+      apiFetch('/api/platform/users'),
+      apiFetch('/api/platform/accesses'),
+    ])
+    if (!platformResponse.ok || !accessesResponse.ok) throw new Error('failed_to_fetch_all_users')
+    const platformResult = await platformResponse.json() as { ok: true; users: AppUser[] }
+    const accessesResult = await accessesResponse.json() as { ok: true; users: AppUser[] }
+    return { ok: true, users: [...platformResult.users, ...accessesResult.users].map(normalizeRemoteUser) } as const
   }
   return { ok: true, users: readStoredUsers().map(getPublicUser) } as const
 }
@@ -205,6 +209,19 @@ export async function createUser(input: { name: string; roleKey: string; shift: 
 }
 
 export async function createTenantAdminUser(input: { tenantId: string; name: string; email: string; password: string }) {
+  if (!offlineMode) {
+    const response = await apiFetch('/api/platform/accesses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...input, roleKey: 'admin', shift: 'Administrador - Ativo' }),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => null) as { error?: string } | null
+      throw new Error(error?.error ?? `failed_to_create_tenant_admin:${response.status}`)
+    }
+    const result = await response.json() as { ok: true; user: AppUser }
+    return { ...result, user: normalizeRemoteUser(result.user) }
+  }
   const users = readStoredUsers()
   const email = input.email.trim().toLowerCase()
 
@@ -316,9 +333,62 @@ export async function updatePlatformUser(userId: number, input: { name: string; 
 }
 
 export async function resetUserPassword(userId: number, nextPassword: string) {
+  if (!offlineMode) {
+    const result = await fetchAllUsers()
+    const user = result.users.find((current) => current.id === userId)
+    if (!user || user.isPlatformAdmin) throw new Error('user_not_found')
+    await updateTenantAccess(userId, { name: user.name, email: user.email, roleKey: user.roleKey, shift: user.shift, password: nextPassword })
+    return { ok: true } as const
+  }
   const users = readStoredUsers()
   const nextUsers = users.map((user) => user.id === userId ? { ...user, password: nextPassword } : user)
   saveStoredUsers(nextUsers)
+  return { ok: true } as const
+}
+
+export async function updateTenantAccess(userId: number, input: { name: string; email: string; roleKey: string; shift: string; password?: string }) {
+  if (!offlineMode) {
+    const response = await apiFetch(`/api/platform/accesses/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => null) as { error?: string } | null
+      throw new Error(error?.error ?? `failed_to_update_access:${response.status}`)
+    }
+    const result = await response.json() as { ok: true; user: AppUser }
+    return { ...result, user: normalizeRemoteUser(result.user) }
+  }
+
+  const users = readStoredUsers()
+  const email = input.email.trim().toLowerCase()
+  const nextUsers = users.map((user) => user.id === userId && !user.isPlatformAdmin ? {
+    ...user,
+    name: input.name.trim(),
+    email,
+    roleKey: input.roleKey,
+    role: roleLabels[input.roleKey] ?? user.role,
+    shift: input.shift.trim(),
+    permissions: rolePermissions[input.roleKey] ?? [],
+    password: input.password || user.password,
+  } : user)
+  saveStoredUsers(nextUsers)
+  const user = nextUsers.find((current) => current.id === userId)
+  if (!user) throw new Error('user_not_found')
+  return { ok: true, user: getPublicUser(user) } as const
+}
+
+export async function deleteTenantAccess(userId: number) {
+  if (!offlineMode) {
+    const response = await apiFetch(`/api/platform/accesses/${userId}`, { method: 'DELETE' })
+    if (!response.ok) throw new Error(`failed_to_delete_access:${response.status}`)
+    return { ok: true } as const
+  }
+  const users = readStoredUsers()
+  const user = users.find((current) => current.id === userId)
+  if (!user || user.isPlatformAdmin) throw new Error('user_not_found')
+  saveStoredUsers(users.filter((current) => current.id !== userId))
   return { ok: true } as const
 }
 

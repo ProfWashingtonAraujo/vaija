@@ -1,14 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Building2, CheckCircle2, CreditCard, KeyRound, Pencil, TrendingUp, UserCog, UserPlus, Users, X } from 'lucide-react'
+import { Building2, CheckCircle2, CreditCard, KeyRound, Pencil, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { SaasLayout } from '@/components/layout/saas-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { planLabels, type PlanKey } from '@/lib/plan-access'
 import { createTenant, readTenants, updateTenant, type Tenant, type TenantStatus } from '@/lib/tenants-api'
 import { platformTenantId } from '@/lib/tenant-storage'
-import { createPlatformUser, createTenantAdminUser, fetchAllUsers, impersonateUser, platformPermissionLabels, resetUserPassword, updatePlatformUser, updatePlatformUserPermissions, type AppUser } from '@/lib/users-api'
+import { createPlatformUser, createTenantAdminUser, deleteTenantAccess, fetchAllUsers, impersonateUser, platformPermissionLabels, updatePlatformUser, updatePlatformUserPermissions, updateTenantAccess, type AppUser } from '@/lib/users-api'
 import { formatCurrency } from '@/lib/formatters'
 import { addAuditLog, createSupportTicket, readAuditLogs, readBillingInvoices, readPlanConfigs, readSupportTickets, savePlanConfigs, syncCurrentBillingInvoices, updateBillingInvoice, updateSupportTicket, type BillingInvoice, type PlanConfig, type SupportTicket } from '@/lib/saas-admin-api'
 
@@ -37,7 +38,7 @@ export function ActivationPage() {
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
   const [plan, setPlan] = useState<PlanKey>('Pro')
-  const [password, setPassword] = useState('123456')
+  const [password, setPassword] = useState('')
   const [clientFilter, setClientFilter] = useState<'all' | PlanKey | TenantStatus>('all')
   const [supportTenantId, setSupportTenantId] = useState('')
   const [supportSubject, setSupportSubject] = useState('')
@@ -49,6 +50,12 @@ export function ActivationPage() {
   const [editingPlatformUserName, setEditingPlatformUserName] = useState('')
   const [editingPlatformUserEmail, setEditingPlatformUserEmail] = useState('')
   const [editingPlatformUserPassword, setEditingPlatformUserPassword] = useState('')
+  const [editingAccessId, setEditingAccessId] = useState<number | null>(null)
+  const [editingAccessName, setEditingAccessName] = useState('')
+  const [editingAccessEmail, setEditingAccessEmail] = useState('')
+  const [editingAccessRole, setEditingAccessRole] = useState('operator')
+  const [editingAccessShift, setEditingAccessShift] = useState('')
+  const [editingAccessPassword, setEditingAccessPassword] = useState('')
 
   useEffect(() => {
     void fetchAllUsers().then((result) => setUsers(result.users))
@@ -106,8 +113,8 @@ export function ActivationPage() {
     const trimmedPhone = phone.trim()
     const trimmedCity = city.trim()
 
-    if (!trimmedRestaurantName || !trimmedOwnerName || !trimmedEmail || !trimmedPhone || !trimmedCity || password.length < 6) {
-      toast.error('Preencha cliente, responsável, contato, cidade e senha com 6 caracteres ou mais.')
+    if (!trimmedRestaurantName || !trimmedOwnerName || !trimmedEmail || !trimmedPhone || !trimmedCity || password.length < 8) {
+      toast.error('Preencha cliente, responsável, contato, cidade e senha com 8 caracteres ou mais.')
       return
     }
 
@@ -131,7 +138,7 @@ export function ActivationPage() {
       setPhone('')
       setCity('')
       setPlan('Pro')
-      setPassword('123456')
+      setPassword('')
       toast.success('Cliente ativado e usuário administrador criado.')
     } catch (error) {
       toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um usuário com esse e-mail.' : 'Não foi possível ativar o cliente.')
@@ -155,12 +162,6 @@ export function ActivationPage() {
     await impersonateUser(adminUser.id)
     logAction('Acesso como cliente', tenant.restaurantName)
     navigate('/dashboard', { replace: true })
-  }
-
-  const resetPassword = async (user: AppUser) => {
-    await resetUserPassword(user.id, '123456')
-    logAction('Senha resetada', `${user.name} · ${user.email}`)
-    toast.success('Senha redefinida para 123456.')
   }
 
   const updatePlanConfig = (key: PlanKey, values: Partial<PlanConfig>) => {
@@ -273,6 +274,60 @@ export function ActivationPage() {
       toast.success('Usuário SaaS atualizado.')
     } catch (error) {
       toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um usuário com esse e-mail.' : 'Não foi possível atualizar o usuário SaaS.')
+    }
+  }
+
+  const startEditingAccess = (user: AppUser) => {
+    setEditingAccessId(user.id)
+    setEditingAccessName(user.name)
+    setEditingAccessEmail(user.email)
+    setEditingAccessRole(user.roleKey)
+    setEditingAccessShift(user.shift)
+    setEditingAccessPassword('')
+  }
+
+  const cancelEditingAccess = () => {
+    setEditingAccessId(null)
+    setEditingAccessName('')
+    setEditingAccessEmail('')
+    setEditingAccessRole('operator')
+    setEditingAccessShift('')
+    setEditingAccessPassword('')
+  }
+
+  const saveAccess = async (event: FormEvent<HTMLFormElement>, user: AppUser) => {
+    event.preventDefault()
+    if (!editingAccessName.trim() || !editingAccessEmail.trim() || !editingAccessShift.trim() || (editingAccessPassword && editingAccessPassword.length < 8)) {
+      toast.error('Preencha nome, e-mail e turno. A nova senha deve ter pelo menos 8 caracteres.')
+      return
+    }
+    try {
+      const updatedEmail = editingAccessEmail.trim().toLowerCase()
+      await updateTenantAccess(user.id, {
+        name: editingAccessName,
+        email: updatedEmail,
+        roleKey: editingAccessRole,
+        shift: editingAccessShift,
+        password: editingAccessPassword || undefined,
+      })
+      cancelEditingAccess()
+      refreshData()
+      logAction('Acesso atualizado', updatedEmail)
+      toast.success('Acesso atualizado.')
+    } catch (error) {
+      toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um acesso com esse e-mail.' : 'Não foi possível atualizar o acesso.')
+    }
+  }
+
+  const removeAccess = async (user: AppUser) => {
+    try {
+      await deleteTenantAccess(user.id)
+      if (editingAccessId === user.id) cancelEditingAccess()
+      refreshData()
+      logAction('Acesso excluído', user.email)
+      toast.success('Acesso excluído.')
+    } catch {
+      toast.error('Não foi possível excluir o acesso.')
     }
   }
 
@@ -412,7 +467,7 @@ export function ActivationPage() {
       <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
         <h2 className="font-heading text-2xl font-bold text-slate-900">Acessos</h2>
         <div className="mt-5 space-y-3">
-          {selectedTenantUsers.map((user) => <div key={user.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4"><p className="font-semibold text-slate-900">{user.name}</p><p className="mt-1 text-sm text-slate-500">{user.email} · {user.role}</p><button type="button" onClick={() => resetPassword(user)} className="mt-2 text-xs font-semibold text-orange-700">Resetar senha para 123456</button></div>)}
+          {selectedTenantUsers.map((user) => <div key={user.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4"><p className="font-semibold text-slate-900">{user.name}</p><p className="mt-1 text-sm text-slate-500">{user.email} · {user.role}</p></div>)}
           {selectedTenantUsers.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhum acesso criado.</p> : null}
         </div>
       </section>
@@ -477,15 +532,42 @@ export function ActivationPage() {
           const tenant = clientTenants.find((item) => item.id === user.restaurantId)
           return (
             <div key={user.id} className="rounded-2xl border border-orange-100 bg-white p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-slate-900">{user.name}</p>
-                  <p className="mt-1 text-xs text-slate-500">{user.email}</p>
-                  <p className="mt-1 text-xs text-slate-500">{tenant?.restaurantName ?? 'Cliente não identificado'}</p>
-                  <button type="button" onClick={() => resetPassword(user)} className="mt-2 text-xs font-semibold text-orange-700">Resetar senha para 123456</button>
+              {editingAccessId === user.id ? (
+                <form onSubmit={(event) => { void saveAccess(event, user) }} className="grid gap-3">
+                  <Input value={editingAccessName} onChange={(event) => setEditingAccessName(event.target.value)} placeholder="Nome" />
+                  <Input value={editingAccessEmail} onChange={(event) => setEditingAccessEmail(event.target.value)} placeholder="E-mail" type="email" />
+                  <select value={editingAccessRole} onChange={(event) => setEditingAccessRole(event.target.value)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+                    <option value="admin">Administrador</option>
+                    <option value="manager">Gerente</option>
+                    <option value="operator">Operador</option>
+                  </select>
+                  <Input value={editingAccessShift} onChange={(event) => setEditingAccessShift(event.target.value)} placeholder="Turno ou função" />
+                  <Input value={editingAccessPassword} onChange={(event) => setEditingAccessPassword(event.target.value)} placeholder="Nova senha (opcional)" type="password" />
+                  <div className="flex gap-2">
+                    <Button type="submit" className="flex-1">Salvar</Button>
+                    <Button type="button" variant="outline" onClick={cancelEditingAccess} aria-label="Cancelar edição"><X className="h-4 w-4" /></Button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-slate-900">{user.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">{user.email}</p>
+                    <p className="mt-1 text-xs text-slate-500">{tenant?.restaurantName ?? 'Cliente não identificado'}</p>
+                    <span className="mt-2 inline-flex rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{user.role}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => startEditingAccess(user)} className="rounded-xl border border-orange-200 p-2 text-orange-700 transition hover:bg-orange-50" aria-label={`Editar ${user.name}`}><Pencil className="h-4 w-4" /></button>
+                    <ConfirmDialog
+                      trigger={<button type="button" className="rounded-xl border border-rose-200 p-2 text-rose-600 transition hover:bg-rose-50" aria-label={`Excluir ${user.name}`}><Trash2 className="h-4 w-4" /></button>}
+                      title="Excluir acesso?"
+                      description={`O usuário ${user.name} perderá imediatamente o acesso ao restaurante. Esta ação não pode ser desfeita.`}
+                      confirmLabel="Excluir acesso"
+                      onConfirm={() => { void removeAccess(user) }}
+                    />
+                  </div>
                 </div>
-                <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{user.role}</span>
-              </div>
+              )}
             </div>
           )
         })}

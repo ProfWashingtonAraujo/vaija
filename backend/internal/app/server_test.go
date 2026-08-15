@@ -74,3 +74,12 @@ func TestPlatformPermissionValidation(t *testing.T) {
 		t.Fatal("expected tenant permission to be rejected for platform users")
 	}
 }
+
+func TestManagedUserRoleValidation(t *testing.T) {
+	if role, ok := managedUserRole("manager"); !ok || role != "Gerente" {
+		t.Fatalf("unexpected manager role: %q, %v", role, ok)
+	}
+	if _, ok := managedUserRole("platform"); ok {
+		t.Fatal("expected unknown managed role to be rejected")
+	}
+}

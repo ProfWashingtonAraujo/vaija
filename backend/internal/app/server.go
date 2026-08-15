@@ -70,6 +70,10 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/api/platform/users", s.getPlatformUsers)
 		r.Post("/api/platform/users", s.createPlatformUser)
 		r.Put("/api/platform/users/{userID}", s.updatePlatformUser)
+		r.Get("/api/platform/accesses", s.getTenantUsers)
+		r.Post("/api/platform/accesses", s.createTenantUser)
+		r.Put("/api/platform/accesses/{userID}", s.updateTenantUser)
+		r.Delete("/api/platform/accesses/{userID}", s.deleteTenantUser)
 		r.Get("/api/printer/config", s.getPrinterConfig)
 		r.Put("/api/printer/config", s.putPrinterConfig)
 		r.Post("/api/printer/test", s.testPrinter)
@@ -567,6 +571,142 @@ func (s *Server) updatePlatformUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": user})
+}
+
+func (s *Server) getTenantUsers(w http.ResponseWriter, r *http.Request) {
+	if !platformAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "forbidden"})
+		return
+	}
+	users, err := s.store.TenantUsers(r.Context())
+	if err != nil {
+		internalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "users": users})
+}
+
+func managedUserRole(roleKey string) (string, bool) {
+	role, ok := map[string]string{"admin": "Administrador", "manager": "Gerente", "operator": "Operador"}[roleKey]
+	return role, ok
+}
+
+func (s *Server) createTenantUser(w http.ResponseWriter, r *http.Request) {
+	if !platformAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "forbidden"})
+		return
+	}
+	var body struct {
+		TenantID string `json:"tenantId"`
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		RoleKey  string `json:"roleKey"`
+		Shift    string `json:"shift"`
+	}
+	if !decodeJSON(w, r, &body) {
+		return
+	}
+	body.TenantID = strings.TrimSpace(body.TenantID)
+	body.Name = strings.TrimSpace(body.Name)
+	body.Email = strings.ToLower(strings.TrimSpace(body.Email))
+	body.Shift = strings.TrimSpace(body.Shift)
+	role, validRole := managedUserRole(body.RoleKey)
+	if body.TenantID == "" || body.TenantID == "admin" || body.Name == "" || !strings.Contains(body.Email, "@") || len(body.Password) < 8 || body.Shift == "" || !validRole {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_tenant_user"})
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 12)
+	if err != nil {
+		internalError(w, err)
+		return
+	}
+	user, err := s.store.CreateUser(r.Context(), User{TenantID: body.TenantID, Name: body.Name, Email: body.Email, PasswordHash: string(hash), Role: role, RoleKey: body.RoleKey, Shift: body.Shift})
+	if err != nil {
+		var databaseError *pgconn.PgError
+		if errors.As(err, &databaseError) && databaseError.Code == "23505" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "email_already_exists"})
+			return
+		}
+		internalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "user": user})
+}
+
+func (s *Server) updateTenantUser(w http.ResponseWriter, r *http.Request) {
+	if !platformAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "forbidden"})
+		return
+	}
+	userID, err := parseInt64(chi.URLParam(r, "userID"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_user_id"})
+		return
+	}
+	var body struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		RoleKey  string `json:"roleKey"`
+		Shift    string `json:"shift"`
+	}
+	if !decodeJSON(w, r, &body) {
+		return
+	}
+	body.Name = strings.TrimSpace(body.Name)
+	body.Email = strings.ToLower(strings.TrimSpace(body.Email))
+	body.Shift = strings.TrimSpace(body.Shift)
+	role, validRole := managedUserRole(body.RoleKey)
+	if body.Name == "" || !strings.Contains(body.Email, "@") || (body.Password != "" && len(body.Password) < 8) || body.Shift == "" || !validRole {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_tenant_user"})
+		return
+	}
+	passwordHash := ""
+	if body.Password != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 12)
+		if err != nil {
+			internalError(w, err)
+			return
+		}
+		passwordHash = string(hash)
+	}
+	user, err := s.store.UpdateTenantUser(r.Context(), userID, body.Name, body.Email, role, body.RoleKey, body.Shift, passwordHash)
+	if err != nil {
+		var databaseError *pgconn.PgError
+		if errors.As(err, &databaseError) && databaseError.Code == "23505" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "email_already_exists"})
+			return
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "user_not_found"})
+			return
+		}
+		internalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": user})
+}
+
+func (s *Server) deleteTenantUser(w http.ResponseWriter, r *http.Request) {
+	if !platformAdmin(r) {
+		writeJSON(w, http.StatusForbidden, map[string]any{"ok": false, "error": "forbidden"})
+		return
+	}
+	userID, err := parseInt64(chi.URLParam(r, "userID"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_user_id"})
+		return
+	}
+	if err := s.store.DeleteTenantUser(r.Context(), userID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "user_not_found"})
+			return
+		}
+		internalError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {

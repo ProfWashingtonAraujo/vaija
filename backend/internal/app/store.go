@@ -257,6 +257,27 @@ func (s *Store) Users(ctx context.Context, tenant string) ([]User, error) {
 	return users, rows.Err()
 }
 
+func (s *Store) TenantUsers(ctx context.Context) ([]User, error) {
+	rows, err := s.pool.Query(ctx, `select id,name,role,role_key,shift,email,tenant_id,permissions from users where tenant_id<>'admin' order by tenant_id,id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	users := []User{}
+	for rows.Next() {
+		var user User
+		var storedPermissions []byte
+		if err := rows.Scan(&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &storedPermissions); err != nil {
+			return nil, err
+		}
+		if err := setUserPermissions(&user, storedPermissions); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, rows.Err()
+}
+
 func setUserPermissions(user *User, stored []byte) error {
 	if err := json.Unmarshal(stored, &user.Permissions); err != nil {
 		return err
@@ -301,6 +322,35 @@ func (s *Store) UpdatePlatformUser(ctx context.Context, id int64, name, email, p
 		return User{}, err
 	}
 	return s.UserByID(ctx, id, "admin", false)
+}
+
+func (s *Store) UpdateTenantUser(ctx context.Context, id int64, name, email, role, roleKey, shift, passwordHash string) (User, error) {
+	var tenant string
+	if passwordHash == "" {
+		err := s.pool.QueryRow(ctx, `update users set name=$1,email=$2,role=$3,role_key=$4,shift=$5,permissions='[]'::jsonb,updated_at=now()
+			where id=$6 and tenant_id<>'admin' returning tenant_id`, name, email, role, roleKey, shift, id).Scan(&tenant)
+		if err != nil {
+			return User{}, err
+		}
+	} else {
+		err := s.pool.QueryRow(ctx, `update users set name=$1,email=$2,role=$3,role_key=$4,shift=$5,password_hash=$6,permissions='[]'::jsonb,updated_at=now()
+			where id=$7 and tenant_id<>'admin' returning tenant_id`, name, email, role, roleKey, shift, passwordHash, id).Scan(&tenant)
+		if err != nil {
+			return User{}, err
+		}
+	}
+	return s.UserByID(ctx, id, tenant, false)
+}
+
+func (s *Store) DeleteTenantUser(ctx context.Context, id int64) error {
+	command, err := s.pool.Exec(ctx, `delete from users where id=$1 and tenant_id<>'admin'`, id)
+	if err != nil {
+		return err
+	}
+	if command.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
 }
 
 func (s *Store) CreateUser(ctx context.Context, user User) (User, error) {
