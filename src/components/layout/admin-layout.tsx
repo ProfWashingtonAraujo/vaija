@@ -4,7 +4,7 @@ import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppHeader } from '@/components/layout/app-header'
 import { PageContainer } from '@/components/layout/page-container'
 
-export function AdminLayout({ title, description, children }: PropsWithChildren<{ title: string; description: string }>) {
+export function AdminLayout({ title, description, compactMobile = false, children }: PropsWithChildren<{ title: string; description: string; compactMobile?: boolean }>) {
   return (
     <div className="min-h-screen bg-background py-3 sm:py-4 lg:py-6">
       <PageContainer>
@@ -13,7 +13,7 @@ export function AdminLayout({ title, description, children }: PropsWithChildren<
             <AppSidebar />
           </div>
           <motion.main initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="min-w-0">
-            <AppHeader title={title} description={description} />
+            <AppHeader title={title} description={description} compactMobile={compactMobile} />
             {children}
           </motion.main>
         </div>
