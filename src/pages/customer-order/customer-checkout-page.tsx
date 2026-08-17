@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ShieldCheck, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -30,8 +30,12 @@ function readStoredProfile() {
   return storedProfile ? JSON.parse(storedProfile) as CustomerProfile : null
 }
 
-function readStoredCart() {
-  const storedCart = localStorage.getItem(customerCartKey)
+function getCustomerCartKey(tenantId: string) {
+  return tenantId === 'default' ? customerCartKey : `${customerCartKey}.${tenantId}`
+}
+
+function readStoredCart(tenantId: string) {
+  const storedCart = localStorage.getItem(getCustomerCartKey(tenantId))
   return storedCart ? JSON.parse(storedCart) as CartItem[] : []
 }
 
@@ -96,8 +100,11 @@ async function getCepCoordinates(cep: string) {
 
 export function CustomerCheckoutPage() {
   const navigate = useNavigate()
+  const { tenantId: routeTenantId } = useParams()
+  const tenantId = routeTenantId ?? 'default'
+  const orderPath = routeTenantId ? `/pedido/${encodeURIComponent(tenantId)}` : '/pedido'
   const [profile] = useState<CustomerProfile | null>(readStoredProfile)
-  const [cart, setCart] = useState<CartItem[]>(readStoredCart)
+  const [cart, setCart] = useState<CartItem[]>(() => readStoredCart(tenantId))
   const [customer, setCustomer] = useState(profile?.name ?? '')
   const [phone, setPhone] = useState(profile?.phone ?? '')
   const [address, setAddress] = useState('')
@@ -121,12 +128,12 @@ export function CustomerCheckoutPage() {
   const total = subtotal + deliveryFee
 
   if (!profile) {
-    return <Navigate to="/pedido" replace />
+    return <Navigate to={orderPath} replace />
   }
 
   const persistCart = (nextCart: CartItem[]) => {
     setCart(nextCart)
-    localStorage.setItem(customerCartKey, JSON.stringify(nextCart))
+    localStorage.setItem(getCustomerCartKey(tenantId), JSON.stringify(nextCart))
   }
 
   const updateQuantity = (id: string, amount: number) => {
@@ -236,10 +243,10 @@ export function CustomerCheckoutPage() {
       notes: trimmedNotes || undefined,
     }
 
-    const createdOrder = await createPublicOrder(newOrder)
+    const createdOrder = await createPublicOrder(newOrder, tenantId)
     persistCart([])
     toast.success(`Pedido #${createdOrder.id} enviado para o restaurante.`)
-    navigate(`/pedido/acompanhar?pedido=${createdOrder.id}`)
+    navigate(`${orderPath}/acompanhar?pedido=${createdOrder.id}`)
   }
 
   return (
@@ -247,7 +254,7 @@ export function CustomerCheckoutPage() {
       <section className="bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Link to="/pedido" className="inline-flex items-center gap-2 text-sm font-semibold text-orange-100 hover:text-white"><ArrowLeft className="h-4 w-4" />Voltar ao cardápio</Link>
+            <Link to={orderPath} className="inline-flex items-center gap-2 text-sm font-semibold text-orange-100 hover:text-white"><ArrowLeft className="h-4 w-4" />Voltar ao cardápio</Link>
             <h1 className="mt-4 font-heading text-4xl font-black">Checkout</h1>
             <p className="mt-2 text-orange-50">Revise seu pedido no {restaurantSettings.name} antes de enviar.</p>
           </div>
@@ -305,7 +312,7 @@ export function CustomerCheckoutPage() {
             </div>
             {deliverySettings.mode === 'perKm' ? <p className="mt-3 text-center text-xs text-slate-500">A distância é calculada automaticamente pelo CEP da pizzaria e pelo CEP de entrega.</p> : null}
             <Button className="mt-5 w-full" onClick={handleSubmitOrder} disabled={cart.length === 0}>Enviar pedido</Button>
-            <Link to="/pedido" className="mt-3 block text-center text-sm font-semibold text-orange-700">Adicionar mais itens</Link>
+            <Link to={orderPath} className="mt-3 block text-center text-sm font-semibold text-orange-700">Adicionar mais itens</Link>
           </div>
         </aside>
       </section>

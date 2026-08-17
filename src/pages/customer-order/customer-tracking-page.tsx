@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Clock, PackageCheck, Search, Truck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,9 @@ function getStepIndex(status: OrderStatus) {
 }
 
 export function CustomerTrackingPage() {
+  const { tenantId: routeTenantId } = useParams()
+  const tenantId = routeTenantId ?? 'default'
+  const orderPath = routeTenantId ? `/pedido/${encodeURIComponent(tenantId)}` : '/pedido'
   const [searchParams] = useSearchParams()
   const [orders, setOrders] = useState<Order[]>([])
   const [query, setQuery] = useState(searchParams.get('pedido') ?? '')
@@ -37,7 +40,7 @@ export function CustomerTrackingPage() {
   useEffect(() => {
     const initialQuery = searchParams.get('pedido')
     if (!initialQuery) return
-    void findPublicOrders(initialQuery)
+    void findPublicOrders(initialQuery, tenantId)
       .then((loadedOrders) => {
         setOrders(loadedOrders)
         const orderId = Number(searchParams.get('pedido'))
@@ -46,7 +49,7 @@ export function CustomerTrackingPage() {
         }
       })
       .catch(() => toast.error('Não foi possível carregar seus pedidos.'))
-  }, [searchParams])
+  }, [searchParams, tenantId])
 
   const foundOrders = useMemo(() => {
     const trimmedQuery = query.trim()
@@ -69,7 +72,7 @@ export function CustomerTrackingPage() {
     }
 
     try {
-      const loadedOrders = await findPublicOrders(query.trim())
+      const loadedOrders = await findPublicOrders(query.trim(), tenantId)
       setOrders(loadedOrders)
       setSelectedOrderId(loadedOrders[0]?.id ?? null)
       if (loadedOrders.length === 0) {
@@ -85,7 +88,7 @@ export function CustomerTrackingPage() {
     <main className="min-h-screen bg-[#fff8f1] text-slate-900">
       <section className="bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl">
-          <Link to="/pedido" className="inline-flex items-center gap-2 text-sm font-semibold text-orange-100 hover:text-white"><ArrowLeft className="h-4 w-4" />Voltar ao cardápio</Link>
+          <Link to={orderPath} className="inline-flex items-center gap-2 text-sm font-semibold text-orange-100 hover:text-white"><ArrowLeft className="h-4 w-4" />Voltar ao cardápio</Link>
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-200">Acompanhamento</p>

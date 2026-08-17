@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, Check, ShoppingBag, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/shared/search-input'
 import { CategoryTabs } from '@/components/pos/category-tabs'
 import { formatCurrency } from '@/lib/formatters'
-import { fetchPublicProducts } from '@/lib/catalog-api'
-import { products as initialProducts, type Product } from '@/data/mock-products'
+import { fetchPublicCategories, fetchPublicProducts } from '@/lib/catalog-api'
+import type { Product } from '@/data/mock-products'
 import { readSettings } from '@/lib/settings'
 import { cashRegisterUpdatedEvent, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
 
@@ -43,17 +43,24 @@ function readStoredProfile() {
   return storedProfile ? JSON.parse(storedProfile) as CustomerProfile : null
 }
 
-function readStoredCart() {
-  const storedCart = localStorage.getItem(customerCartKey)
+function getCustomerCartKey(tenantId: string) {
+  return tenantId === 'default' ? customerCartKey : `${customerCartKey}.${tenantId}`
+}
+
+function readStoredCart(tenantId: string) {
+  const storedCart = localStorage.getItem(getCustomerCartKey(tenantId))
   return storedCart ? JSON.parse(storedCart) as CartItem[] : []
 }
 
 export function CustomerOrderPage() {
   const navigate = useNavigate()
-  const [products, setProducts] = useState<Product[]>(initialProducts.filter((product) => product.available))
+  const { tenantId: routeTenantId } = useParams()
+  const tenantId = routeTenantId ?? 'default'
+  const orderPath = routeTenantId ? `/pedido/${encodeURIComponent(tenantId)}` : '/pedido'
+  const [products, setProducts] = useState<Product[]>([])
   const [category, setCategory] = useState('Todos')
   const [query, setQuery] = useState('')
-  const [cart, setCart] = useState<CartItem[]>(readStoredCart)
+  const [cart, setCart] = useState<CartItem[]>(() => readStoredCart(tenantId))
   const [profile, setProfile] = useState<CustomerProfile | null>(readStoredProfile)
   const [signupName, setSignupName] = useState(profile?.name ?? '')
   const [signupEmail, setSignupEmail] = useState(profile?.email ?? '')
@@ -63,14 +70,18 @@ export function CustomerOrderPage() {
   const settings = readSettings()
 
   useEffect(() => {
-    void fetchPublicProducts()
-      .then((loadedProducts) => setProducts(loadedProducts.filter((product) => product.available)))
+    setProducts([])
+    void Promise.all([fetchPublicCategories(tenantId), fetchPublicProducts(tenantId)])
+      .then(([loadedCategories, loadedProducts]) => {
+        const publishedCategories = new Set(loadedCategories.filter((category) => category.menuEnabled).map((category) => category.name))
+        setProducts(loadedProducts.filter((product) => product.available && publishedCategories.has(product.category)))
+      })
       .catch(() => toast.error('Não foi possível carregar o cardápio.'))
-  }, [])
+  }, [tenantId])
 
   useEffect(() => {
-    localStorage.setItem(customerCartKey, JSON.stringify(cart))
-  }, [cart])
+    localStorage.setItem(getCustomerCartKey(tenantId), JSON.stringify(cart))
+  }, [cart, tenantId])
 
   useEffect(() => {
     const updateCashRegister = (event: Event) => {
@@ -185,7 +196,7 @@ export function CustomerOrderPage() {
       return
     }
 
-    navigate('/pedido/checkout')
+    navigate(`${orderPath}/checkout`)
   }
 
   return (

@@ -31,6 +31,9 @@ export function AppRoutes() {
         <Route path="/pedido" element={<CustomerOrderPage />} />
         <Route path="/pedido/checkout" element={<CustomerCheckoutPage />} />
         <Route path="/pedido/acompanhar" element={<CustomerTrackingPage />} />
+        <Route path="/pedido/:tenantId" element={<CustomerOrderPage />} />
+        <Route path="/pedido/:tenantId/checkout" element={<CustomerCheckoutPage />} />
+        <Route path="/pedido/:tenantId/acompanhar" element={<CustomerTrackingPage />} />
         <Route path="/login" element={isAuthenticated ? <Navigate to={getHomePathForUser(user)} replace /> : <LoginPage />} />
         <Route element={<ProtectedRoute allowedRoles={['operator']} allowedPlans={['Premium']} />}>
           <Route path="/operator" element={<OperatorPage />} />
