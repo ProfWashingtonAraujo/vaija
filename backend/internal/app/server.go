@@ -565,12 +565,20 @@ func (s *Server) updatePlatformUser(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := s.store.UpdatePlatformUser(r.Context(), userID, body.Name, body.Email, passwordHash, body.Permissions)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "error": "user_not_found"})
+			return
+		}
 		var databaseError *pgconn.PgError
 		if errors.As(err, &databaseError) && databaseError.Code == "23505" {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "email_already_exists"})
 			return
 		}
 		internalError(w, err)
+		return
+	}
+	if body.Password != "" && bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(body.Password)) != nil {
+		internalError(w, errors.New("updated platform password hash does not match"))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": user})

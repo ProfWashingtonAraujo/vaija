@@ -327,15 +327,28 @@ func (s *Store) UpdatePlatformUser(ctx context.Context, id int64, name, email, p
 	if err != nil {
 		return User{}, err
 	}
+	var user User
+	var storedPermissions []byte
 	if passwordHash == "" {
-		_, err = s.pool.Exec(ctx, `update users set name=$1,email=$2,permissions=$3::jsonb,updated_at=now() where id=$4 and tenant_id='admin'`, name, email, permissionsJSON, id)
+		err = s.pool.QueryRow(ctx, `update users set name=$1,email=$2,permissions=$3::jsonb,updated_at=now()
+			where id=$4 and tenant_id='admin'
+			returning id,name,role,role_key,shift,email,tenant_id,password_hash,permissions`, name, email, permissionsJSON, id).Scan(
+			&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &user.PasswordHash, &storedPermissions,
+		)
 	} else {
-		_, err = s.pool.Exec(ctx, `update users set name=$1,email=$2,password_hash=$3,permissions=$4::jsonb,updated_at=now() where id=$5 and tenant_id='admin'`, name, email, passwordHash, permissionsJSON, id)
+		err = s.pool.QueryRow(ctx, `update users set name=$1,email=$2,password_hash=$3,permissions=$4::jsonb,updated_at=now()
+			where id=$5 and tenant_id='admin'
+			returning id,name,role,role_key,shift,email,tenant_id,password_hash,permissions`, name, email, passwordHash, permissionsJSON, id).Scan(
+			&user.ID, &user.Name, &user.Role, &user.RoleKey, &user.Shift, &user.Email, &user.TenantID, &user.PasswordHash, &storedPermissions,
+		)
 	}
 	if err != nil {
 		return User{}, err
 	}
-	return s.UserByID(ctx, id, "admin", false)
+	if err := setUserPermissions(&user, storedPermissions); err != nil {
+		return User{}, err
+	}
+	return user, nil
 }
 
 func (s *Store) UpdateTenantUser(ctx context.Context, id int64, name, email, role, roleKey, shift, passwordHash string) (User, error) {

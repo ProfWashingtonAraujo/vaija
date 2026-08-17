@@ -279,7 +279,14 @@ export function ActivationPage() {
       logAction('Usuário SaaS atualizado', updatedEmail)
       toast.success('Usuário SaaS atualizado.')
     } catch (error) {
-      toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um usuário com esse e-mail.' : 'Não foi possível atualizar o usuário SaaS.')
+      const message = error instanceof Error ? error.message : ''
+      const errorMessages: Record<string, string> = {
+        email_already_exists: 'Já existe um usuário com esse e-mail.',
+        invalid_platform_user: 'Confira nome, e-mail, permissões e use uma senha com pelo menos 8 caracteres.',
+        user_not_found: 'O usuário SaaS não foi encontrado no banco de dados.',
+        forbidden: 'Sua sessão não tem permissão para alterar este usuário.',
+      }
+      toast.error(errorMessages[message] ?? 'Não foi possível gravar as alterações no banco de dados.')
     }
   }
 
@@ -793,7 +800,7 @@ export function ActivationPage() {
                 <form onSubmit={(event) => { void savePlatformUser(event, user) }} className="grid gap-3">
                   <Input value={editingPlatformUserName} onChange={(event) => setEditingPlatformUserName(event.target.value)} placeholder="Nome do usuário" />
                   <Input value={editingPlatformUserEmail} onChange={(event) => setEditingPlatformUserEmail(event.target.value)} placeholder="E-mail" type="email" />
-                  <Input value={editingPlatformUserPassword} onChange={(event) => setEditingPlatformUserPassword(event.target.value)} placeholder="Nova senha (opcional)" type="password" />
+                  <Input value={editingPlatformUserPassword} onChange={(event) => setEditingPlatformUserPassword(event.target.value)} placeholder="Nova senha (mínimo 8 caracteres)" type="password" autoComplete="new-password" minLength={8} />
                   <div className="flex gap-2">
                     <Button type="submit" className="flex-1">Salvar alterações</Button>
                     <Button type="button" variant="outline" onClick={cancelEditingPlatformUser} aria-label="Cancelar edição"><X className="h-4 w-4" /></Button>
