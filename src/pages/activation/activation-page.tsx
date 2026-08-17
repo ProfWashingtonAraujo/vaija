@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Building2, CheckCircle2, CreditCard, KeyRound, Pencil, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from 'lucide-react'
+import { AlertTriangle, ArrowUpRight, Building2, CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, KeyRound, Pencil, ReceiptText, Trash2, TrendingUp, UserCog, UserPlus, Users, WalletCards, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { SaasLayout } from '@/components/layout/saas-layout'
@@ -87,6 +87,12 @@ export function ActivationPage() {
       revenue: tenantsByPlan.length * planPrices[currentPlan],
     }
   })
+  const paidRevenue = billingInvoices.filter((invoice) => invoice.status === 'paid').reduce((sum, invoice) => sum + invoice.amount, 0)
+  const openRevenue = billingInvoices.filter((invoice) => invoice.status === 'open').reduce((sum, invoice) => sum + invoice.amount, 0)
+  const overdueRevenue = billingInvoices.filter((invoice) => invoice.status === 'overdue').reduce((sum, invoice) => sum + invoice.amount, 0)
+  const billableRevenue = paidRevenue + openRevenue + overdueRevenue
+  const collectionRate = billableRevenue ? Math.round(paidRevenue / billableRevenue * 100) : 0
+  const maxPlanRevenue = Math.max(1, ...revenueByPlan.map((item) => item.revenue))
 
   const refreshData = () => {
     const nextTenants = readTenants()
@@ -574,41 +580,113 @@ export function ActivationPage() {
   )
 
   const financialSection = (
-    <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center gap-3"><CreditCard className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Financeiro</h2></div>
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        {revenueByPlan.map((item) => (
-          <div key={item.plan} className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
-            <div className="flex items-center justify-between gap-3"><p className="font-semibold text-slate-900">{planLabels[item.plan]}</p><p className="font-mono font-bold text-slate-900">{formatCurrency(item.revenue)}</p></div>
-            <p className="mt-1 text-sm text-slate-500">{item.clients} cliente(s) ativo(s) · {formatCurrency(planPrices[item.plan])}/mês</p>
+    <div className="space-y-5">
+      <section className="relative overflow-hidden rounded-[30px] border border-slate-800 bg-slate-950 p-5 text-white shadow-[0_18px_48px_rgba(15,23,42,0.16)] sm:p-7">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-orange-500/20 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-1/3 h-32 w-64 bg-orange-500/10 blur-3xl" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-orange-100">
+              <CalendarDays className="h-3.5 w-3.5" />Visão consolidada do período
+            </div>
+            <p className="mt-5 text-sm font-medium text-slate-400">Receita mensal recorrente</p>
+            <p className="mt-1 font-heading text-4xl font-bold tracking-tight sm:text-5xl">{formatCurrency(monthlyRecurringRevenue)}</p>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">Receita projetada com base nos {activeTenants.length} clientes ativos e nos planos contratados.</p>
+          </div>
+          <div className="flex items-center gap-4 rounded-[24px] border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-sm">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-300"><ArrowUpRight className="h-5 w-5" /></div>
+            <div>
+              <p className="text-xs font-medium text-slate-400">Taxa de recebimento</p>
+              <p className="mt-0.5 font-heading text-2xl font-bold">{collectionRate}%</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Recebido', value: paidRevenue, detail: `${billingInvoices.filter((invoice) => invoice.status === 'paid').length} cobranças pagas`, icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-600' },
+          { label: 'A receber', value: openRevenue, detail: `${billingInvoices.filter((invoice) => invoice.status === 'open').length} cobranças abertas`, icon: Clock3, tone: 'bg-amber-50 text-amber-600' },
+          { label: 'Em atraso', value: overdueRevenue, detail: `${billingInvoices.filter((invoice) => invoice.status === 'overdue').length} cobranças vencidas`, icon: AlertTriangle, tone: 'bg-red-50 text-red-600' },
+          { label: 'Ticket médio', value: activeTenants.length ? monthlyRecurringRevenue / activeTenants.length : 0, detail: 'Por cliente ativo', icon: WalletCards, tone: 'bg-orange-50 text-orange-600' },
+        ].map(({ label, value, detail, icon: Icon, tone }) => (
+          <div key={label} className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-500">{label}</p>
+                <p className="mt-2 font-heading text-2xl font-bold tracking-tight text-slate-950">{formatCurrency(value)}</p>
+              </div>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${tone}`}><Icon className="h-4.5 w-4.5" /></div>
+            </div>
+            <p className="mt-3 text-xs font-medium text-slate-400">{detail}</p>
           </div>
         ))}
       </div>
-      <div className="mt-6 space-y-3">
-        {billingInvoices.map((invoice) => {
-          const tenant = clientTenants.find((item) => item.id === invoice.tenantId)
-          const statusLabel = { paid: 'Pago', open: 'Aberto', overdue: 'Inadimplente', cancelled: 'Cancelado' }[invoice.status]
-          return (
-            <div key={invoice.id} className="rounded-[24px] border border-orange-100 bg-orange-50/30 p-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <p className="font-semibold text-slate-900">{tenant?.restaurantName ?? 'Cliente'} · {invoice.referenceMonth}</p>
-                  <p className="mt-1 text-sm text-slate-500">Vence em {new Date(invoice.dueDate).toLocaleDateString('pt-BR')} · {formatCurrency(invoice.amount)}</p>
+
+      <div className="grid items-start gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <section className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.05)] sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><CircleDollarSign className="h-5 w-5" /></div>
+            <div><h2 className="font-heading text-xl font-bold text-slate-900">Receita por plano</h2><p className="text-xs text-slate-400">Composição do MRR atual</p></div>
+          </div>
+          <div className="mt-6 space-y-5">
+            {revenueByPlan.map((item) => (
+              <div key={item.plan}>
+                <div className="flex items-end justify-between gap-3">
+                  <div><p className="text-sm font-semibold text-slate-700">{planLabels[item.plan]}</p><p className="mt-0.5 text-xs text-slate-400">{item.clients} {item.clients === 1 ? 'cliente' : 'clientes'}</p></div>
+                  <p className="font-mono text-sm font-bold text-slate-900">{formatCurrency(item.revenue)}</p>
                 </div>
-                <span className="w-fit rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-semibold text-orange-700">{statusLabel}</span>
+                <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all" style={{ width: `${item.revenue / maxPlanRevenue * 100}%` }} /></div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => setInvoiceStatus(invoice, 'paid')}>Marcar pago</Button>
-                <Button type="button" variant="outline" onClick={() => setInvoiceStatus(invoice, 'open')}>Marcar aberto</Button>
-                <Button type="button" variant="outline" onClick={() => setInvoiceStatus(invoice, 'overdue')}>Marcar inadimplente</Button>
-                {tenant ? <Button type="button" variant="outline" onClick={() => navigate(`/saas/clientes/${tenant.id}`)}>Ver cliente</Button> : null}
-              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_14px_36px_rgba(15,23,42,0.05)]">
+          <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><ReceiptText className="h-5 w-5" /></div>
+              <div><h2 className="font-heading text-xl font-bold text-slate-900">Cobranças</h2><p className="text-xs text-slate-400">{billingInvoices.length} registros no histórico</p></div>
             </div>
-          )
-        })}
-        {billingInvoices.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhuma cobrança gerada.</p> : null}
+            <span className="w-fit rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">Total {formatCurrency(billableRevenue)}</span>
+          </div>
+          <div className="hidden grid-cols-[minmax(170px,1.4fr)_100px_120px_150px] gap-4 border-b border-slate-100 bg-slate-50/70 px-6 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:grid">
+            <span>Cliente</span><span>Vencimento</span><span>Valor</span><span>Status</span>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {billingInvoices.map((invoice) => {
+              const tenant = clientTenants.find((item) => item.id === invoice.tenantId)
+              const status = {
+                paid: { label: 'Pago', style: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+                open: { label: 'Em aberto', style: 'border-amber-200 bg-amber-50 text-amber-700' },
+                overdue: { label: 'Em atraso', style: 'border-red-200 bg-red-50 text-red-700' },
+                cancelled: { label: 'Cancelado', style: 'border-slate-200 bg-slate-100 text-slate-500' },
+              }[invoice.status]
+              return (
+                <div key={invoice.id} className="p-5 transition-colors hover:bg-slate-50/60 sm:px-6">
+                  <div className="grid gap-4 md:grid-cols-[minmax(170px,1.4fr)_100px_120px_150px] md:items-center">
+                    <div className="min-w-0"><p className="truncate font-semibold text-slate-900">{tenant?.restaurantName ?? 'Cliente'}</p><p className="mt-1 text-xs text-slate-400">Referência {invoice.referenceMonth}</p></div>
+                    <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Vencimento</p><p className="mt-1 text-sm font-medium text-slate-600 md:mt-0">{new Date(invoice.dueDate).toLocaleDateString('pt-BR')}</p></div>
+                    <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Valor</p><p className="mt-1 font-mono text-sm font-bold text-slate-900 md:mt-0">{formatCurrency(invoice.amount)}</p></div>
+                    <span className={`w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${status.style}`}>{status.label}</span>
+                  </div>
+                  <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-end">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                      Atualizar status
+                      <select value={invoice.status} onChange={(event) => setInvoiceStatus(invoice, event.target.value as BillingInvoice['status'])} className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+                        <option value="paid">Pago</option><option value="open">Em aberto</option><option value="overdue">Em atraso</option><option value="cancelled">Cancelado</option>
+                      </select>
+                    </label>
+                    {tenant ? <Button type="button" variant="ghost" className="h-9 justify-start px-3 text-xs sm:justify-center" onClick={() => navigate(`/saas/clientes/${tenant.id}`)}>Ver cliente <ArrowUpRight className="ml-1.5 h-3.5 w-3.5" /></Button> : null}
+                  </div>
+                </div>
+              )
+            })}
+            {billingInvoices.length === 0 ? <div className="p-10 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500"><ReceiptText className="h-5 w-5" /></div><p className="mt-4 font-semibold text-slate-700">Nenhuma cobrança gerada</p><p className="mt-1 text-sm text-slate-400">As novas cobranças aparecerão aqui.</p></div> : null}
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   )
 
   const accessSection = (
@@ -833,8 +911,8 @@ export function ActivationPage() {
   )
 
   return (
-    <SaasLayout title="Dashboard SaaS" description="Gerencie clientes, acessos, financeiro e ativação dos planos da plataforma Vaija.">
-      {summaryCards}
+    <SaasLayout title={currentView === 'financeiro' ? 'Gestão financeira' : 'Dashboard SaaS'} description={currentView === 'financeiro' ? 'Acompanhe recorrência, recebimentos e a saúde da carteira SaaS.' : 'Gerencie clientes, acessos, financeiro e ativação dos planos da plataforma Vaija.'}>
+      {currentView !== 'financeiro' ? summaryCards : null}
 
       {currentView === 'cliente-detalhe' ? <div className="mt-6">{clientDetailSection}</div> : null}
       {currentView === 'financeiro' ? <div className="mt-6">{financialSection}</div> : null}
