@@ -608,12 +608,13 @@ func (s *Server) createTenantUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		TenantID string `json:"tenantId"`
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		RoleKey  string `json:"roleKey"`
-		Shift    string `json:"shift"`
+		TenantID     string `json:"tenantId"`
+		Name         string `json:"name"`
+		Email        string `json:"email"`
+		Password     string `json:"password"`
+		RoleKey      string `json:"roleKey"`
+		Shift        string `json:"shift"`
+		BusinessType string `json:"businessType"`
 	}
 	if !decodeJSON(w, r, &body) {
 		return
@@ -622,8 +623,10 @@ func (s *Server) createTenantUser(w http.ResponseWriter, r *http.Request) {
 	body.Name = strings.TrimSpace(body.Name)
 	body.Email = strings.ToLower(strings.TrimSpace(body.Email))
 	body.Shift = strings.TrimSpace(body.Shift)
+	body.BusinessType = strings.TrimSpace(body.BusinessType)
 	role, validRole := managedUserRole(body.RoleKey)
-	if body.TenantID == "" || body.TenantID == "admin" || body.Name == "" || !strings.Contains(body.Email, "@") || len(body.Password) < 8 || body.Shift == "" || !validRole {
+	categories, validBusinessType := categoriesForBusinessType(body.BusinessType)
+	if body.TenantID == "" || body.TenantID == "admin" || body.Name == "" || !strings.Contains(body.Email, "@") || len(body.Password) < 8 || body.Shift == "" || !validRole || (body.RoleKey == "admin" && !validBusinessType) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_tenant_user"})
 		return
 	}
@@ -632,7 +635,13 @@ func (s *Server) createTenantUser(w http.ResponseWriter, r *http.Request) {
 		internalError(w, err)
 		return
 	}
-	user, err := s.store.CreateUser(r.Context(), User{TenantID: body.TenantID, Name: body.Name, Email: body.Email, PasswordHash: string(hash), Role: role, RoleKey: body.RoleKey, Shift: body.Shift})
+	userInput := User{TenantID: body.TenantID, Name: body.Name, Email: body.Email, PasswordHash: string(hash), Role: role, RoleKey: body.RoleKey, Shift: body.Shift}
+	var user User
+	if body.RoleKey == "admin" {
+		user, err = s.store.ProvisionTenantAdmin(r.Context(), userInput, categories)
+	} else {
+		user, err = s.store.CreateUser(r.Context(), userInput)
+	}
 	if err != nil {
 		var databaseError *pgconn.PgError
 		if errors.As(err, &databaseError) && databaseError.Code == "23505" {

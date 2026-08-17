@@ -1,6 +1,7 @@
 import { products as initialProducts, type Product } from '@/data/mock-products'
 import { readTenantFlag, readTenantStorage, writeTenantFlag, writeTenantStorage, getTenantId } from '@/lib/tenant-storage'
 import { apiFetch } from '@/lib/api-client'
+import { getBusinessCategories, type BusinessType } from '@/lib/business-types'
 
 export type CategoryRecord = {
   name: string
@@ -156,6 +157,14 @@ export async function saveCategories(categories: CategoryRecord[]): Promise<Cate
   })
   if (!response.ok) throw new Error(`failed_to_save_categories:${response.status}`)
   return categories
+}
+
+export function initializeOfflineCatalog(tenantId: string, businessType: BusinessType) {
+  writeTenantStorage(localCategoriesKey, getBusinessCategories(businessType), tenantId)
+  writeTenantStorage(localProductsKey, [], tenantId)
+  for (const seedKey of [specialPizzasSeedKey, pizzaSizesSeedKey, premiumCategorySeedKey, esfiraSeedKey, traditionalSeedKey, removeDessertsSeedKey]) {
+    writeTenantFlag(seedKey, 'true', tenantId)
+  }
 }
 
 export async function fetchProducts(): Promise<Product[]> {

@@ -59,8 +59,8 @@ export function readTenantStorage<T>(key: string, fallback: T) {
   return fallback
 }
 
-export function writeTenantStorage<T>(key: string, value: T) {
-  localStorage.setItem(getTenantStorageKey(key), JSON.stringify(value))
+export function writeTenantStorage<T>(key: string, value: T, tenantId?: string) {
+  localStorage.setItem(getTenantStorageKey(key, tenantId), JSON.stringify(value))
 }
 
 export function readTenantFlag(key: string) {
@@ -79,6 +79,6 @@ export function readTenantFlag(key: string) {
   return legacyValue
 }
 
-export function writeTenantFlag(key: string, value: string) {
-  localStorage.setItem(getTenantStorageKey(key), value)
+export function writeTenantFlag(key: string, value: string, tenantId?: string) {
+  localStorage.setItem(getTenantStorageKey(key, tenantId), value)
 }

@@ -83,3 +83,20 @@ func TestManagedUserRoleValidation(t *testing.T) {
 		t.Fatal("expected unknown managed role to be rejected")
 	}
 }
+
+func TestBusinessTypeCategories(t *testing.T) {
+	for _, businessType := range []string{"pizzeria", "hamburger", "restaurant", "confectionery", "delivery"} {
+		categories, ok := categoriesForBusinessType(businessType)
+		if !ok || len(categories) == 0 {
+			t.Fatalf("expected categories for %q", businessType)
+		}
+		for _, category := range categories {
+			if category.Name == "" || !category.MenuEnabled || !category.POSEnabled {
+				t.Fatalf("invalid category for %q: %#v", businessType, category)
+			}
+		}
+	}
+	if _, ok := categoriesForBusinessType("unknown"); ok {
+		t.Fatal("expected unknown business type to be rejected")
+	}
+}

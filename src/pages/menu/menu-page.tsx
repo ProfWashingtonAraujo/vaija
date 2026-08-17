@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Plus } from 'lucide-react'
+import { ChevronDown, ChevronUp, Plus, Settings2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { SearchInput } from '@/components/shared/search-input'
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { products as initialProducts, type Product, type ProductCategory } from '@/data/mock-products'
 import { CategoryTabs } from '@/components/pos/category-tabs'
 import { MenuProductCard } from '@/components/menu/menu-product-card'
-import { fetchCategories, fetchProducts, saveProducts, type CategoryRecord } from '@/lib/catalog-api'
+import { fetchCategories, fetchProducts, saveCategories, saveProducts, type CategoryRecord } from '@/lib/catalog-api'
 
 type ProductFormValues = {
   name: string
@@ -22,7 +22,7 @@ type ProductFormValues = {
 
 const emptyProductForm: ProductFormValues = {
   name: '',
-  category: 'Pizzas Especiais',
+  category: '',
   price: '',
   description: '',
   image: '',
@@ -45,6 +45,8 @@ export function MenuPage() {
   const [dropTargetProductId, setDropTargetProductId] = useState<string | null>(null)
   const [dropTargetCategory, setDropTargetCategory] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [productForm, setProductForm] = useState<ProductFormValues>(emptyProductForm)
 
@@ -148,10 +150,16 @@ export function MenuPage() {
   const openCreateProductForm = () => {
     const nextCategory = category !== 'Todas'
       ? category
-      : categories.find((item) => item.menuEnabled)?.name ?? 'Pizzas Especiais'
+      : categories[0]?.name
+
+    if (!nextCategory) {
+      toast.error('Crie uma categoria antes de adicionar itens.')
+      setIsCategoryFormOpen(true)
+      return
+    }
 
     setEditingProductId(null)
-    setProductForm({ ...emptyProductForm, category: nextCategory as ProductCategory })
+    setProductForm({ ...emptyProductForm, category: nextCategory })
     setIsFormOpen(true)
   }
 
@@ -214,6 +222,57 @@ export function MenuPage() {
     toast.success('Item removido do cardápio.')
   }
 
+  const persistCategories = async (nextCategories: CategoryRecord[], message: string) => {
+    try {
+      await saveCategories(nextCategories)
+      setCategories(nextCategories)
+      if (category !== 'Todas' && !nextCategories.some((item) => item.name === category && item.menuEnabled)) setCategory('Todas')
+      toast.success(message)
+      return true
+    } catch {
+      toast.error('Não foi possível salvar as categorias.')
+      return false
+    }
+  }
+
+  const handleCreateCategory = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const name = newCategoryName.trim()
+    if (!name) {
+      toast.error('Informe o nome da categoria.')
+      return
+    }
+    if (categories.some((item) => item.name.toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'))) {
+      toast.error('Já existe uma categoria com esse nome.')
+      return
+    }
+    void persistCategories([...categories, { name, menuEnabled: true, posEnabled: true }], 'Categoria criada.').then((saved) => {
+      if (saved) setNewCategoryName('')
+    })
+  }
+
+  const handleToggleCategory = (categoryName: string, field: 'menuEnabled' | 'posEnabled') => {
+    const nextCategories = categories.map((item) => item.name === categoryName ? { ...item, [field]: !item[field] } : item)
+    void persistCategories(nextCategories, 'Visibilidade da categoria atualizada.')
+  }
+
+  const handleMoveCategory = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction
+    if (nextIndex < 0 || nextIndex >= categories.length) return
+    const nextCategories = [...categories]
+    const [movedCategory] = nextCategories.splice(index, 1)
+    nextCategories.splice(nextIndex, 0, movedCategory)
+    void persistCategories(nextCategories, 'Ordem das categorias atualizada.')
+  }
+
+  const handleDeleteCategory = (categoryName: string) => {
+    if (products.some((product) => product.category === categoryName)) {
+      toast.error('Mova ou exclua os itens desta categoria antes de removê-la.')
+      return
+    }
+    void persistCategories(categories.filter((item) => item.name !== categoryName), 'Categoria removida.')
+  }
+
   return (
     <AdminLayout title="Cardápio Digital" description="Gerencie itens, disponibilidade e categorias com controle visual simples.">
       <div className="mb-6 grid gap-3 md:grid-cols-4">
@@ -243,6 +302,7 @@ export function MenuPage() {
               <option value="available">Disponíveis</option>
               <option value="unavailable">Indisponíveis</option>
             </select>
+            <Button type="button" variant="outline" onClick={() => setIsCategoryFormOpen(true)}><Settings2 className="mr-2 h-4 w-4" />Categorias</Button>
             <Button onClick={openCreateProductForm}><Plus className="mr-2 h-4 w-4" />Adicionar Item</Button>
           </div>
         </div>
@@ -260,7 +320,7 @@ export function MenuPage() {
                 return
               }
 
-              handleMoveToCategory(productId, nextCategory as ProductCategory)
+               handleMoveToCategory(productId, nextCategory)
             }}
           />
         </div>
@@ -316,8 +376,8 @@ export function MenuPage() {
               </label>
               <label className="grid gap-2 text-sm font-semibold text-slate-700">
                 Categoria
-                <select value={productForm.category} onChange={(event) => setProductForm((current) => ({ ...current, category: event.target.value as ProductCategory }))} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-                  {categories.filter((item) => item.menuEnabled).map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
+                <select value={productForm.category} onChange={(event) => setProductForm((current) => ({ ...current, category: event.target.value }))} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+                  {categories.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-semibold text-slate-700">
@@ -342,6 +402,35 @@ export function MenuPage() {
               <Button type="submit">Salvar item</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isCategoryFormOpen} onOpenChange={setIsCategoryFormOpen}>
+        <DialogContent className="max-w-2xl">
+          <div>
+            <h3 className="font-heading text-2xl font-bold text-slate-900">Categorias do cardápio</h3>
+            <p className="mt-2 text-sm text-slate-500">Organize as seções exibidas no cardápio digital e no PDV.</p>
+          </div>
+          <form onSubmit={handleCreateCategory} className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <Input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="Ex: Pratos executivos" className="flex-1" />
+            <Button type="submit"><Plus className="mr-2 h-4 w-4" />Nova categoria</Button>
+          </form>
+          <div className="mt-5 max-h-[55vh] space-y-2 overflow-y-auto pr-1 scrollbar-thin">
+            {categories.map((item, index) => (
+              <div key={item.name} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <p className="min-w-0 flex-1 truncate font-semibold text-slate-900">{item.name}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-2 rounded-xl bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600"><input type="checkbox" checked={item.menuEnabled} onChange={() => handleToggleCategory(item.name, 'menuEnabled')} className="accent-orange-500" />Cardápio</label>
+                    <label className="flex items-center gap-2 rounded-xl bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600"><input type="checkbox" checked={item.posEnabled} onChange={() => handleToggleCategory(item.name, 'posEnabled')} className="accent-orange-500" />PDV</label>
+                    <button type="button" aria-label={`Mover ${item.name} para cima`} disabled={index === 0} onClick={() => handleMoveCategory(index, -1)} className="rounded-xl border border-orange-100 bg-white p-2 text-slate-500 disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
+                    <button type="button" aria-label={`Mover ${item.name} para baixo`} disabled={index === categories.length - 1} onClick={() => handleMoveCategory(index, 1)} className="rounded-xl border border-orange-100 bg-white p-2 text-slate-500 disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
+                    <button type="button" aria-label={`Excluir ${item.name}`} onClick={() => handleDeleteCategory(item.name)} className="rounded-xl border border-rose-100 bg-white p-2 text-rose-500 hover:border-rose-300"><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {categories.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 p-6 text-center text-sm text-slate-500">Nenhuma categoria cadastrada.</p> : null}
+          </div>
         </DialogContent>
       </Dialog>
     </AdminLayout>

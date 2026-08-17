@@ -386,6 +386,28 @@ func (s *Store) CreateUser(ctx context.Context, user User) (User, error) {
 	return user, err
 }
 
+func (s *Store) ProvisionTenantAdmin(ctx context.Context, user User, categories []Category) (User, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return User{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	if err := tx.QueryRow(ctx, `insert into users (tenant_id,name,role,role_key,shift,email,password_hash) values ($1,$2,$3,$4,$5,$6,$7) returning id`, user.TenantID, user.Name, user.Role, user.RoleKey, user.Shift, user.Email, user.PasswordHash).Scan(&user.ID); err != nil {
+		return User{}, err
+	}
+	for i, category := range categories {
+		if _, err := tx.Exec(ctx, `insert into categories (name,tenant_id,menu_enabled,pos_enabled,sort_index) values ($1,$2,$3,$4,$5) on conflict (name,tenant_id) do nothing`, category.Name, user.TenantID, category.MenuEnabled, category.POSEnabled, i); err != nil {
+			return User{}, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return User{}, err
+	}
+	user.Permissions = permissions(user.RoleKey)
+	return user, nil
+}
+
 func (s *Store) UpdatePassword(ctx context.Context, id int64, tenant, hash string) error {
 	_, err := s.pool.Exec(ctx, `update users set password_hash=$1,updated_at=now() where id=$2 and tenant_id=$3`, hash, id, tenant)
 	return err

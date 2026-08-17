@@ -1,6 +1,7 @@
 import type { AuthUser } from '@/lib/auth-api'
 import type { PlanKey } from '@/lib/plan-access'
 import { platformTenantId } from '@/lib/tenant-storage'
+import type { BusinessType } from '@/lib/business-types'
 
 export type TenantStatus = 'active' | 'inactive'
 
@@ -11,6 +12,7 @@ export type Tenant = {
   email: string
   phone: string
   city: string
+  businessType: BusinessType
   plan: PlanKey
   status: TenantStatus
   createdAt: string
@@ -27,6 +29,7 @@ const platformTenant: Tenant = {
   email: 'admin@vaija.com.br',
   phone: '(11) 4002-8922',
   city: 'Sao Paulo/SP',
+  businessType: 'restaurant',
   plan: 'Premium',
   status: 'active',
   createdAt: new Date(0).toISOString(),
@@ -39,6 +42,7 @@ const defaultTenant: Tenant = {
   email: 'contato@taperaspizzaria.com.br',
   phone: '(11) 4002-8922',
   city: 'Sao Paulo/SP',
+  businessType: 'pizzeria',
   plan: 'Premium',
   status: 'active',
   createdAt: new Date(0).toISOString(),
@@ -53,8 +57,8 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, '')
 }
 
-function ensurePlatformTenant(tenants: Tenant[]) {
-  let nextTenants = tenants
+function ensureTenantDefaults(tenants: Tenant[]) {
+  let nextTenants = tenants.map((tenant) => ({ ...tenant, businessType: tenant.businessType ?? 'pizzeria' as BusinessType }))
 
   if (!nextTenants.some((tenant) => tenant.id === platformTenantId)) {
     nextTenants = [platformTenant, ...nextTenants]
@@ -70,7 +74,7 @@ export function readTenants() {
     return [platformTenant, defaultTenant]
   }
 
-  const tenants = ensurePlatformTenant(JSON.parse(storedTenants) as Tenant[])
+  const tenants = ensureTenantDefaults(JSON.parse(storedTenants) as Tenant[])
   localStorage.setItem(tenantsKey, JSON.stringify(tenants))
   return tenants
 }

@@ -1,4 +1,6 @@
 import { getTenantId } from '@/lib/tenant-storage'
+import { initializeOfflineCatalog } from '@/lib/catalog-api'
+import type { BusinessType } from '@/lib/business-types'
 import { apiFetch } from '@/lib/api-client'
 
 export type AppUser = {
@@ -208,7 +210,7 @@ export async function createUser(input: { name: string; roleKey: string; shift: 
   return { ok: true, user: getPublicUser(user) } as const
 }
 
-export async function createTenantAdminUser(input: { tenantId: string; name: string; email: string; password: string }) {
+export async function createTenantAdminUser(input: { tenantId: string; name: string; email: string; password: string; businessType: BusinessType }) {
   if (!offlineMode) {
     const response = await apiFetch('/api/platform/accesses', {
       method: 'POST',
@@ -243,6 +245,7 @@ export async function createTenantAdminUser(input: { tenantId: string; name: str
   }
 
   saveStoredUsers([...users, user])
+  initializeOfflineCatalog(input.tenantId, input.businessType)
   return { ok: true, user: getPublicUser(user) } as const
 }
 

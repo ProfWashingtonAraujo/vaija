@@ -1,15 +1,4 @@
-export type ProductCategory =
-  | 'Pizzas Especiais'
-  | 'Pizzas Doces'
-  | 'Hamburgueres'
-  | 'Bebidas'
-  | 'Pizzas Tradicionais'
-  | 'Premium'
-  | 'Esfira Premium'
-  | 'Esfira Tradicional'
-  | 'Esfira Doce'
-  | 'Batatas Fritas'
-  | 'Adicionais'
+export type ProductCategory = string
 
 export type Product = {
   id: string

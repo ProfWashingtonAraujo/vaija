@@ -12,6 +12,7 @@ import { platformTenantId } from '@/lib/tenant-storage'
 import { createPlatformUser, createTenantAdminUser, deleteTenantAccess, fetchAllUsers, impersonateUser, platformPermissionLabels, updatePlatformUser, updatePlatformUserPermissions, updateTenantAccess, type AppUser } from '@/lib/users-api'
 import { formatCurrency } from '@/lib/formatters'
 import { addAuditLog, createSupportTicket, readAuditLogs, readBillingInvoices, readPlanConfigs, readSupportTickets, saveBillingInvoices, savePlanConfigs, syncCurrentBillingInvoices, updateBillingInvoice, updateSupportTicket, type BillingInvoice, type PlanConfig, type SupportTicket } from '@/lib/saas-admin-api'
+import { businessTypeLabels, businessTypeOptions, type BusinessType } from '@/lib/business-types'
 
 const defaultPlanPrices: Record<PlanKey, number> = {
   Free: 0,
@@ -37,6 +38,7 @@ export function ActivationPage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
+  const [businessType, setBusinessType] = useState<BusinessType>('pizzeria')
   const [plan, setPlan] = useState<PlanKey>('Pro')
   const [password, setPassword] = useState('')
   const [clientFilter, setClientFilter] = useState<'all' | PlanKey | TenantStatus>('all')
@@ -130,18 +132,20 @@ export function ActivationPage() {
       return
     }
 
+    let tenant: Tenant | undefined
     try {
-      const tenant = createTenant({
+      tenant = createTenant({
         restaurantName: trimmedRestaurantName,
         ownerName: trimmedOwnerName,
         email: trimmedEmail,
         phone: trimmedPhone,
         city: trimmedCity,
+        businessType,
         plan,
         status: 'active',
       })
 
-      await createTenantAdminUser({ tenantId: tenant.id, name: trimmedOwnerName, email: trimmedEmail, password })
+      await createTenantAdminUser({ tenantId: tenant.id, name: trimmedOwnerName, email: trimmedEmail, password, businessType })
       logAction('Cliente ativado', `${tenant.restaurantName} · ${planLabels[tenant.plan]}`)
       refreshData()
       setRestaurantName('')
@@ -149,10 +153,12 @@ export function ActivationPage() {
       setEmail('')
       setPhone('')
       setCity('')
+      setBusinessType('pizzeria')
       setPlan('Pro')
       setPassword('')
       toast.success('Cliente ativado e usuário administrador criado.')
     } catch (error) {
+      if (tenant) deleteTenant(tenant.id)
       toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um usuário com esse e-mail.' : 'Não foi possível ativar o cliente.')
     }
   }
@@ -221,7 +227,7 @@ export function ActivationPage() {
   }
 
   const exportClients = () => {
-    const rows = ['Restaurante,Responsavel,Email,Cidade,Plano,Status', ...filteredClientTenants.map((tenant) => `${tenant.restaurantName},${tenant.ownerName},${tenant.email},${tenant.city},${tenant.plan},${tenant.status}`)]
+    const rows = ['Restaurante,Responsavel,Email,Cidade,Segmento,Plano,Status', ...filteredClientTenants.map((tenant) => `${tenant.restaurantName},${tenant.ownerName},${tenant.email},${tenant.city},${businessTypeLabels[tenant.businessType]},${tenant.plan},${tenant.status}`)]
     const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -467,6 +473,7 @@ export function ActivationPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{planLabels[tenant.plan]}</span>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">{businessTypeLabels[tenant.businessType]}</span>
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{tenant.status === 'active' ? 'Ativo' : 'Inativo'}</span>
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{tenantUsers.length} acesso(s)</span>
                   </div>
@@ -516,13 +523,20 @@ export function ActivationPage() {
         <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-mail do admin" type="email" />
         <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="WhatsApp" inputMode="tel" />
         <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Cidade/UF" />
+        <label className="grid gap-2 text-sm font-semibold text-slate-700">
+          Nicho do negócio
+          <select value={businessType} onChange={(event) => setBusinessType(event.target.value as BusinessType)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+            {businessTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+          <span className="text-xs font-normal leading-5 text-slate-500">{businessTypeOptions.find((option) => option.value === businessType)?.description}</span>
+        </label>
         <select value={plan} onChange={(event) => setPlan(event.target.value as PlanKey)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
           {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]} · {formatCurrency(planPrices[item])}/mês</option>)}
         </select>
         <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Senha inicial" type="password" />
       </div>
       <Button type="submit" className="mt-5 w-full"><CheckCircle2 className="mr-2 h-4 w-4" />Ativar plano e criar acesso</Button>
-      <p className="mt-4 text-center text-xs leading-5 text-slate-500">O cliente acessa pelo e-mail informado e pela senha inicial cadastrada.</p>
+      <p className="mt-4 text-center text-xs leading-5 text-slate-500">O acesso e as categorias iniciais serão configurados automaticamente para o nicho escolhido.</p>
     </form>
   )
 
@@ -536,6 +550,7 @@ export function ActivationPage() {
             <h2 className="font-heading text-3xl font-bold text-slate-900">{selectedTenant.restaurantName}</h2>
             <p className="mt-2 text-sm text-slate-500">{selectedTenant.ownerName} · {selectedTenant.email}</p>
             <p className="mt-1 text-sm text-slate-500">{selectedTenant.city} · {selectedTenant.phone}</p>
+            <p className="mt-1 text-sm font-semibold text-orange-600">{businessTypeLabels[selectedTenant.businessType]}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{planLabels[selectedTenant.plan]}</span>
