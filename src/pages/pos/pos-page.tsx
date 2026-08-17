@@ -10,28 +10,27 @@ import { ProductCard } from '@/components/pos/product-card'
 import { CartPanel } from '@/components/pos/cart-panel'
 import { Button } from '@/components/ui/button'
 import { MobileDrawer } from '@/components/shared/mobile-drawer'
-import { fetchOrders, saveOrders } from '@/lib/orders-api'
+import { createOrder } from '@/lib/orders-api'
 import { fetchCategories, fetchProducts } from '@/lib/catalog-api'
-import type { Order } from '@/data/mock-orders'
+import type { Order, OrderSource } from '@/data/mock-orders'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
-type OrderSource = 'Mesa' | 'Online'
 const productsPerPage = 9
 
-export function PosPage() {
+export function PosPage({ waiterMode = false }: { waiterMode?: boolean }) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [categories, setCategories] = useState<string[]>(['Todas', ...posCategories])
   const [category, setCategory] = useState<string>('Todas')
   const [paymentMethod, setPaymentMethod] = useState<'Pix' | 'Cartão' | 'Dinheiro'>('Pix')
-  const [orderSource, setOrderSource] = useState<OrderSource>('Mesa')
+  const [orderSource, setOrderSource] = useState<Exclude<OrderSource, 'Online'>>('Mesa')
   const [tableNumber, setTableNumber] = useState('')
   const [customerName, setCustomerName] = useState('')
-  const [customerPhone, setCustomerPhone] = useState('')
   const [notes, setNotes] = useState('')
   const [cart, setCart] = useState<CartItem[]>([])
   const [currentPage, setCurrentPage] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     void Promise.all([fetchProducts(), fetchCategories()])
@@ -93,49 +92,47 @@ export function PosPage() {
       return
     }
 
-    if (orderSource === 'Online' && customerName.trim().length === 0) {
-      toast.error('Informe o nome do cliente.')
-      return
-    }
-
-    const currentOrders = await fetchOrders()
-    const deliveryFee = orderSource === 'Online' ? 8 : 0
     const now = new Date()
-    const newOrder: Order = {
-      id: Math.max(0, ...currentOrders.map((order) => order.id)) + 1,
-      customer: orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : customerName.trim(),
-      phone: orderSource === 'Mesa' ? '-' : customerPhone.trim() || 'Não informado',
-      address: orderSource === 'Mesa' ? '' : 'Pedido online',
+    const newOrder: Omit<Order, 'id'> = {
+      customer: orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : customerName.trim() || 'Balcão',
+      phone: '-',
+      address: '',
       source: orderSource,
       tableNumber: orderSource === 'Mesa' ? tableNumber.trim() : undefined,
-      deliveryFee,
+      deliveryFee: 0,
       items: cart.map((item) => item.quantity > 1 ? `${item.quantity}x ${item.name}` : item.name),
       elapsed: 'agora',
-      value: cartSubtotal + deliveryFee,
+      value: cartSubtotal,
       status: 'Pendente',
       payment: paymentMethod,
       notes: notes.trim() || undefined,
       time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }
 
-    await saveOrders([newOrder, ...currentOrders])
-    const orderTarget = orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : 'Online'
-    toast.success(`Pedido ${orderTarget} enviado para a fila.`)
-    setCart([])
-    setTableNumber('')
-    setCustomerName('')
-    setCustomerPhone('')
-    setNotes('')
-    navigate('/orders')
+    setIsSubmitting(true)
+    try {
+      const created = await createOrder(newOrder)
+      const orderTarget = orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : 'Balcão'
+      toast.success(`Pedido #${created.id} · ${orderTarget} enviado para produção.`)
+      setCart([])
+      setTableNumber('')
+      setCustomerName('')
+      setNotes('')
+      if (!waiterMode) navigate('/orders')
+    } catch {
+      toast.error('Não foi possível enviar o pedido. O carrinho foi mantido para tentar novamente.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <AdminLayout title="PDV Operacional" description="Busca rápida, categorias visíveis e carrinho pronto para atendimento ágil.">
+    <AdminLayout title={waiterMode ? 'Atendimento do garçom' : 'PDV Operacional'} description={waiterMode ? 'Registre pedidos de mesa ou balcão e envie diretamente para produção.' : 'Busca rápida, categorias visíveis e carrinho pronto para atendimento ágil.'}>
       <div className="mb-6 rounded-[30px] border border-orange-100 bg-gradient-to-r from-[#fffaf5] to-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Operação</p>
-            <p className="mt-1 font-heading text-2xl font-bold text-slate-900">Monte pedidos com agilidade</p>
+            <p className="mt-1 font-heading text-2xl font-bold text-slate-900">{waiterMode ? 'Novo pedido presencial' : 'Monte pedidos com agilidade'}</p>
           </div>
           <div className="rounded-2xl border border-orange-200 bg-white/90 px-4 py-3 shadow-[0_8px_18px_rgba(255,107,0,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Itens no carrinho</p>
@@ -153,21 +150,20 @@ export function PosPage() {
             <div className="flex items-center gap-3">
             <div className="flex-1"><SearchInput placeholder="Buscar produto" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
             <div className="xl:hidden">
-              <MobileDrawer side="bottom" trigger={<Button><ShoppingCart className="mr-2 h-4 w-4" />Carrinho</Button>}>
-                <div className="h-full p-4">
+               <MobileDrawer side="bottom" trigger={<Button><ShoppingCart className="mr-2 h-4 w-4" />Carrinho ({cartQuantity})</Button>}>
+                 <div className="max-h-[88dvh] overflow-y-auto p-4 scrollbar-thin">
                   <CartPanel
                     items={cart}
                     paymentMethod={paymentMethod}
                     orderSource={orderSource}
                     tableNumber={tableNumber}
                     customerName={customerName}
-                    customerPhone={customerPhone}
                     notes={notes}
+                    isSubmitting={isSubmitting}
                     onPaymentChange={setPaymentMethod}
                     onOrderSourceChange={setOrderSource}
                     onTableNumberChange={setTableNumber}
                     onCustomerNameChange={setCustomerName}
-                    onCustomerPhoneChange={setCustomerPhone}
                     onNotesChange={setNotes}
                     onUpdateQuantity={(id, amount) => setCart((current) => current.map((item) => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + amount) } : item))}
                     onRemove={(id) => setCart((current) => current.filter((item) => item.id !== id))}
@@ -188,7 +184,7 @@ export function PosPage() {
               <Button type="button" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}>Próxima</Button>
             </div>
           </div>
-          <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
             {paginatedProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={(size, price) => addToCart(product, size, price)} />)}
             {paginatedProducts.length === 0 ? <div className="col-span-full rounded-[28px] border border-dashed border-orange-200 bg-orange-50/60 p-8 text-center text-sm font-semibold text-slate-500">Nenhum produto encontrado.</div> : null}
           </div>
@@ -200,13 +196,12 @@ export function PosPage() {
             orderSource={orderSource}
             tableNumber={tableNumber}
             customerName={customerName}
-            customerPhone={customerPhone}
             notes={notes}
+            isSubmitting={isSubmitting}
             onPaymentChange={setPaymentMethod}
             onOrderSourceChange={setOrderSource}
             onTableNumberChange={setTableNumber}
             onCustomerNameChange={setCustomerName}
-            onCustomerPhoneChange={setCustomerPhone}
             onNotesChange={setNotes}
             onUpdateQuantity={(id, amount) => setCart((current) => current.map((item) => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + amount) } : item))}
             onRemove={(id) => setCart((current) => current.filter((item) => item.id !== id))}

@@ -63,6 +63,7 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/api/products", s.getProducts)
 		r.Put("/api/products", s.putProducts)
 		r.Get("/api/orders", s.getOrders)
+		r.Post("/api/orders", s.createOrder)
 		r.Put("/api/orders", s.putOrders)
 		r.Get("/api/users", s.getUsers)
 		r.Post("/api/users", s.createUser)
@@ -284,6 +285,54 @@ func (s *Server) getOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, map[string]any{"orders": orders})
+}
+
+func normalizeInPersonOrder(order *Order) bool {
+	if order.Source != "Mesa" && order.Source != "Balcão" {
+		return false
+	}
+	if order.Source == "Mesa" {
+		table, ok := order.TableNumber.(string)
+		if !ok || strings.TrimSpace(table) == "" {
+			return false
+		}
+		order.TableNumber = strings.TrimSpace(table)
+		order.Customer = "Mesa " + strings.TrimSpace(table)
+	} else {
+		order.TableNumber = nil
+		if strings.TrimSpace(order.Customer) == "" {
+			order.Customer = "Balcão"
+		}
+	}
+	zero := 0.0
+	order.ID = 1
+	order.Phone = "-"
+	order.Address = ""
+	order.DeliveryFee = &zero
+	order.Status = "Pendente"
+	return order.Valid()
+}
+
+func (s *Server) createOrder(w http.ResponseWriter, r *http.Request) {
+	var order Order
+	if !decodeJSON(w, r, &order) {
+		return
+	}
+	if !normalizeInPersonOrder(&order) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": "invalid_in_person_order"})
+		return
+	}
+	created, err := s.store.CreateOrder(r.Context(), order, currentAuth(r).TenantID)
+	if err != nil {
+		internalError(w, err)
+		return
+	}
+	if s.queue != nil {
+		if _, err := s.queue.Add(r.Context(), created); err != nil {
+			log.Printf("queue in-person order %d for printing: %v", created.ID, err)
+		}
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"ok": true, "order": created})
 }
 
 func (s *Server) putOrders(w http.ResponseWriter, r *http.Request) {

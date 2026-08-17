@@ -7,12 +7,14 @@ export type OrderStatus =
   | 'Cancelado'
   | 'Pronto para retirada'
 
+export type OrderSource = 'Mesa' | 'Balcão' | 'Online'
+
 export type Order = {
   id: number
   customer: string
   phone: string
   address: string
-  source?: 'Mesa' | 'Online'
+  source?: OrderSource
   tableNumber?: string
   deliveryFee?: number
   items: string[]

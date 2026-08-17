@@ -11,6 +11,7 @@ const DashboardPage = lazy(() => import('@/pages/dashboard/dashboard-page').then
 const OperatorPage = lazy(() => import('@/pages/operator/operator-page').then((module) => ({ default: module.OperatorPage })))
 const OrdersPage = lazy(() => import('@/pages/orders/orders-page').then((module) => ({ default: module.OrdersPage })))
 const PosPage = lazy(() => import('@/pages/pos/pos-page').then((module) => ({ default: module.PosPage })))
+const WaiterPage = lazy(() => import('@/pages/waiter/waiter-page').then((module) => ({ default: module.WaiterPage })))
 const MenuPage = lazy(() => import('@/pages/menu/menu-page').then((module) => ({ default: module.MenuPage })))
 const InventoryPage = lazy(() => import('@/pages/inventory/inventory-page').then((module) => ({ default: module.InventoryPage })))
 const ReportsPage = lazy(() => import('@/pages/reports/reports-page').then((module) => ({ default: module.ReportsPage })))
@@ -60,6 +61,7 @@ export function AppRoutes() {
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['admin', 'manager', 'operator']} allowedPlans={['Pro', 'Premium']} />}>
           <Route path="/pos" element={<PosPage />} />
+          <Route path="/waiter" element={<WaiterPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

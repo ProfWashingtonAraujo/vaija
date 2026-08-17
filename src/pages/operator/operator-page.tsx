@@ -86,7 +86,7 @@ export function OperatorPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Ações rápidas</p>
             <h2 className="mt-1 font-heading text-2xl font-bold text-slate-900">Operação</h2>
           </div>
-          <Link to="/pos" className={cn(actionLinkClass, 'w-full border-orange-500 bg-orange-500 text-white shadow-[0_10px_30px_rgba(255,107,0,0.24)] hover:-translate-y-0.5 hover:bg-orange-600')}>Abrir PDV</Link>
+          <Link to="/waiter" className={cn(actionLinkClass, 'w-full border-orange-500 bg-orange-500 text-white shadow-[0_10px_30px_rgba(255,107,0,0.24)] hover:-translate-y-0.5 hover:bg-orange-600')}>Novo atendimento</Link>
           <Link to="/orders" className={cn(actionLinkClass, 'w-full border-orange-200 bg-white text-slate-800 hover:border-orange-400 hover:text-orange-700')}>Gerenciar pedidos</Link>
           <div className="rounded-2xl border border-orange-100 bg-orange-50/50 p-4">
             <p className="text-sm font-semibold text-slate-900">Resumo da fila</p>

@@ -46,7 +46,7 @@ export function OrderCard({ order, active, dragging, dropTarget, onClick, onDrag
       </div>
       <p className="mt-3 font-semibold text-slate-900">{order.customer}</p>
       <p className="mt-2 text-sm text-slate-500">{order.items.join(' • ')}</p>
-      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-orange-700">{order.source === 'Mesa' ? `Mesa ${order.tableNumber ?? '--'}` : 'Online'}</p>
+      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-orange-700">{order.source === 'Mesa' ? `Mesa ${order.tableNumber ?? '--'}` : order.source === 'Balcão' ? 'Balcão' : 'Online'}</p>
       <div className="mt-4 flex items-center justify-between text-sm">
         <span className="text-slate-500">{order.elapsed}</span>
         <span className="font-mono font-semibold text-slate-900">{formatCurrency(order.value)}</span>
