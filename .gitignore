@@ -25,3 +25,5 @@ backend/coverage.out
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
