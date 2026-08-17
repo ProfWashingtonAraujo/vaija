@@ -158,7 +158,7 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp }: 
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {canManageOrder ? <Button variant="outline" className="border-orange-200 bg-white/90" onClick={onEdit}>Editar pedido</Button> : null}
-          {canManageOrder ? <Button variant="secondary" onClick={onOpenWhatsapp}>Conversar no WhatsApp</Button> : null}
+          <Button variant="secondary" onClick={onOpenWhatsapp}>Enviar link do pedido</Button>
           <Button variant="outline" className="border-orange-200 bg-white/90" onClick={() => setShowPreview(true)}>Imprimir Cupom</Button>
           <Button onClick={onAdvance}>{nextStepLabel}</Button>
         </div>

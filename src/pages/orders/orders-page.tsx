@@ -12,6 +12,8 @@ import { fetchProducts, saveProducts } from '@/lib/catalog-api'
 import { products as initialProducts, type Product } from '@/data/mock-products'
 import { fetchOrders, saveOrders } from '@/lib/orders-api'
 import { fetchInventory, saveInventory, type InventoryItem } from '@/lib/inventory-api'
+import { getTenantId } from '@/lib/tenant-storage'
+import { getPublicOrderTrackingUrl } from '@/lib/public-order-url'
 
 const COLUMN_STATUS = {
   Pendente: 'Pendente',
@@ -67,7 +69,8 @@ function getOrderItemsFromMenu(order: Order, products: Product[]): EditableOrder
 function getWhatsappUrl(order: Order) {
   const phone = order.phone.replace(/\D/g, '')
   const phoneWithCountry = phone.startsWith('55') ? phone : `55${phone}`
-  const message = encodeURIComponent(`Olá, ${order.customer}! Sobre o seu pedido #${order.id}:`)
+  const trackingUrl = getPublicOrderTrackingUrl(getTenantId(), order.id)
+  const message = encodeURIComponent(`Olá, ${order.customer}! Acompanhe o seu pedido #${order.id}: ${trackingUrl}`)
 
   return `https://wa.me/${phoneWithCountry}?text=${message}`
 }
@@ -331,10 +334,6 @@ export function OrdersPage() {
   }
 
   const handleOpenWhatsapp = () => {
-    if (selected.status !== 'Pendente' && selected.status !== 'Em producao') {
-      return
-    }
-
     window.open(getWhatsappUrl(selected), '_blank', 'noopener,noreferrer')
   }
 

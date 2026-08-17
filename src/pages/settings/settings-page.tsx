@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { readSettings, saveSettings, type BusinessHour, type DeliverySettings } from '@/lib/settings'
 import { planLabels } from '@/lib/plan-access'
 import { getTenantForUser } from '@/lib/tenants-api'
+import { getPublicOrderUrl } from '@/lib/public-order-url'
 
 const schema = z.object({
   restaurantName: z.string().min(2),
@@ -82,6 +83,16 @@ export function SettingsPage() {
   const [restaurantLogo, setRestaurantLogo] = useState(storedSettings.restaurant.logo ?? '')
   const [cepStatus, setCepStatus] = useState<string | null>(null)
   const tenant = getTenantForUser(user)
+  const publicOrderUrl = user ? getPublicOrderUrl(user.tenantId) : ''
+
+  const copyPublicOrderUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(publicOrderUrl)
+      toast.success('Link público copiado.')
+    } catch {
+      toast.error('Não foi possível copiar o link.')
+    }
+  }
 
   useEffect(() => {
     if (!user?.permissions.includes('users:read')) {
@@ -218,6 +229,17 @@ export function SettingsPage() {
                 <div className="rounded-[24px] border border-orange-100 bg-orange-50/50 p-4 text-sm leading-6 text-slate-600 md:col-span-2">
                   O logotipo aparece no menu administrativo e na página pública de pedidos. Depois de enviar, clique em <span className="font-semibold text-slate-900">Salvar configurações</span>.
                 </div>
+                {!user?.isPlatformAdmin ? (
+                  <div className="rounded-[24px] border border-orange-200 bg-white p-4 md:col-span-2">
+                    <p className="text-sm font-semibold text-slate-900">Link público do restaurante</p>
+                    <p className="mt-1 text-sm text-slate-500">Compartilhe este endereço para seus clientes acessarem o cardápio e fazerem pedidos.</p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                      <Input value={publicOrderUrl} readOnly aria-label="Link público do restaurante" className="font-mono text-xs" />
+                      <Button type="button" variant="outline" className="border-orange-200" onClick={() => void copyPublicOrderUrl()}>Copiar link</Button>
+                      <Button type="button" variant="secondary" onClick={() => window.open(publicOrderUrl, '_blank', 'noopener,noreferrer')}>Abrir página</Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </section>
