@@ -188,7 +188,7 @@ export function PosPage() {
               <Button type="button" variant="outline" aria-label="Próxima página" className="h-10 px-3 sm:h-auto sm:px-4" disabled={currentPage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}><span className="sm:hidden">›</span><span className="hidden sm:inline">Próxima</span></Button>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-1 items-stretch gap-2.5 sm:mt-6 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {paginatedProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={(size, price) => addToCart(product, size, price)} />)}
             {paginatedProducts.length === 0 ? <div className="col-span-full rounded-[28px] border border-dashed border-orange-200 bg-orange-50/60 p-8 text-center text-sm font-semibold text-slate-500">Nenhum produto encontrado.</div> : null}
           </div>
