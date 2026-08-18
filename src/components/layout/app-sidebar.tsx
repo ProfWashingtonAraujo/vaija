@@ -1,4 +1,4 @@
-import { Boxes, ChartNoAxesColumn, Cog, CreditCard, LayoutDashboard, LifeBuoy, LogOut, MenuSquare, Plus, Rocket, ShoppingBag, UserCog } from 'lucide-react'
+import { ChartNoAxesColumn, Cog, CreditCard, LayoutDashboard, LifeBuoy, LogOut, MenuSquare, Plus, Rocket, ShoppingBag, UserCog } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { restaurant } from '@/data/mock-restaurant'
@@ -14,7 +14,6 @@ const links = [
   { to: '/orders', label: 'Pedidos', icon: ShoppingBag },
   { to: '/pos', label: 'PDV', icon: CreditCard },
   { to: '/menu', label: 'Cardápio', icon: MenuSquare },
-  { to: '/inventory', label: 'Estoque', icon: Boxes },
   { to: '/reports', label: 'Relatórios', icon: ChartNoAxesColumn },
   { to: '/settings', label: 'Configurações', icon: Cog },
   { to: '/activation', label: 'Ativação', icon: Rocket },
