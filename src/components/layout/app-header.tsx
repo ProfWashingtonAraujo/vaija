@@ -9,7 +9,7 @@ import { MobileDrawer } from '@/components/shared/mobile-drawer'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { cashRegisterUpdatedEvent, closeCashRegister, openCashRegister, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
 
-export function AppHeader({ title, description, compactMobile = false }: { title: string; description: string; compactMobile?: boolean }) {
+export function AppHeader({ title, description }: { title: string; description: string }) {
   const { user } = useAuth()
   const [cashRegister, setCashRegister] = useState(() => readCashRegister())
   const canManageCashRegister = user?.roleKey === 'admin' || user?.roleKey === 'manager'
@@ -39,14 +39,14 @@ export function AppHeader({ title, description, compactMobile = false }: { title
   }
 
   return (
-    <header className={`flex flex-col border border-orange-100 bg-white shadow-[0_14px_36px_rgba(15,23,42,0.06)] sm:mb-6 sm:gap-4 sm:rounded-[30px] sm:p-5 xl:flex-row xl:items-center xl:justify-between ${compactMobile ? 'mb-3 gap-2 rounded-[22px] p-3' : 'mb-6 gap-4 rounded-[30px] p-4'}`}>
+    <header className="mb-6 flex flex-col gap-4 rounded-[30px] border border-orange-100 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.06)] sm:p-5 xl:flex-row xl:items-center xl:justify-between">
       <div className="flex items-start gap-3 lg:hidden">
         <MobileDrawer trigger={<Button variant="outline" className="h-11 w-11 px-0"><Menu className="h-5 w-5" /></Button>}>
           <div className="h-full p-4"><AppSidebar /></div>
         </MobileDrawer>
         <div className="min-w-0">
           <h1 className="font-heading text-xl font-bold text-slate-900 sm:text-2xl">{title}</h1>
-          <p className={`${compactMobile ? 'hidden sm:line-clamp-2' : 'line-clamp-2'} mt-1 text-sm leading-6 text-slate-500`}>{description}</p>
+          <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{description}</p>
         </div>
       </div>
 
@@ -55,7 +55,7 @@ export function AppHeader({ title, description, compactMobile = false }: { title
         <p className="mt-2 text-sm text-slate-500">{description}</p>
       </div>
 
-      <div className={`${compactMobile ? 'hidden sm:flex' : 'flex'} flex-1 flex-wrap items-center gap-2 md:gap-2.5 xl:flex-nowrap xl:justify-end`}>
+      <div className="flex flex-1 flex-wrap items-center gap-2 md:gap-2.5 xl:flex-nowrap xl:justify-end">
         <div className="hidden min-w-0 lg:block lg:flex-1 lg:basis-72 lg:max-w-xs xl:max-w-sm">
           <SearchInput placeholder="Busca global" />
         </div>

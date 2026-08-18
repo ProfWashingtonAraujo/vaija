@@ -36,7 +36,7 @@ function buildCupomHtml(order: Order, includeLogo = false) {
     <div style="border-top:1px dashed #ccc;margin:10px 0"></div>
     <div style="font-size:11px">
       <div style="display:flex;justify-content:space-between;padding:2px 0"><span>Subtotal</span><span>${formatCurrency(subtotal)}</span></div>
-       ${deliveryFee > 0 ? `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Taxa entrega</span><span>${formatCurrency(deliveryFee)}</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;padding:2px 0"><span>${source === 'Mesa' ? 'Taxa mesa' : 'Taxa entrega'}</span><span>${formatCurrency(deliveryFee)}</span></div>
     </div>
     <div style="border-top:2px solid #333;margin:8px 0"></div>
     <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;padding:4px 0">
@@ -130,13 +130,13 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp }: 
           <StatusBadge status={order.status} />
         </div>
         <div className="mt-6 space-y-4 text-sm text-slate-600">
-          {order.phone && order.phone !== '-' ? <p><span className="font-semibold text-slate-900">Telefone:</span> {order.phone}</p> : null}
+          <p><span className="font-semibold text-slate-900">Telefone:</span> {order.phone}</p>
           <p><span className="font-semibold text-slate-900">Tipo:</span> {source}</p>
           {source === 'Mesa' ? (
             <p><span className="font-semibold text-slate-900">Mesa:</span> {order.tableNumber ?? 'Não informada'}</p>
-          ) : source === 'Online' ? (
+          ) : (
             <p><span className="font-semibold text-slate-900">Endereço:</span> {order.address}</p>
-          ) : null}
+          )}
           <div>
             <p className="font-semibold text-slate-900">Itens</p>
             <ul className="mt-2 space-y-2">
@@ -151,14 +151,14 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp }: 
           ) : null}
           <div className="space-y-2 rounded-[24px] border border-orange-100 bg-white/80 p-4 shadow-[0_10px_24px_rgba(255,107,0,0.05)]">
             <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
-            {deliveryFee > 0 ? <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{formatCurrency(deliveryFee)}</span></div> : null}
+            <div className="flex justify-between"><span>{source === 'Mesa' ? 'Taxa de mesa' : 'Taxa de entrega'}</span><span className="font-mono">{formatCurrency(deliveryFee)}</span></div>
             <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(order.value)}</span></div>
             <div className="flex justify-between"><span>Pagamento</span><span>{order.payment}</span></div>
           </div>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {canManageOrder ? <Button variant="outline" className="border-orange-200 bg-white/90" onClick={onEdit}>Editar pedido</Button> : null}
-          {source === 'Online' ? <Button variant="secondary" onClick={onOpenWhatsapp}>Enviar link do pedido</Button> : null}
+          <Button variant="secondary" onClick={onOpenWhatsapp}>Enviar link do pedido</Button>
           <Button variant="outline" className="border-orange-200 bg-white/90" onClick={() => setShowPreview(true)}>Imprimir Cupom</Button>
           <Button onClick={onAdvance}>{nextStepLabel}</Button>
         </div>

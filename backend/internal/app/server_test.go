@@ -100,26 +100,3 @@ func TestBusinessTypeCategories(t *testing.T) {
 		t.Fatal("expected unknown business type to be rejected")
 	}
 }
-
-func TestNormalizeInPersonOrder(t *testing.T) {
-	items := json.RawMessage(`["2x Hambúrguer"]`)
-	for _, test := range []struct {
-		name  string
-		order Order
-		valid bool
-	}{
-		{name: "table", order: Order{Source: "Mesa", TableNumber: " 12 ", Items: items, Elapsed: "agora", Payment: "Pix", Time: "12:00"}, valid: true},
-		{name: "counter", order: Order{Source: "Balcão", Customer: "Cliente", Items: items, Elapsed: "agora", Payment: "Dinheiro", Time: "12:00"}, valid: true},
-		{name: "missing table", order: Order{Source: "Mesa", Items: items, Elapsed: "agora", Payment: "Pix", Time: "12:00"}},
-		{name: "online", order: Order{Source: "Online", Items: items, Elapsed: "agora", Payment: "Pix", Time: "12:00"}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if valid := normalizeInPersonOrder(&test.order); valid != test.valid {
-				t.Fatalf("valid = %v, want %v", valid, test.valid)
-			}
-			if test.valid && (test.order.Status != "Pendente" || test.order.DeliveryFee == nil || *test.order.DeliveryFee != 0) {
-				t.Fatalf("order was not normalized: %#v", test.order)
-			}
-		})
-	}
-}

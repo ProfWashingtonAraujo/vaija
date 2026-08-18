@@ -10,28 +10,28 @@ import { ProductCard } from '@/components/pos/product-card'
 import { CartPanel } from '@/components/pos/cart-panel'
 import { Button } from '@/components/ui/button'
 import { MobileDrawer } from '@/components/shared/mobile-drawer'
-import { createOrder } from '@/lib/orders-api'
+import { fetchOrders, saveOrders } from '@/lib/orders-api'
 import { fetchCategories, fetchProducts } from '@/lib/catalog-api'
-import type { Order, OrderSource } from '@/data/mock-orders'
+import type { Order } from '@/data/mock-orders'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
+type OrderSource = 'Mesa' | 'Online'
 const productsPerPage = 9
 
-export function PosPage({ waiterMode = false }: { waiterMode?: boolean }) {
+export function PosPage() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [categories, setCategories] = useState<string[]>(['Todas', ...posCategories])
   const [category, setCategory] = useState<string>('Todas')
   const [paymentMethod, setPaymentMethod] = useState<'Pix' | 'Cartão' | 'Dinheiro'>('Pix')
-  const [orderSource, setOrderSource] = useState<Exclude<OrderSource, 'Online'>>('Mesa')
+  const [orderSource, setOrderSource] = useState<OrderSource>('Mesa')
   const [tableNumber, setTableNumber] = useState('')
   const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
   const [notes, setNotes] = useState('')
   const [cart, setCart] = useState<CartItem[]>([])
   const [currentPage, setCurrentPage] = useState(1)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isCartOpen, setIsCartOpen] = useState(false)
 
   useEffect(() => {
     void Promise.all([fetchProducts(), fetchCategories()])
@@ -93,74 +93,102 @@ export function PosPage({ waiterMode = false }: { waiterMode?: boolean }) {
       return
     }
 
+    if (orderSource === 'Online' && customerName.trim().length === 0) {
+      toast.error('Informe o nome do cliente.')
+      return
+    }
+
+    const currentOrders = await fetchOrders()
+    const deliveryFee = orderSource === 'Online' ? 8 : 0
     const now = new Date()
-    const newOrder: Omit<Order, 'id'> = {
-      customer: orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : customerName.trim() || 'Balcão',
-      phone: '-',
-      address: '',
+    const newOrder: Order = {
+      id: Math.max(0, ...currentOrders.map((order) => order.id)) + 1,
+      customer: orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : customerName.trim(),
+      phone: orderSource === 'Mesa' ? '-' : customerPhone.trim() || 'Não informado',
+      address: orderSource === 'Mesa' ? '' : 'Pedido online',
       source: orderSource,
       tableNumber: orderSource === 'Mesa' ? tableNumber.trim() : undefined,
-      deliveryFee: 0,
+      deliveryFee,
       items: cart.map((item) => item.quantity > 1 ? `${item.quantity}x ${item.name}` : item.name),
       elapsed: 'agora',
-      value: cartSubtotal,
+      value: cartSubtotal + deliveryFee,
       status: 'Pendente',
       payment: paymentMethod,
       notes: notes.trim() || undefined,
       time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }
 
-    setIsSubmitting(true)
-    try {
-      const created = await createOrder(newOrder)
-      const orderTarget = orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : 'Balcão'
-      toast.success(`Pedido #${created.id} · ${orderTarget} enviado para produção.`)
-      setCart([])
-      setTableNumber('')
-      setCustomerName('')
-      setNotes('')
-      setIsCartOpen(false)
-      if (!waiterMode) navigate('/orders')
-    } catch {
-      toast.error('Não foi possível enviar o pedido. O carrinho foi mantido para tentar novamente.')
-    } finally {
-      setIsSubmitting(false)
-    }
+    await saveOrders([newOrder, ...currentOrders])
+    const orderTarget = orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : 'Online'
+    toast.success(`Pedido ${orderTarget} enviado para a fila.`)
+    setCart([])
+    setTableNumber('')
+    setCustomerName('')
+    setCustomerPhone('')
+    setNotes('')
+    navigate('/orders')
   }
 
   return (
-    <AdminLayout title={waiterMode ? 'Atendimento do garçom' : 'PDV Operacional'} description={waiterMode ? 'Registre pedidos de mesa ou balcão e envie diretamente para produção.' : 'Busca rápida, categorias visíveis e carrinho pronto para atendimento ágil.'} compactMobile={waiterMode}>
-      <div className="mb-3 rounded-[22px] border border-orange-100 bg-gradient-to-r from-[#fffaf5] to-white p-3 shadow-[0_14px_36px_rgba(15,23,42,0.06)] sm:mb-6 sm:rounded-[30px] sm:p-5">
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-          <div className="col-span-2 hidden sm:block">
+    <AdminLayout title="PDV Operacional" description="Busca rápida, categorias visíveis e carrinho pronto para atendimento ágil.">
+      <div className="mb-6 rounded-[30px] border border-orange-100 bg-gradient-to-r from-[#fffaf5] to-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Operação</p>
-            <p className="mt-1 font-heading text-2xl font-bold text-slate-900">{waiterMode ? 'Novo pedido presencial' : 'Monte pedidos com agilidade'}</p>
+            <p className="mt-1 font-heading text-2xl font-bold text-slate-900">Monte pedidos com agilidade</p>
           </div>
-          <div className="rounded-2xl border border-orange-200 bg-white/90 px-3 py-2.5 shadow-[0_8px_18px_rgba(255,107,0,0.06)] sm:px-4 sm:py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 sm:text-xs sm:tracking-[0.16em]">Itens</p>
-            <p className="mt-0.5 font-heading text-xl font-bold text-slate-900 sm:mt-1 sm:text-2xl">{cartQuantity}</p>
+          <div className="rounded-2xl border border-orange-200 bg-white/90 px-4 py-3 shadow-[0_8px_18px_rgba(255,107,0,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Itens no carrinho</p>
+            <p className="mt-1 font-heading text-2xl font-bold text-slate-900">{cartQuantity}</p>
           </div>
-          <div className="rounded-2xl border border-orange-200 bg-white/90 px-3 py-2.5 shadow-[0_8px_18px_rgba(255,107,0,0.06)] sm:px-4 sm:py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 sm:text-xs sm:tracking-[0.16em]">Subtotal</p>
-            <p className="mt-0.5 truncate font-heading text-xl font-bold text-slate-900 sm:mt-1 sm:text-2xl">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartSubtotal)}</p>
+          <div className="rounded-2xl border border-orange-200 bg-white/90 px-4 py-3 shadow-[0_8px_18px_rgba(255,107,0,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Subtotal</p>
+            <p className="mt-1 font-heading text-2xl font-bold text-slate-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartSubtotal)}</p>
           </div>
         </div>
       </div>
-      <div className="grid gap-6 pb-24 xl:grid-cols-[minmax(0,1fr)_380px] xl:pb-0">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div>
-          <div className="sticky top-0 z-30 -mx-4 border-y border-orange-100 bg-background/95 p-3 shadow-[0_10px_24px_rgba(15,23,42,0.05)] backdrop-blur sm:static sm:mx-0 sm:rounded-[30px] sm:border sm:bg-gradient-to-br sm:from-white sm:to-[#fffaf5] sm:p-5 sm:shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <SearchInput placeholder="Buscar produto" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <div className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+            <div className="flex items-center gap-3">
+            <div className="flex-1"><SearchInput placeholder="Buscar produto" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
+            <div className="xl:hidden">
+              <MobileDrawer side="bottom" trigger={<Button><ShoppingCart className="mr-2 h-4 w-4" />Carrinho</Button>}>
+                <div className="h-full p-4">
+                  <CartPanel
+                    items={cart}
+                    paymentMethod={paymentMethod}
+                    orderSource={orderSource}
+                    tableNumber={tableNumber}
+                    customerName={customerName}
+                    customerPhone={customerPhone}
+                    notes={notes}
+                    onPaymentChange={setPaymentMethod}
+                    onOrderSourceChange={setOrderSource}
+                    onTableNumberChange={setTableNumber}
+                    onCustomerNameChange={setCustomerName}
+                    onCustomerPhoneChange={setCustomerPhone}
+                    onNotesChange={setNotes}
+                    onUpdateQuantity={(id, amount) => setCart((current) => current.map((item) => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + amount) } : item))}
+                    onRemove={(id) => setCart((current) => current.filter((item) => item.id !== id))}
+                    onClear={() => setCart([])}
+                    onCheckout={handleCheckout}
+                  />
+                </div>
+              </MobileDrawer>
+            </div>
+            </div>
             <div className="mt-4"><CategoryTabs categories={categories} value={category} onChange={setCategory} /></div>
           </div>
-          <div className="mt-3 flex items-center justify-between gap-2 rounded-[20px] border border-orange-100 bg-white/80 p-2.5 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:mt-6 sm:rounded-[24px] sm:p-4">
-            <p className="hidden text-sm font-semibold text-slate-600 sm:block">Mostrando {paginatedProducts.length} de {filteredProducts.length} produto(s)</p>
-            <div className="flex w-full items-center justify-between gap-1.5 sm:w-auto sm:justify-start sm:gap-2">
-              <Button type="button" variant="outline" aria-label="Página anterior" className="h-10 px-3 sm:h-auto sm:px-4" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}><span className="sm:hidden">‹</span><span className="hidden sm:inline">Anterior</span></Button>
+          <div className="mt-6 flex flex-col gap-3 rounded-[24px] border border-orange-100 bg-white/80 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-semibold text-slate-600">Mostrando {paginatedProducts.length} de {filteredProducts.length} produto(s)</p>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>Anterior</Button>
               <span className="rounded-2xl border border-orange-100 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700">{currentPage} / {totalPages}</span>
-              <Button type="button" variant="outline" aria-label="Próxima página" className="h-10 px-3 sm:h-auto sm:px-4" disabled={currentPage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}><span className="sm:hidden">›</span><span className="hidden sm:inline">Próxima</span></Button>
+              <Button type="button" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}>Próxima</Button>
             </div>
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {paginatedProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={(size, price) => addToCart(product, size, price)} />)}
             {paginatedProducts.length === 0 ? <div className="col-span-full rounded-[28px] border border-dashed border-orange-200 bg-orange-50/60 p-8 text-center text-sm font-semibold text-slate-500">Nenhum produto encontrado.</div> : null}
           </div>
@@ -172,12 +200,13 @@ export function PosPage({ waiterMode = false }: { waiterMode?: boolean }) {
             orderSource={orderSource}
             tableNumber={tableNumber}
             customerName={customerName}
+            customerPhone={customerPhone}
             notes={notes}
-            isSubmitting={isSubmitting}
             onPaymentChange={setPaymentMethod}
             onOrderSourceChange={setOrderSource}
             onTableNumberChange={setTableNumber}
             onCustomerNameChange={setCustomerName}
+            onCustomerPhoneChange={setCustomerPhone}
             onNotesChange={setNotes}
             onUpdateQuantity={(id, amount) => setCart((current) => current.map((item) => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + amount) } : item))}
             onRemove={(id) => setCart((current) => current.filter((item) => item.id !== id))}
@@ -185,40 +214,6 @@ export function PosPage({ waiterMode = false }: { waiterMode?: boolean }) {
             onCheckout={handleCheckout}
           />
         </div>
-      </div>
-      <div className="xl:hidden">
-        <MobileDrawer
-          side="bottom"
-          open={isCartOpen}
-          onOpenChange={setIsCartOpen}
-          trigger={
-            <Button className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 right-3 z-40 h-14 justify-between rounded-[20px] px-4 shadow-[0_18px_42px_rgba(255,107,0,0.32)] sm:left-6 sm:right-6">
-              <span className="flex items-center gap-2"><ShoppingCart className="h-5 w-5" />Ver carrinho <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{cartQuantity}</span></span>
-              <span className="font-mono">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartSubtotal)}</span>
-            </Button>
-          }
-        >
-          <div className="max-h-[92dvh] overflow-y-auto p-2 pt-10 scrollbar-thin sm:p-4 sm:pt-10">
-            <CartPanel
-              items={cart}
-              paymentMethod={paymentMethod}
-              orderSource={orderSource}
-              tableNumber={tableNumber}
-              customerName={customerName}
-              notes={notes}
-              isSubmitting={isSubmitting}
-              onPaymentChange={setPaymentMethod}
-              onOrderSourceChange={setOrderSource}
-              onTableNumberChange={setTableNumber}
-              onCustomerNameChange={setCustomerName}
-              onNotesChange={setNotes}
-              onUpdateQuantity={(id, amount) => setCart((current) => current.map((item) => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + amount) } : item))}
-              onRemove={(id) => setCart((current) => current.filter((item) => item.id !== id))}
-              onClear={() => setCart([])}
-              onCheckout={handleCheckout}
-            />
-          </div>
-        </MobileDrawer>
       </div>
     </AdminLayout>
   )

@@ -31,23 +31,6 @@ export async function saveOrders(orders: Order[]): Promise<Order[]> {
   return orders
 }
 
-export async function createOrder(order: Omit<Order, 'id'>): Promise<Order> {
-  if (import.meta.env.VITE_OFFLINE_MODE === 'true') {
-    const orders = readTenantStorage(localOrdersKey, mockOrders)
-    const created = { ...order, id: Math.max(0, ...orders.map((item) => item.id)) + 1 }
-    writeTenantStorage(localOrdersKey, [created, ...orders])
-    return created
-  }
-  const response = await apiFetch('/api/orders', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
-    body: JSON.stringify(order),
-  })
-  if (!response.ok) throw new Error(`failed_to_create_order:${response.status}`)
-  const data = await response.json()
-  return data.order
-}
-
 export async function createPublicOrder(order: Omit<Order, 'id'>, tenantId = 'default'): Promise<Order> {
   const response = await apiFetch(`/api/public/${encodeURIComponent(tenantId)}/orders`, {
     method: 'POST',

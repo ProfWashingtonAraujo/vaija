@@ -463,12 +463,12 @@ export function OrdersPage() {
                   Mesa
                   <Input value={orderForm.tableNumber} onChange={(event) => setOrderForm((current) => ({ ...current, tableNumber: event.target.value }))} placeholder="Ex: 12" />
                 </label>
-              ) : (selected.source ?? 'Online') === 'Online' ? (
+              ) : (
                 <label className="grid gap-2 text-sm font-semibold text-slate-700 md:col-span-2">
                   Endereço
                   <Input value={orderForm.address} onChange={(event) => setOrderForm((current) => ({ ...current, address: event.target.value }))} placeholder="Rua, número e complemento" />
                 </label>
-              ) : null}
+              )}
               <label className="grid gap-2 text-sm font-semibold text-slate-700">
                 Pagamento
                 <select value={orderForm.payment} onChange={(event) => setOrderForm((current) => ({ ...current, payment: event.target.value as Order['payment'] }))} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
@@ -502,7 +502,7 @@ export function OrdersPage() {
                 </div>
                 <div className="mt-3 space-y-2 rounded-[24px] border border-orange-100 bg-orange-50/40 p-4 text-sm text-slate-600">
                   <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(orderItemsSubtotal)}</span></div>
-                  {editDeliveryFee > 0 ? <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{formatCurrency(editDeliveryFee)}</span></div> : null}
+                  <div className="flex justify-between"><span>{(selected.source ?? 'Online') === 'Mesa' ? 'Taxa de mesa' : 'Taxa de entrega'}</span><span className="font-mono">{formatCurrency(editDeliveryFee)}</span></div>
                   <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(editTotal)}</span></div>
                 </div>
               </div>

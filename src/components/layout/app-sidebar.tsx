@@ -1,4 +1,4 @@
-import { Boxes, ChartNoAxesColumn, Cog, ConciergeBell, CreditCard, LayoutDashboard, LifeBuoy, LogOut, MenuSquare, Plus, Rocket, ShoppingBag, UserCog } from 'lucide-react'
+import { Boxes, ChartNoAxesColumn, Cog, CreditCard, LayoutDashboard, LifeBuoy, LogOut, MenuSquare, Plus, Rocket, ShoppingBag, UserCog } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { restaurant } from '@/data/mock-restaurant'
@@ -11,7 +11,6 @@ import { getTenantForUser, tenantsUpdatedEvent, type Tenant } from '@/lib/tenant
 
 const links = [
   { to: '/dashboard', label: 'Painel Geral', icon: LayoutDashboard },
-  { to: '/waiter', label: 'Atendimento', icon: ConciergeBell },
   { to: '/orders', label: 'Pedidos', icon: ShoppingBag },
   { to: '/pos', label: 'PDV', icon: CreditCard },
   { to: '/menu', label: 'Cardápio', icon: MenuSquare },
@@ -23,8 +22,8 @@ const links = [
 
 const operatorLinks = [
   { to: '/operator', label: 'Área do Operador', icon: UserCog },
-  { to: '/waiter', label: 'Novo atendimento', icon: ConciergeBell },
   { to: '/orders', label: 'Pedidos', icon: ShoppingBag },
+  { to: '/pos', label: 'PDV', icon: CreditCard },
 ]
 
 export function AppSidebar() {
@@ -34,7 +33,7 @@ export function AppSidebar() {
   const [tenant, setTenant] = useState(() => getTenantForUser(user))
   const currentPlan = tenant.plan
   const visibleLinks = user?.isPlatformAdmin ? links.filter((link) => link.to === '/activation') : (user?.roleKey === 'operator' ? operatorLinks : links).filter((link) => link.to !== '/activation' && canAccessPath(currentPlan, link.to))
-  const canCreatePosOrder = canAccessPath(currentPlan, '/waiter')
+  const canCreatePosOrder = canAccessPath(currentPlan, '/pos')
 
   useEffect(() => {
     const updateSettings = (event: Event) => {
@@ -70,7 +69,7 @@ export function AppSidebar() {
       </div>
 
       {canCreatePosOrder && !user?.isPlatformAdmin ? (
-        <Button onClick={() => navigate('/waiter')} className="mt-4 w-full justify-center gap-2 rounded-[22px] shadow-[0_14px_30px_rgba(255,107,0,0.22)]">
+        <Button onClick={() => navigate('/pos')} className="mt-4 w-full justify-center gap-2 rounded-[22px] shadow-[0_14px_30px_rgba(255,107,0,0.22)]">
           <Plus className="h-4 w-4" />
           Novo Pedido
         </Button>

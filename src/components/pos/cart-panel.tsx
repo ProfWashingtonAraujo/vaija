@@ -6,11 +6,14 @@ import { PaymentMethodSelector } from '@/components/pos/payment-method-selector'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { cn } from '@/lib/utils'
-import type { OrderSource } from '@/data/mock-orders'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
-export function CartPanel({ items, paymentMethod, orderSource, tableNumber, customerName, notes, isSubmitting, onPaymentChange, onOrderSourceChange, onTableNumberChange, onCustomerNameChange, onNotesChange, onUpdateQuantity, onRemove, onClear, onCheckout }: { items: CartItem[]; paymentMethod: string; orderSource: Exclude<OrderSource, 'Online'>; tableNumber: string; customerName: string; notes: string; isSubmitting?: boolean; onPaymentChange: (value: 'Pix' | 'Cartão' | 'Dinheiro') => void; onOrderSourceChange: (value: Exclude<OrderSource, 'Online'>) => void; onTableNumberChange: (value: string) => void; onCustomerNameChange: (value: string) => void; onNotesChange: (value: string) => void; onUpdateQuantity: (id: string, amount: number) => void; onRemove: (id: string) => void; onClear: () => void; onCheckout: () => void }) {
+type OrderSource = 'Mesa' | 'Online'
+
+export function CartPanel({ items, paymentMethod, orderSource, tableNumber, customerName, customerPhone, notes, onPaymentChange, onOrderSourceChange, onTableNumberChange, onCustomerNameChange, onCustomerPhoneChange, onNotesChange, onUpdateQuantity, onRemove, onClear, onCheckout }: { items: CartItem[]; paymentMethod: string; orderSource: OrderSource; tableNumber: string; customerName: string; customerPhone: string; notes: string; onPaymentChange: (value: 'Pix' | 'Cartão' | 'Dinheiro') => void; onOrderSourceChange: (value: OrderSource) => void; onTableNumberChange: (value: string) => void; onCustomerNameChange: (value: string) => void; onCustomerPhoneChange: (value: string) => void; onNotesChange: (value: string) => void; onUpdateQuantity: (id: string, amount: number) => void; onRemove: (id: string) => void; onClear: () => void; onCheckout: () => void }) {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const delivery = items.length && orderSource === 'Online' ? 8 : 0
+  const total = subtotal + delivery
 
   return (
     <div className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
@@ -49,12 +52,13 @@ export function CartPanel({ items, paymentMethod, orderSource, tableNumber, cust
       </div>
       <div className="mt-6 space-y-3 rounded-[24px] border border-orange-100 bg-white/80 p-4 text-sm text-slate-600 shadow-[0_10px_24px_rgba(255,107,0,0.05)]">
         <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
-        <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
+        <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{formatCurrency(delivery)}</span></div>
+        <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(total)}</span></div>
       </div>
       <div className="mt-6">
         <p className="mb-3 text-sm font-semibold text-slate-900">Tipo do pedido</p>
         <div className="grid grid-cols-2 gap-2 rounded-[24px] border border-orange-100 bg-white/80 p-2">
-          {(['Mesa', 'Balcão'] as const).map((source) => (
+          {(['Mesa', 'Online'] as const).map((source) => (
             <button key={source} onClick={() => onOrderSourceChange(source)} className={cn('rounded-2xl border px-3 py-2 text-sm font-semibold transition-all duration-200', orderSource === source ? 'border-orange-300 bg-orange-50 text-orange-700 shadow-[0_8px_18px_rgba(255,107,0,0.08)]' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-200')}>
               {source}
             </button>
@@ -64,12 +68,13 @@ export function CartPanel({ items, paymentMethod, orderSource, tableNumber, cust
           <div className="mt-3 space-y-3">
             <Input value={tableNumber} onChange={(event) => onTableNumberChange(event.target.value)} placeholder="Número da mesa" />
             <div className="grid grid-cols-4 gap-2">
-              {Array.from({ length: 12 }, (_, index) => String(index + 1)).map((number) => <button key={number} type="button" onClick={() => onTableNumberChange(number)} className={cn('rounded-2xl border px-3 py-2 text-sm font-semibold transition', tableNumber === number ? 'border-orange-300 bg-orange-50 text-orange-700' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-300 hover:bg-orange-50')}>{number}</button>)}
+              {['1', '2', '3', '4'].map((number) => <button key={number} type="button" onClick={() => onTableNumberChange(number)} className="rounded-2xl border border-orange-100 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-orange-300 hover:bg-orange-50">Mesa {number}</button>)}
             </div>
           </div>
         ) : (
           <div className="mt-3 grid gap-3">
-            <Input value={customerName} onChange={(event) => onCustomerNameChange(event.target.value)} placeholder="Nome ou identificação (opcional)" />
+            <Input value={customerName} onChange={(event) => onCustomerNameChange(event.target.value)} placeholder="Nome do cliente" />
+            <Input value={customerPhone} onChange={(event) => onCustomerPhoneChange(event.target.value)} placeholder="Telefone do cliente" inputMode="tel" />
           </div>
         )}
       </div>
@@ -81,7 +86,7 @@ export function CartPanel({ items, paymentMethod, orderSource, tableNumber, cust
         <p className="mb-3 text-sm font-semibold text-slate-900">Método de pagamento</p>
         <PaymentMethodSelector value={paymentMethod} onChange={onPaymentChange} />
       </div>
-      <Button className="mt-6 w-full shadow-[0_14px_30px_rgba(255,107,0,0.22)]" disabled={isSubmitting || items.length === 0} onClick={onCheckout}>{isSubmitting ? 'Enviando pedido...' : 'Enviar para produção'}</Button>
+      <Button className="mt-6 w-full shadow-[0_14px_30px_rgba(255,107,0,0.22)]" onClick={onCheckout}>Finalizar Pedido</Button>
     </div>
   )
 }
