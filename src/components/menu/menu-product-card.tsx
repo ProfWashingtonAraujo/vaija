@@ -39,7 +39,7 @@ export function MenuProductCard({ product, dragging, dropTarget, onToggle, onEdi
         dropTarget ? 'border-orange-300 shadow-[0_18px_40px_rgba(255,107,0,0.14)]' : '',
       )}
     >
-      <img src={product.image} alt={product.name} className="h-36 w-full object-cover sm:h-40" />
+      <img src={product.image} alt={product.name} className="h-32 w-full object-cover sm:h-36" />
       <div className="p-4">
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0 truncate rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{product.category}</span>
