@@ -24,7 +24,7 @@ export function AppRoutes() {
   const { user, isAuthenticated } = useAuth()
 
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background text-sm font-medium text-slate-500">Carregando Vaija...</div>}>
+    <Suspense fallback={null}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/comprar" element={<PlanCheckoutPage />} />
