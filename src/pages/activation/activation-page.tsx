@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { SaasLayout } from '@/components/layout/saas-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { AccessChart } from '@/components/saas/access-chart'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { planLabels, type PlanKey } from '@/lib/plan-access'
 import { createTenant, deleteTenant, readTenants, updateTenant, type Tenant, type TenantStatus } from '@/lib/tenants-api'
@@ -847,6 +848,11 @@ export function ActivationPage() {
           <button type="button" onClick={() => navigate('/saas/financeiro')} className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 text-left transition hover:border-orange-300 hover:bg-orange-50"><span className="font-semibold text-slate-900">Ver financeiro</span><span className="mt-1 block text-sm text-slate-500">MRR e receita por plano.</span></button>
           <button type="button" onClick={() => navigate('/saas/suporte')} className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 text-left transition hover:border-orange-300 hover:bg-orange-50"><span className="font-semibold text-slate-900">Abrir suporte</span><span className="mt-1 block text-sm text-slate-500">Tickets e prioridades dos clientes.</span></button>
         </div>
+      </section>
+
+      <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)] xl:col-span-2">
+        <div className="flex items-center gap-3"><KeyRound className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Acessos por cliente</h2><span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{activeUsers.length} usuário(s)</span></div>
+        <AccessChart tenants={clientTenants} users={activeUsers} />
       </section>
 
       <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)] xl:col-span-2">
