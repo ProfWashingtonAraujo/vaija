@@ -1,91 +1,135 @@
-import { Bell, Menu } from 'lucide-react'
+import { Bell, Menu, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
 import { UserAvatar } from '@/components/shared/user-avatar'
-import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
 import { MobileDrawer } from '@/components/shared/mobile-drawer'
 import { AppSidebar } from '@/components/layout/app-sidebar'
+import { SidebarProvider } from '@/components/layout/sidebar-context'
 import { cashRegisterUpdatedEvent, closeCashRegister, openCashRegister, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
+
+const routeLabels: Record<string, string> = {
+  '/dashboard': 'Painel Geral',
+  '/orders': 'Pedidos',
+  '/pos': 'PDV / Caixa',
+  '/menu': 'Cardápio',
+  '/inventory': 'Estoque',
+  '/reports': 'Relatórios',
+  '/settings': 'Configurações',
+  '/users': 'Equipe',
+  '/saas': 'Plataforma',
+  '/activation': 'Plataforma',
+  '/operator': 'Área do Operador',
+}
 
 export function AppHeader({ title, description }: { title: string; description: string }) {
   const { user } = useAuth()
+  const location = useLocation()
   const [cashRegister, setCashRegister] = useState(() => readCashRegister())
   const canManageCashRegister = user?.roleKey === 'admin' || user?.roleKey === 'manager'
+  const pageLabel = routeLabels[location.pathname] ?? title
 
   useEffect(() => {
     const updateCashRegister = (event: Event) => {
       setCashRegister((event as CustomEvent<CashRegisterState>).detail ?? readCashRegister())
     }
-
     window.addEventListener(cashRegisterUpdatedEvent, updateCashRegister)
     return () => window.removeEventListener(cashRegisterUpdatedEvent, updateCashRegister)
   }, [])
 
   const toggleCashRegister = () => {
-    if (!user) {
-      return
-    }
-
+    if (!user) return
     if (cashRegister.isOpen) {
       setCashRegister(closeCashRegister(user.name))
       toast.success('Caixa fechado com sucesso.')
       return
     }
-
     setCashRegister(openCashRegister(user.name))
     toast.success('Caixa aberto com sucesso.')
   }
 
   return (
-    <header className="mb-6 flex flex-col gap-4 rounded-[30px] border border-orange-100 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.06)] sm:p-5 xl:flex-row xl:items-center xl:justify-between">
-      <div className="flex items-start gap-3 lg:hidden">
-        <MobileDrawer trigger={<Button variant="outline" className="h-11 w-11 px-0"><Menu className="h-5 w-5" /></Button>}>
-          <div className="h-full p-4"><AppSidebar /></div>
-        </MobileDrawer>
-        <div className="min-w-0">
-          <h1 className="font-heading text-xl font-bold text-slate-900 sm:text-2xl">{title}</h1>
-          <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{description}</p>
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-orange-100/60 bg-white/80 px-4 backdrop-blur-sm sm:px-6">
+      {/* Left: mobile menu + breadcrumb */}
+      <div className="flex items-center gap-3">
+        {/* Mobile menu trigger */}
+        <div className="lg:hidden">
+          <MobileDrawer
+            trigger={
+              <button
+                type="button"
+                aria-label="Abrir menu"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-orange-200 bg-white text-slate-600 shadow-sm transition hover:border-orange-300 hover:text-orange-600"
+              >
+                <Menu className="h-4 w-4" />
+              </button>
+            }
+          >
+            <SidebarProvider>
+              <div className="h-full">
+                <AppSidebar />
+              </div>
+            </SidebarProvider>
+          </MobileDrawer>
         </div>
+
+        {/* Breadcrumb */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
+          <span className="font-medium text-slate-400">Vaija</span>
+          <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
+          <span className="font-semibold text-slate-800">{pageLabel}</span>
+        </nav>
       </div>
 
-      <div className="hidden xl:block">
-        <h1 className="font-heading text-3xl font-bold text-slate-900">{title}</h1>
-        <p className="mt-2 text-sm text-slate-500">{description}</p>
-      </div>
-
-      <div className="flex flex-1 flex-wrap items-center gap-2 md:gap-2.5 xl:flex-nowrap xl:justify-end">
-        <div className="hidden min-w-0 lg:block lg:flex-1 lg:basis-72 lg:max-w-xs xl:max-w-sm">
-          <SearchInput placeholder="Busca global" />
-        </div>
-        <div className="flex shrink-0 items-center gap-2 rounded-[26px] border border-orange-100 bg-gradient-to-r from-[#fffaf5] to-white p-1 shadow-[0_8px_24px_rgba(255,107,0,0.08)] sm:p-1.5">
-          {canManageCashRegister ? (
-            <>
-              <span className="hidden rounded-[18px] border border-orange-100 bg-white/90 px-3 py-2 text-[13px] font-semibold text-slate-600 lg:inline-flex">
-                Caixa {cashRegister.isOpen ? 'aberto' : 'fechado'}
-              </span>
-              <Button type="button" variant={cashRegister.isOpen ? 'outline' : 'default'} onClick={toggleCashRegister} className="h-10 rounded-[18px] px-3 text-[13px] shadow-none xl:px-4">
-                {cashRegister.isOpen ? 'Fechar caixa' : 'Abrir caixa'}
-              </Button>
-            </>
-          ) : null}
-          <Button variant="outline" className="hidden h-10 rounded-[18px] border-orange-200 bg-white/90 px-3 text-[13px] shadow-none lg:inline-flex xl:px-4">Últimos 7 dias</Button>
-          <Button variant="outline" className="hidden h-10 rounded-[18px] border-orange-200 bg-white/90 px-3 text-[13px] shadow-none lg:inline-flex xl:px-4">Exportar</Button>
-          <button className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[18px] border border-orange-200 bg-orange-50 text-orange-600 transition-colors hover:border-orange-300 hover:bg-orange-100">
-            <Bell className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 rounded-[24px] border border-orange-100 bg-[#fffaf5] px-2 py-1.5 shadow-[0_8px_24px_rgba(255,107,0,0.06)] sm:px-2.5 sm:py-2 xl:px-3">
-          <div className="scale-90 xl:scale-100">
-            <UserAvatar name={user?.name ?? 'Usuário'} />
+      {/* Right: actions + user */}
+      <div className="flex items-center gap-2">
+        {/* Cash register */}
+        {canManageCashRegister && (
+          <div className="hidden items-center gap-2 sm:flex">
+            <span className="rounded-lg border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
+              Caixa {cashRegister.isOpen ? 'aberto' : 'fechado'}
+            </span>
+            <Button
+              type="button"
+              variant={cashRegister.isOpen ? 'outline' : 'default'}
+              onClick={toggleCashRegister}
+              className="h-8 rounded-lg px-3 text-xs shadow-none"
+            >
+              {cashRegister.isOpen ? 'Fechar' : 'Abrir caixa'}
+            </Button>
           </div>
-          <div className="hidden min-w-0 text-left xl:block">
-            <p className="text-sm font-semibold leading-tight text-slate-900">{user?.role ?? 'Perfil'}</p>
-            <p className="text-xs leading-tight text-slate-500">{user?.name ?? 'Usuário'}</p>
+        )}
+
+        {/* Notifications */}
+        <button
+          type="button"
+          aria-label="Notificações"
+          className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-orange-100 bg-white text-slate-500 transition hover:border-orange-300 hover:text-orange-600"
+        >
+          <Bell className="h-4 w-4" />
+          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-white" />
+        </button>
+
+        {/* User chip */}
+        <div className="flex items-center gap-2 rounded-xl border border-orange-100 bg-[#fffaf5] py-1 pl-1 pr-3 shadow-sm">
+          <UserAvatar name={user?.name ?? 'Usuário'} />
+          <div className="hidden text-left lg:block">
+            <p className="text-xs font-semibold leading-tight text-slate-900">{user?.name ?? 'Usuário'}</p>
+            <p className="text-[11px] leading-tight text-slate-400">{user?.role ?? 'Perfil'}</p>
           </div>
         </div>
       </div>
     </header>
+  )
+}
+
+export function PageTitle({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="px-4 py-5 sm:px-6">
+      <h1 className="font-heading text-2xl font-bold text-slate-900 sm:text-3xl">{title}</h1>
+      {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+    </div>
   )
 }

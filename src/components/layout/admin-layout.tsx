@@ -1,23 +1,47 @@
 import type { PropsWithChildren } from 'react'
 import { motion } from 'framer-motion'
 import { AppSidebar } from '@/components/layout/app-sidebar'
-import { AppHeader } from '@/components/layout/app-header'
-import { PageContainer } from '@/components/layout/page-container'
+import { AppHeader, PageTitle } from '@/components/layout/app-header'
+import { SidebarProvider, useSidebar } from '@/components/layout/sidebar-context'
+import { cn } from '@/lib/utils'
 
-export function AdminLayout({ title, description, children }: PropsWithChildren<{ title: string; description: string }>) {
+function LayoutInner({ title, description, children }: PropsWithChildren<{ title: string; description?: string }>) {
+  const { collapsed } = useSidebar()
+
   return (
-    <div className="min-h-screen bg-background py-3 sm:py-4 lg:py-6">
-      <PageContainer>
-        <div className="grid gap-6 lg:grid-cols-[272px_minmax(0,1fr)]">
-          <div className="hidden lg:block">
-            <AppSidebar />
-          </div>
-          <motion.main initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="min-w-0">
-            <AppHeader title={title} description={description} />
-            {children}
-          </motion.main>
-        </div>
-      </PageContainer>
+    <div className="flex h-screen overflow-hidden bg-[#fafaf9]">
+      {/* Sidebar — desktop only */}
+      <div className={cn('hidden flex-shrink-0 transition-all duration-300 lg:flex', collapsed ? 'w-[72px]' : 'w-72')}>
+        <AppSidebar />
+      </div>
+
+      {/* Main content area */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <AppHeader title={title} description={description ?? ''} />
+
+        <motion.main
+          key={title}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="flex-1 overflow-y-auto scrollbar-thin"
+        >
+          <PageTitle title={title} description={description} />
+          <div className="px-4 pb-8 sm:px-6">{children}</div>
+        </motion.main>
+      </div>
     </div>
+  )
+}
+
+export function AdminLayout({
+  title,
+  description,
+  children,
+}: PropsWithChildren<{ title: string; description?: string }>) {
+  return (
+    <SidebarProvider>
+      <LayoutInner title={title} description={description}>{children}</LayoutInner>
+    </SidebarProvider>
   )
 }
