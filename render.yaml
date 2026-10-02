@@ -1,15 +1,15 @@
 services:
   - type: web
     name: vaija-api
-    runtime: go
-    rootDir: backend
+    runtime: python
+    rootDir: services/api
     plan: free
-    buildCommand: mkdir -p bin && go build -trimpath -o bin/api ./cmd/api
-    startCommand: ./bin/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
-      - key: GO_VERSION
-        value: 1.23.6
+      - key: PYTHON_VERSION
+        value: 3.12.8
       - key: APP_ENV
         value: production
       - key: SEED_DEMO_DATA

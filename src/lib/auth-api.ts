@@ -45,7 +45,8 @@ const defaultUsers: StoredUser[] = [
     role: 'Administrador',
     roleKey: 'admin',
     shift: 'Administração - Ativo',
-    email: 'admin@taperaspizzaria.com.br',
+    // e-mail principal usado no seed do banco Go
+    email: 'contato@taperaspizzaria.com.br',
     tenantId: 'default',
     restaurantId: 'taperas-pizzaria',
     permissions: rolePermissions.admin,
@@ -53,6 +54,18 @@ const defaultUsers: StoredUser[] = [
   },
   {
     id: 3,
+    name: 'Admin Taperas (alt)',
+    role: 'Administrador',
+    roleKey: 'admin',
+    shift: 'Administração - Ativo',
+    email: 'admin@taperaspizzaria.com.br',
+    tenantId: 'default',
+    restaurantId: 'taperas-pizzaria',
+    permissions: rolePermissions.admin,
+    password: '123456',
+  },
+  {
+    id: 4,
     name: 'Gerente Teste',
     role: 'Gerente',
     roleKey: 'manager',
@@ -64,7 +77,7 @@ const defaultUsers: StoredUser[] = [
     password: '123456',
   },
   {
-    id: 4,
+    id: 5,
     name: 'Operador Teste',
     role: 'Operador',
     roleKey: 'operator',

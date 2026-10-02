@@ -7,5 +7,5 @@ Start-Process -FilePath $npmPath -ArgumentList 'run', 'dev' -WorkingDirectory $w
 
 "Local stack started:"
 "- Postgres: http://localhost:5434"
-"- Backend: http://localhost:3001/api/health"
+"- Backend: http://localhost:3002/api/health"
 "- Frontend: http://localhost:5173"

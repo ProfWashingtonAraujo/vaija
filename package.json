@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:server": "go -C backend run ./cmd/api",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:server\"",
+    "dev:api": "uvicorn main:app --reload --port 3002 --app-dir services/api",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:api\"",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "server": "go -C backend run ./cmd/api",
+    "server": "uvicorn main:app --port 3002 --app-dir services/api",
     "preview": "vite preview"
   },
   "dependencies": {

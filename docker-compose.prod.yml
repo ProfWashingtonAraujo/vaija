@@ -25,13 +25,13 @@ services:
       - redis_prod_data:/data
 
   api:
-    build: ./backend
+    build: ./services/api
     container_name: vaija-api-prod
     restart: always
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-vaija}
       REDIS_URL: redis://redis:6379
-      BACKEND_PORT: 3001
+      BACKEND_PORT: 3002
       APP_ENV: production
       SEED_DEMO_DATA: "false"
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in your environment}
@@ -44,7 +44,7 @@ services:
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       N8N_ORDER_STATUS_WEBHOOK_URL: ${N8N_ORDER_STATUS_WEBHOOK_URL:-}
     ports:
-      - "${BACKEND_PORT:-3001}:3001"
+      - "${BACKEND_PORT:-3002}:3002"
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,7 +61,7 @@ services:
       MERCADO_PAGO_PUBLIC_KEY: ${MERCADO_PAGO_PUBLIC_KEY:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      BACKEND_INTERNAL_URL: http://api:3001
+      BACKEND_INTERNAL_URL: http://api:3002
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in your environment}
       CORS_ORIGINS: ${FRONTEND_ORIGIN}
     ports:

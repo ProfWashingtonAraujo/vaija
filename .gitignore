@@ -10,8 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-backend/bin
-backend/coverage.out
+__pycache__/
+*.pyc
 .env
 *.local
 

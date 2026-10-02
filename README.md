@@ -31,18 +31,17 @@ If you are developing a production application, we recommend enabling type-aware
 
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
 
-## Backend Go
+## Backend Python (FastAPI)
 
-O backend principal fica em `backend/` e usa Go com PostgreSQL e Redis para gerenciar autenticacao, pedidos, usuarios, produtos, categorias e impressao.
+O backend principal fica em `services/api/` e usa Python/FastAPI com PostgreSQL e Redis para gerenciar autenticacao, pedidos, usuarios, produtos, categorias, plataforma SaaS e impressao. Ele substituiu o backend em Go (o codigo antigo continua no historico do git).
 
 Estrutura atual:
 
-- `backend/cmd/api/main.go`: bootstrap do servidor
-- `backend/internal/app/server.go`: rotas e handlers HTTP
-- `backend/internal/app/store.go`: schema, seed e acesso ao PostgreSQL
-- `backend/internal/app/auth.go`: cookies, JWT e middleware de autenticacao
-- `backend/internal/app/integrations.go`: Redis, impressao e webhook n8n
-- `server/`: backend Node.js legado, mantido temporariamente para referencia
+- `services/api/main.py`: bootstrap do servidor, CORS e routers
+- `services/api/routers/`: rotas HTTP (`auth`, `catalog`, `orders`, `users`, `platform`, `printer`)
+- `services/api/models.py` e `schemas.py`: tabelas SQLAlchemy e contratos Pydantic
+- `services/api/auth.py`: cookies, JWT e dependencias de autenticacao
+- `services/api/user_utils.py`: papeis, permissoes e categorias por tipo de negocio
 
 Modulos atuais:
 
@@ -53,8 +52,9 @@ Modulos atuais:
 Scripts:
 
 - `npm run dev` inicia o frontend
-- `npm run dev:server` inicia o backend Go em `http://localhost:3001` (requer Go local)
-- `npm run server` inicia o backend Go sem Vite
+- `npm run dev:api` inicia o backend FastAPI em `http://localhost:3002` (requer dependencias de `services/api/requirements.txt`)
+- `npm run dev:all` inicia frontend e backend juntos
+- `npm run server` inicia o backend FastAPI sem reload
 - `./scripts/start-local.ps1` sobe banco, backend e frontend
 - `./scripts/stop-local.ps1` derruba a stack local
 
@@ -94,7 +94,7 @@ Endpoints:
 - `GET /api/printer/status`
 - `POST /api/printer/print-order`
 
-Durante o desenvolvimento, o Vite encaminha `/api` para `http://localhost:3001`.
+Durante o desenvolvimento, o Vite encaminha `/api` para `http://localhost:3002`.
 
 Variaveis do backend:
 
@@ -115,9 +115,7 @@ Variaveis do backend:
 - `PRINT_COPIES`: numero de vias impressas pelo worker
 - `VITE_OFFLINE_MODE`: use `true` apenas para demonstracao sem backend
 
-O backend Go cria as tabelas automaticamente. Dados de demonstracao so sao criados com `SEED_DEMO_DATA=true`.
-
-Schema SQL legado de referencia: `server/schema.sql`
+O backend cria as tabelas automaticamente. Dados de demonstracao so sao criados com `SEED_DEMO_DATA=true`.
 
 Bootstrap local do banco:
 
@@ -172,10 +170,7 @@ Existe um workflow de exemplo em `n8n/order-status-whatsapp.json` para enviar me
 Arquivos relacionados:
 
 - `.env.example`
-- `backend/internal/app/server.go`
-- `backend/internal/app/store.go`
-- `backend/internal/app/auth.go`
-- `backend/internal/app/integrations.go`
+- `services/api/routers/orders.py`
 - `n8n/order-status-whatsapp.json`
 
 Como usar:
