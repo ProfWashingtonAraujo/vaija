@@ -9,4 +9,5 @@ COPY . .
 
 EXPOSE 3002
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3002"]
+# Render injeta PORT; localmente cai em 3002.
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-3002}"]
