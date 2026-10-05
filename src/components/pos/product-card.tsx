@@ -2,7 +2,7 @@ import type { Product } from '@/data/mock-products'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/formatters'
 
-export function ProductCard({ product, onAdd }: { product: Product; onAdd: (size?: 'P' | 'M' | 'G', price?: number) => void }) {
+export function ProductCard({ product, onAdd, onHalf }: { product: Product; onAdd: (size?: 'P' | 'M' | 'G', price?: number) => void; onHalf?: () => void }) {
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden rounded-[28px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition hover:-translate-y-1 hover:border-orange-300 hover:shadow-[0_18px_40px_rgba(255,107,0,0.1)]">
       <img src={product.image} alt={product.name} className="h-40 w-full object-cover sm:h-44" />
@@ -18,6 +18,9 @@ export function ProductCard({ product, onAdd }: { product: Product; onAdd: (size
               </button>
             ))}
           </div>
+        ) : null}
+        {onHalf && product.sizePrices?.length ? (
+          <button type="button" onClick={onHalf} className="mt-2 w-full rounded-2xl border border-dashed border-orange-300 bg-orange-50/60 px-3 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-100">Meio a meio</button>
         ) : null}
         <div className="mt-auto flex items-center justify-between gap-3 pt-4">
           <p className="truncate font-mono text-lg font-bold text-slate-900">{formatCurrency(product.price)}</p>

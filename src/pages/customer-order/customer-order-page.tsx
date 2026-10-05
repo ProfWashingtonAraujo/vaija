@@ -9,6 +9,8 @@ import { CategoryTabs } from '@/components/pos/category-tabs'
 import { formatCurrency } from '@/lib/formatters'
 import { fetchPublicCategories, fetchPublicProducts } from '@/lib/catalog-api'
 import type { Product } from '@/data/mock-products'
+import { HalfAndHalfDialog } from '@/components/shared/half-and-half-dialog'
+import { isHalfEligible } from '@/lib/half-and-half'
 import { readSettings } from '@/lib/settings'
 import { cashRegisterUpdatedEvent, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
 
@@ -58,6 +60,8 @@ export function CustomerOrderPage() {
   const tenantId = routeTenantId ?? 'default'
   const orderPath = routeTenantId ? `/pedido/${encodeURIComponent(tenantId)}` : '/pedido'
   const [products, setProducts] = useState<Product[]>([])
+  const [halfOpen, setHalfOpen] = useState(false)
+  const [halfProduct, setHalfProduct] = useState<Product | undefined>()
   const [category, setCategory] = useState('Todos')
   const [query, setQuery] = useState('')
   const [cart, setCart] = useState<CartItem[]>(() => readStoredCart(tenantId))
@@ -185,6 +189,23 @@ export function CustomerOrderPage() {
     toast.success(`${itemName} adicionado ao pedido.`)
   }
 
+  const addCustomItem = (item: { id: string; name: string; price: number }) => {
+    if (!cashRegister.isOpen) {
+      toast.error('No momento não estamos recebendo pedidos online.')
+      return
+    }
+
+    setCart((current) => {
+      const existing = current.find((cartItem) => cartItem.id === item.id)
+      if (existing) {
+        return current.map((cartItem) => cartItem.id === item.id ? { ...cartItem, quantity: cartItem.quantity + 1 } : cartItem)
+      }
+
+      return [...current, { ...item, quantity: 1 }]
+    })
+    toast.success(`${item.name} adicionado ao pedido.`)
+  }
+
   const goToCheckout = () => {
     if (!cashRegister.isOpen) {
       toast.error('No momento não estamos recebendo pedidos online.')
@@ -273,6 +294,9 @@ export function CustomerOrderPage() {
                       ))}
                     </div>
                   ) : null}
+                  {isHalfEligible(product) ? (
+                    <button type="button" onClick={() => { setHalfProduct(product); setHalfOpen(true) }} disabled={!cashRegister.isOpen} className="mt-2 w-full rounded-2xl border border-dashed border-orange-300 bg-orange-50/60 px-3 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-100">Meio a meio</button>
+                  ) : null}
                   <div className="mt-5 flex items-center justify-between gap-3"><p className="font-mono text-lg font-bold">{formatCurrency(product.price)}</p><Button onClick={() => addToCart(product)} disabled={!cashRegister.isOpen}>Adicionar</Button></div>
                 </div>
               </article>
@@ -291,6 +315,7 @@ export function CustomerOrderPage() {
       ) : null}
 
       <div className="mx-auto hidden max-w-6xl px-4 pb-10 text-sm text-slate-500 sm:px-6 lg:block lg:px-8"><Link to="/">Voltar para o site</Link></div>
+      <HalfAndHalfDialog open={halfOpen} onOpenChange={setHalfOpen} products={products} initialProduct={halfProduct} onConfirm={addCustomItem} />
     </main>
   )
 }

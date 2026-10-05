@@ -8,6 +8,7 @@ import { CategoryTabs } from '@/components/pos/category-tabs'
 import { posCategories, products as initialProducts, type Product } from '@/data/mock-products'
 import { ProductCard } from '@/components/pos/product-card'
 import { CartPanel } from '@/components/pos/cart-panel'
+import { HalfAndHalfDialog } from '@/components/shared/half-and-half-dialog'
 import { Button } from '@/components/ui/button'
 import { MobileDrawer } from '@/components/shared/mobile-drawer'
 import { fetchOrders, saveOrders } from '@/lib/orders-api'
@@ -32,6 +33,8 @@ export function PosPage() {
   const [notes, setNotes] = useState('')
   const [cart, setCart] = useState<CartItem[]>([])
   const [currentPage, setCurrentPage] = useState(1)
+  const [halfOpen, setHalfOpen] = useState(false)
+  const [halfProduct, setHalfProduct] = useState<Product | undefined>()
 
   useEffect(() => {
     void Promise.all([fetchProducts(), fetchCategories()])
@@ -80,6 +83,17 @@ export function PosPage() {
       }
       return [...current, { id: itemId, name: itemName, price: itemPrice, quantity: 1 }]
     })
+  }
+
+  const addCustomItem = (item: { id: string; name: string; price: number }) => {
+    setCart((current) => {
+      const existing = current.find((cartItem) => cartItem.id === item.id)
+      if (existing) {
+        return current.map((cartItem) => cartItem.id === item.id ? { ...cartItem, quantity: cartItem.quantity + 1 } : cartItem)
+      }
+      return [...current, { ...item, quantity: 1 }]
+    })
+    toast.success(`${item.name} adicionado ao pedido.`)
   }
 
   const handleCheckout = async () => {
@@ -189,7 +203,7 @@ export function PosPage() {
             </div>
           </div>
           <div className="mt-6 grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {paginatedProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={(size, price) => addToCart(product, size, price)} />)}
+            {paginatedProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={(size, price) => addToCart(product, size, price)} onHalf={() => { setHalfProduct(product); setHalfOpen(true) }} />)}
             {paginatedProducts.length === 0 ? <div className="col-span-full rounded-[28px] border border-dashed border-orange-200 bg-orange-50/60 p-8 text-center text-sm font-semibold text-slate-500">Nenhum produto encontrado.</div> : null}
           </div>
         </div>
@@ -215,6 +229,7 @@ export function PosPage() {
           />
         </div>
       </div>
+      <HalfAndHalfDialog open={halfOpen} onOpenChange={setHalfOpen} products={products} initialProduct={halfProduct} onConfirm={addCustomItem} />
     </AdminLayout>
   )
 }
