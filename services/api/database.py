@@ -46,9 +46,11 @@ async def get_db():
 
 async def init_db():
     """Cria tabelas que ainda não existem (idempotente)."""
-    from models import User, AuthSession, Category, Product, Order, CashRegister  # noqa: F401
+    from models import User, AuthSession, Category, Product, IngredientStock, Order, CashRegister  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # create_all não altera tabelas existentes: colunas novas entram aqui.
+        await conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS ingredients JSONB NOT NULL DEFAULT '[]'::jsonb"))
         # No Supabase, tabelas do schema public ficam expostas pela Data API (anon key).
         # RLS ligado e sem policies bloqueia esse acesso; a conexão direta do backend
         # (dono das tabelas) não é afetada.

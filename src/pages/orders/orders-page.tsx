@@ -8,11 +8,10 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/formatters'
 import { orders as mockOrders, type Order, type OrderStatus } from '@/data/mock-orders'
-import { fetchProducts, saveProducts } from '@/lib/catalog-api'
+import { fetchProducts } from '@/lib/catalog-api'
 import { products as initialProducts, type Product } from '@/data/mock-products'
 import { fetchOrders, saveOrdersKeepingNew } from '@/lib/orders-api'
 import { usePolling } from '@/lib/use-polling'
-import { fetchInventory, saveInventory, type InventoryItem } from '@/lib/inventory-api'
 import { getTenantId } from '@/lib/tenant-storage'
 import { getPublicOrderTrackingUrl } from '@/lib/public-order-url'
 
@@ -74,34 +73,6 @@ function getWhatsappUrl(order: Order) {
   const message = encodeURIComponent(`Olá, ${order.customer}! Acompanhe o seu pedido #${order.id}: ${trackingUrl}`)
 
   return `https://wa.me/${phoneWithCountry}?text=${message}`
-}
-
-function normalizeName(value: string) {
-  return value.replace(/\s+\([PMG]\)$/i, '').trim().toLocaleLowerCase('pt-BR')
-}
-
-function parseOrderItem(item: string) {
-  const match = item.match(/^(\d+)x\s+(.+)$/)
-
-  return {
-    quantity: match ? Number(match[1]) : 1,
-    name: match ? match[2] : item,
-  }
-}
-
-function syncProductsWithInventory(nextProducts: Product[], inventoryItems: InventoryItem[]) {
-  return nextProducts.map((product) => {
-    const relatedItems = inventoryItems.filter((item) => item.linkedProductId === product.id || item.usedInProductIds?.includes(product.id))
-
-    if (relatedItems.length === 0) {
-      return product
-    }
-
-    return {
-      ...product,
-      available: !relatedItems.some((item) => item.quantity <= item.minQuantity),
-    }
-  })
 }
 
 export function OrdersPage() {
@@ -184,47 +155,7 @@ export function OrdersPage() {
       })
   }
 
-  const deductInventoryForOrder = async (order: Order) => {
-    const inventoryItems = await fetchInventory()
-    const productByName = new Map(products.map((product) => [normalizeName(product.name), product]))
-    const quantitiesByProductId = new Map<string, number>()
-
-    for (const item of order.items) {
-      const parsed = parseOrderItem(item)
-      const product = productByName.get(normalizeName(parsed.name))
-
-      if (product) {
-        quantitiesByProductId.set(product.id, (quantitiesByProductId.get(product.id) ?? 0) + parsed.quantity)
-      }
-    }
-
-    if (quantitiesByProductId.size === 0) {
-      return 0
-    }
-
-    let deductedItems = 0
-    const nextInventory = inventoryItems.map((item) => {
-      const relatedProductIds = [item.linkedProductId, ...(item.usedInProductIds ?? [])].filter(Boolean) as string[]
-      const deduction = relatedProductIds.reduce((sum, productId) => sum + (quantitiesByProductId.get(productId) ?? 0), 0)
-
-      if (deduction <= 0) {
-        return item
-      }
-
-      deductedItems += 1
-      return { ...item, quantity: Math.max(0, item.quantity - deduction) }
-    })
-
-    await saveInventory(nextInventory)
-
-    const nextProducts = syncProductsWithInventory(products, nextInventory)
-    setProducts(nextProducts)
-    await saveProducts(nextProducts)
-
-    return deductedItems
-  }
-
-  const handleAdvance = async () => {
+  const handleAdvance = () => {
     const nextStatus: OrderStatus =
       selected.status === 'Pendente'
         ? 'Em producao'
@@ -246,17 +177,6 @@ export function OrdersPage() {
     )
 
     persistOrders(nextOrders, updatedSelected)
-
-    if (selected.status !== 'Entregue' && nextStatus === 'Entregue') {
-      try {
-        const deductedItems = await deductInventoryForOrder(selected)
-        if (deductedItems > 0) {
-          toast.success('Estoque baixado automaticamente.')
-        }
-      } catch {
-        toast.error('Pedido finalizado, mas não foi possível baixar o estoque.')
-      }
-    }
 
     toast.success('Status do pedido atualizado com sucesso.')
   }

@@ -29,7 +29,7 @@ Plataforma SaaS multi-restaurante para pizzarias, buffets e delivery: cardápio 
 |---|---|---|
 | Site institucional | `/` | visitantes |
 | Cardápio e pedido online | `/pedido` e `/pedido/:tenantId` (+ `/checkout`, `/acompanhar`) | clientes do restaurante |
-| Painel do restaurante | `/dashboard`, `/orders`, `/pos`, `/menu`, `/inventory`, `/reports`, `/settings`, `/operator` | equipe do restaurante |
+| Painel do restaurante | `/dashboard`, `/orders`, `/pos`, `/menu`, `/reports`, `/settings`, `/operator` | equipe do restaurante |
 | Painel SaaS | `/saas`, `/saas/:view`, `/saas/clientes/:tenantId` | administrador da plataforma |
 
 Os módulos do painel do restaurante liberados dependem do **plano** do cliente (Free, Start, Pro, Premium), definido em `src/lib/plan-access.ts`.

@@ -45,12 +45,24 @@ export async function saveOrdersKeepingNew(orders: Order[]): Promise<Order[]> {
   return merged
 }
 
+export class ProductUnavailableError extends Error {
+  products: string[]
+  constructor(products: string[]) {
+    super('product_unavailable')
+    this.products = products
+  }
+}
+
 export async function createPublicOrder(order: Omit<Order, 'id'>, tenantId = 'default'): Promise<Order> {
   const response = await apiFetch(`/api/public/${encodeURIComponent(tenantId)}/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(order),
   }, false)
+  if (response.status === 409) {
+    const body = await response.json().catch(() => ({})) as { error?: string; products?: string[] }
+    if (body.error === 'product_unavailable') throw new ProductUnavailableError(body.products ?? [])
+  }
   if (!response.ok) throw new Error(`failed_to_create_public_order:${response.status}`)
   const data = await response.json()
   return data.order

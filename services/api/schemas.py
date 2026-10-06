@@ -146,6 +146,7 @@ class ProductIn(BaseModel):
     image: str = ""
     available: bool = True
     size_prices: list[SizePriceOut] = []
+    ingredients: list[str] = []
 
     def is_valid(self) -> bool:
         return (
@@ -156,6 +157,11 @@ class ProductIn(BaseModel):
 
 class ProductsPayload(BaseModel):
     products: list[ProductIn] | None = None
+
+
+class IngredientMissingUpdate(BaseModel):
+    name: str = ""
+    missing: bool = False
 
 
 # ── Orders ────────────────────────────────────────────────────────────────────

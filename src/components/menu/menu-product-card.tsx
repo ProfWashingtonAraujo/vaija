@@ -49,6 +49,7 @@ export function MenuProductCard({ product, dragging, dropTarget, onToggle, onEdi
         </div>
         <h3 className="mt-3 font-heading text-xl font-bold text-slate-900">{product.name}</h3>
         <p className="mt-2 text-sm leading-6 text-slate-500">{product.description}</p>
+        {product.blockedBy?.length ? <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Fora do cardápio: falta {product.blockedBy.join(', ')}</p> : null}
         {product.sizePrices?.length ? (
           <div className="mt-4 grid grid-cols-3 gap-2">
             {product.sizePrices.map((item) => (
@@ -60,7 +61,7 @@ export function MenuProductCard({ product, dragging, dropTarget, onToggle, onEdi
         ) : null}
         <div className="mt-4 flex items-center justify-between">
           <span className="font-mono text-lg font-bold text-slate-900">{formatCurrency(product.price)}</span>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${product.available ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{product.available ? 'Disponível' : 'Indisponível'}</span>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${product.blockedBy?.length ? 'bg-rose-50 text-rose-700' : product.available ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{product.blockedBy?.length ? 'Em falta' : product.available ? 'Disponível' : 'Indisponível'}</span>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" onClick={onEdit}>Editar</Button>

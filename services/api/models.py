@@ -75,8 +75,19 @@ class Product(Base):
     image: Mapped[str] = mapped_column(Text, nullable=False)
     available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     size_prices: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
+    ingredients: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list, server_default="[]")
     sort_index: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class IngredientStock(Base):
+    """Ingredientes marcados como em falta. `key` é o nome normalizado (minúsculas, sem espaços nas pontas)."""
+    __tablename__ = "ingredient_stock"
+
+    tenant_id: Mapped[str] = mapped_column(String, primary_key=True)
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    missing: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 

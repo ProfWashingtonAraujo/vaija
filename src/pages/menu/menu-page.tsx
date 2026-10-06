@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { ChevronDown, ChevronUp, Plus, Settings2, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, PackageX, Plus, Settings2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { SearchInput } from '@/components/shared/search-input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { products as initialProducts, type Product, type ProductCategory } from '@/data/mock-products'
+import type { Product, ProductCategory } from '@/data/mock-products'
+import { MissingIngredientsDialog } from '@/components/menu/missing-ingredients-dialog'
 import { CategoryTabs } from '@/components/pos/category-tabs'
 import { MenuProductCard } from '@/components/menu/menu-product-card'
-import { fetchCategories, fetchProducts, saveCategories, saveProducts, type CategoryRecord } from '@/lib/catalog-api'
+import { fetchCategories, fetchProducts, isSellable, saveCategories, saveProducts, type CategoryRecord } from '@/lib/catalog-api'
 
 type ProductFormValues = {
   name: string
@@ -18,6 +19,7 @@ type ProductFormValues = {
   description: string
   image: string
   available: boolean
+  ingredients: string
 }
 
 const emptyProductForm: ProductFormValues = {
@@ -27,16 +29,17 @@ const emptyProductForm: ProductFormValues = {
   description: '',
   image: '',
   available: true,
+  ingredients: '',
 }
 
 function matchesFilters(product: Product, category: string, query: string, availability: 'all' | 'available' | 'unavailable') {
   return (category === 'Todas' ? true : product.category === category)
     && product.name.toLowerCase().includes(query.toLowerCase())
-    && (availability === 'all' ? true : availability === 'available' ? product.available : !product.available)
+    && (availability === 'all' ? true : availability === 'available' ? isSellable(product) : !isSellable(product))
 }
 
 export function MenuPage() {
-  const [products, setProducts] = useState(initialProducts)
+  const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<CategoryRecord[]>([])
   const [category, setCategory] = useState('Todas')
   const [query, setQuery] = useState('')
@@ -46,6 +49,7 @@ export function MenuPage() {
   const [dropTargetCategory, setDropTargetCategory] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false)
+  const [ingredientsOpen, setIngredientsOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [productForm, setProductForm] = useState<ProductFormValues>(emptyProductForm)
@@ -55,7 +59,7 @@ export function MenuPage() {
     [products, category, query, availability],
   )
 
-  const availableCount = products.filter((product) => product.available).length
+  const availableCount = products.filter(isSellable).length
   const unavailableCount = products.length - availableCount
   const averagePrice = products.length ? products.reduce((sum, product) => sum + product.price, 0) / products.length : 0
 
@@ -74,6 +78,10 @@ export function MenuPage() {
         toast.error('Não foi possível carregar o cardápio do backend.')
       })
   }, [])
+
+  const reloadProducts = () => {
+    void fetchProducts().then(setProducts).catch(() => undefined)
+  }
 
   const resetDragState = () => {
     setDraggedProductId(null)
@@ -172,6 +180,7 @@ export function MenuPage() {
       description: product.description,
       image: product.image,
       available: product.available,
+      ingredients: (product.ingredients ?? []).join(', '),
     })
     setIsFormOpen(true)
   }
@@ -199,6 +208,7 @@ export function MenuPage() {
       description,
       image,
       available: productForm.available,
+      ingredients: productForm.ingredients.split(/[,;]/).map((item) => item.trim()).filter(Boolean),
     }
 
     const nextProducts = editingProductId
@@ -302,6 +312,7 @@ export function MenuPage() {
               <option value="available">Disponíveis</option>
               <option value="unavailable">Indisponíveis</option>
             </select>
+            <Button type="button" variant="outline" onClick={() => setIngredientsOpen(true)}><PackageX className="mr-2 h-4 w-4" />Ingredientes em falta</Button>
             <Button type="button" variant="outline" onClick={() => setIsCategoryFormOpen(true)}><Settings2 className="mr-2 h-4 w-4" />Categorias</Button>
             <Button onClick={openCreateProductForm}><Plus className="mr-2 h-4 w-4" />Adicionar Item</Button>
           </div>
@@ -393,6 +404,11 @@ export function MenuPage() {
               Descrição
               <textarea value={productForm.description} onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))} placeholder="Descreva ingredientes e diferenciais do item" className="min-h-24 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100" />
             </label>
+            <label className="grid gap-2 text-sm font-semibold text-slate-700">
+              Ingredientes (separados por vírgula)
+              <Input value={productForm.ingredients} onChange={(event) => setProductForm((current) => ({ ...current, ingredients: event.target.value }))} placeholder="Ex: Frango desfiado, Catupiry, Mussarela" />
+              <span className="text-xs font-normal text-slate-500">Se um ingrediente for marcado como em falta, este item sai do cardápio e do PDV automaticamente.</span>
+            </label>
             <label className="flex items-center justify-between rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 text-sm font-semibold text-slate-700">
               Item disponível
               <input type="checkbox" checked={productForm.available} onChange={(event) => setProductForm((current) => ({ ...current, available: event.target.checked }))} className="h-4 w-4 accent-orange-500" />
@@ -404,6 +420,7 @@ export function MenuPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <MissingIngredientsDialog open={ingredientsOpen} onOpenChange={setIngredientsOpen} onChanged={reloadProducts} />
       <Dialog open={isCategoryFormOpen} onOpenChange={setIsCategoryFormOpen}>
         <DialogContent className="max-w-2xl">
           <div>

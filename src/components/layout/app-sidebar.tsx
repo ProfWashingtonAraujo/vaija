@@ -6,7 +6,6 @@ import {
   LifeBuoy,
   LogOut,
   MenuSquare,
-  Package,
   Plus,
   Rocket,
   ShoppingBag,
@@ -38,7 +37,6 @@ const navGroups = [
     label: 'Cardápio',
     links: [
       { to: '/menu', label: 'Produtos', icon: MenuSquare },
-      { to: '/inventory', label: 'Estoque', icon: Package },
     ],
   },
   {

@@ -1,18 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ShoppingCart } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { PackageX, ShoppingCart } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { SearchInput } from '@/components/shared/search-input'
 import { CategoryTabs } from '@/components/pos/category-tabs'
-import { posCategories, products as initialProducts, type Product } from '@/data/mock-products'
+import { posCategories, type Product } from '@/data/mock-products'
 import { ProductCard } from '@/components/pos/product-card'
 import { CartPanel } from '@/components/pos/cart-panel'
 import { HalfAndHalfDialog } from '@/components/shared/half-and-half-dialog'
 import { Button } from '@/components/ui/button'
 import { MobileDrawer } from '@/components/shared/mobile-drawer'
 import { fetchOrders, saveOrders } from '@/lib/orders-api'
-import { fetchCategories, fetchProducts } from '@/lib/catalog-api'
+import { MissingIngredientsDialog } from '@/components/menu/missing-ingredients-dialog'
+import { fetchCategories, fetchProducts, isSellable } from '@/lib/catalog-api'
+import { usePolling } from '@/lib/use-polling'
 import type { Order } from '@/data/mock-orders'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
@@ -22,7 +24,7 @@ const productsPerPage = 9
 export function PosPage() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
-  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<string[]>(['Todas', ...posCategories])
   const [category, setCategory] = useState<string>('Todas')
   const [paymentMethod, setPaymentMethod] = useState<'Pix' | 'Cartão' | 'Dinheiro'>('Pix')
@@ -35,11 +37,13 @@ export function PosPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [halfOpen, setHalfOpen] = useState(false)
   const [halfProduct, setHalfProduct] = useState<Product | undefined>()
+  const [ingredientsOpen, setIngredientsOpen] = useState(false)
 
-  useEffect(() => {
-    void Promise.all([fetchProducts(), fetchCategories()])
+  const loadCatalog = useCallback(() => (
+    Promise.all([fetchProducts(), fetchCategories()])
       .then(([loadedProducts, loadedCategories]) => {
-        const availableProducts = loadedProducts.filter((product) => product.available)
+        // produtos desativados ou com ingrediente em falta não aparecem no PDV
+        const availableProducts = loadedProducts.filter(isSellable)
         const availableCategories = loadedCategories
           .filter((item) => item.posEnabled && availableProducts.some((product) => product.category === item.name))
           .map((item) => item.name)
@@ -49,10 +53,15 @@ export function PosPage() {
         setCategories(nextCategories)
         setCategory((current) => nextCategories.includes(current) ? current : 'Todas')
       })
-      .catch(() => {
-        toast.error('Não foi possível carregar os itens do cardápio.')
-      })
-  }, [])
+  ), [])
+
+  useEffect(() => {
+    void loadCatalog().catch(() => {
+      toast.error('Não foi possível carregar os itens do cardápio.')
+    })
+  }, [loadCatalog])
+
+  usePolling(() => loadCatalog().catch(() => undefined), 30_000)
 
   const filteredProducts = useMemo(
     () => products.filter((product) => (category === 'Todas' || product.category === category) && product.name.toLowerCase().includes(query.toLowerCase())),
@@ -166,6 +175,7 @@ export function PosPage() {
           <div className="sticky top-0 z-30 -mx-1 rounded-[22px] border border-orange-100 bg-background/95 p-3 shadow-[0_14px_36px_rgba(15,23,42,0.06)] backdrop-blur sm:static sm:mx-0 sm:rounded-[30px] sm:bg-gradient-to-br sm:from-white sm:to-[#fffaf5] sm:p-5">
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1"><SearchInput placeholder="Buscar produto" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
+              <Button type="button" variant="outline" aria-label="Ingredientes em falta" className="px-3 sm:px-4" onClick={() => setIngredientsOpen(true)}><PackageX className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Em falta</span></Button>
               <div className="xl:hidden">
                 <MobileDrawer side="bottom" trigger={<Button className="px-3 sm:px-4"><ShoppingCart className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Carrinho</span><span className="ml-1.5 rounded-full bg-white/20 px-1.5 py-0.5 text-xs">{cartQuantity}</span></Button>}>
                   <div className="p-2 pt-10 sm:p-4 sm:pt-10">
@@ -230,6 +240,7 @@ export function PosPage() {
         </div>
       </div>
       <HalfAndHalfDialog open={halfOpen} onOpenChange={setHalfOpen} products={products} initialProduct={halfProduct} onConfirm={addCustomItem} />
+      <MissingIngredientsDialog open={ingredientsOpen} onOpenChange={setIngredientsOpen} onChanged={() => void loadCatalog().catch(() => undefined)} />
     </AdminLayout>
   )
 }

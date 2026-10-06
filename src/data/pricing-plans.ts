@@ -79,7 +79,7 @@ export const pricingPlans = [
       'Pedidos',
       'PDV',
       'Cardápio',
-      'Estoque',
+      'Ingredientes em falta',
       'Relatórios',
       'Configurações',
       'Cardápio online',

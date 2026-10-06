@@ -15,7 +15,6 @@ const routeLabels: Record<string, string> = {
   '/orders': 'Pedidos',
   '/pos': 'PDV / Caixa',
   '/menu': 'Cardápio',
-  '/inventory': 'Estoque',
   '/reports': 'Relatórios',
   '/settings': 'Configurações',
   '/users': 'Equipe',

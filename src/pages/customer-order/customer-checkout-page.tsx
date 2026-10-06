@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/formatters'
-import { createPublicOrder } from '@/lib/orders-api'
+import { createPublicOrder, ProductUnavailableError } from '@/lib/orders-api'
 import { parseCurrencyInput, readSettings } from '@/lib/settings'
 import { fetchPublicCashRegisterOpen } from '@/lib/cash-register'
 import type { Order } from '@/data/mock-orders'
@@ -256,7 +256,17 @@ export function CustomerCheckoutPage() {
       notes: trimmedNotes || undefined,
     }
 
-    const createdOrder = await createPublicOrder(newOrder, tenantId)
+    let createdOrder: Order
+    try {
+      createdOrder = await createPublicOrder(newOrder, tenantId)
+    } catch (error) {
+      if (error instanceof ProductUnavailableError) {
+        toast.error(`Item indisponível no momento: ${error.products.join(', ')}. Volte ao cardápio e escolha outro.`)
+      } else {
+        toast.error('Não foi possível enviar o pedido. Tente novamente.')
+      }
+      return
+    }
     persistCart([])
     toast.success(`Pedido #${createdOrder.id} enviado para o restaurante.`)
     navigate(`${orderPath}/acompanhar?pedido=${createdOrder.id}`)

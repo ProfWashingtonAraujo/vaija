@@ -265,3 +265,30 @@ export async function saveProducts(products: Product[]): Promise<Product[]> {
   if (!response.ok) throw new Error(`failed_to_save_products:${response.status}`)
   return products
 }
+
+export type IngredientRecord = {
+  name: string
+  missing: boolean
+  productCount: number
+}
+
+export async function fetchIngredients(): Promise<IngredientRecord[]> {
+  const response = await apiFetch('/api/ingredients', { headers: getTenantHeaders() })
+  if (!response.ok) throw new Error(`failed_to_fetch_ingredients:${response.status}`)
+  const data = await response.json()
+  return data.ingredients || []
+}
+
+export async function setIngredientMissing(name: string, missing: boolean): Promise<void> {
+  const response = await apiFetch('/api/ingredients', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
+    body: JSON.stringify({ name, missing }),
+  })
+  if (!response.ok) throw new Error(`failed_to_update_ingredient:${response.status}`)
+}
+
+/** Produto à venda agora: ativo no cardápio e sem ingrediente em falta. */
+export function isSellable(product: Product) {
+  return product.available && !(product.blockedBy?.length)
+}

@@ -12,7 +12,6 @@ const OperatorPage = lazy(() => import('@/pages/operator/operator-page').then((m
 const OrdersPage = lazy(() => import('@/pages/orders/orders-page').then((module) => ({ default: module.OrdersPage })))
 const PosPage = lazy(() => import('@/pages/pos/pos-page').then((module) => ({ default: module.PosPage })))
 const MenuPage = lazy(() => import('@/pages/menu/menu-page').then((module) => ({ default: module.MenuPage })))
-const InventoryPage = lazy(() => import('@/pages/inventory/inventory-page').then((module) => ({ default: module.InventoryPage })))
 const ReportsPage = lazy(() => import('@/pages/reports/reports-page').then((module) => ({ default: module.ReportsPage })))
 const SettingsPage = lazy(() => import('@/pages/settings/settings-page').then((module) => ({ default: module.SettingsPage })))
 const ActivationPage = lazy(() => import('@/pages/activation/activation-page').then((module) => ({ default: module.ActivationPage })))
@@ -43,7 +42,6 @@ export function AppRoutes() {
           <Route path="/menu" element={<MenuPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} allowedPlans={['Premium']} />}>
-          <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/reports" element={<ReportsPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} allowedPlans={['Free', 'Start', 'Pro', 'Premium']} />}>

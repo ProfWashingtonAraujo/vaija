@@ -9,6 +9,10 @@ export type Product = {
   description: string
   image: string
   available: boolean
+  /** Ingredientes usados na receita (controle de "em falta"). */
+  ingredients?: string[]
+  /** Preenchido pela API: ingredientes em falta que bloqueiam a venda deste produto. */
+  blockedBy?: string[]
 }
 
 export const products: Product[] = [

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, delete
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models import Category, Product
-from schemas import CategoriesPayload, ProductsPayload
+from models import Category, IngredientStock, Product
+from schemas import CategoriesPayload, IngredientMissingUpdate, ProductsPayload
 from auth import CurrentAuth
 
 catalog_router = APIRouter(tags=["catalog"])
@@ -13,6 +14,59 @@ catalog_router = APIRouter(tags=["catalog"])
 
 def _error(code: str) -> JSONResponse:
     return JSONResponse({"ok": False, "error": code}, status_code=400)
+
+
+# ── Ingredientes em falta ─────────────────────────────────────────────────────
+
+def _key(name: str) -> str:
+    return " ".join(name.split()).lower()
+
+
+def _clean_ingredients(names: list[str]) -> list[str]:
+    """Remove vazios e duplicados (sem diferenciar maiúsculas), mantendo a primeira grafia."""
+    seen: dict[str, str] = {}
+    for name in names:
+        label = " ".join(name.split())
+        if label and _key(label) not in seen:
+            seen[_key(label)] = label
+    return list(seen.values())
+
+
+async def _missing_keys(db: AsyncSession, tenant_id: str) -> set[str]:
+    result = await db.execute(
+        select(IngredientStock.key).where(
+            IngredientStock.tenant_id == tenant_id, IngredientStock.missing.is_(True)
+        )
+    )
+    return set(result.scalars().all())
+
+
+def _blocked_by(product: Product, missing: set[str]) -> list[str]:
+    return [name for name in (product.ingredients or []) if _key(name) in missing]
+
+
+def _product_dict(p: Product, missing: set[str]) -> dict:
+    return {
+        "id": p.id,
+        "name": p.name,
+        "price": float(p.price),
+        "category": p.category_name,
+        "description": p.description,
+        "image": p.image,
+        "available": p.available,
+        "sizePrices": p.size_prices or [],
+        "ingredients": p.ingredients or [],
+        "blockedBy": _blocked_by(p, missing),
+    }
+
+
+async def blocked_product_names(db: AsyncSession, tenant_id: str) -> list[str]:
+    """Nomes dos produtos que não podem ser vendidos agora por falta de ingrediente."""
+    missing = await _missing_keys(db, tenant_id)
+    if not missing:
+        return []
+    result = await db.execute(select(Product).where(Product.tenant_id == tenant_id))
+    return [p.name for p in result.scalars().all() if _blocked_by(p, missing)]
 
 
 # ── Categories ────────────────────────────────────────────────────────────────
@@ -66,21 +120,8 @@ async def get_products(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
         .order_by(Product.sort_index)
     )
     prods = result.scalars().all()
-    return {
-        "products": [
-            {
-                "id": p.id,
-                "name": p.name,
-                "price": float(p.price),
-                "category": p.category_name,
-                "description": p.description,
-                "image": p.image,
-                "available": p.available,
-                "sizePrices": p.size_prices or [],
-            }
-            for p in prods
-        ]
-    }
+    missing = await _missing_keys(db, auth.tenant_id)
+    return {"products": [_product_dict(p, missing) for p in prods]}
 
 
 @catalog_router.put("/api/products")
@@ -105,10 +146,43 @@ async def put_products(
             image=prod_in.image,
             available=prod_in.available,
             size_prices=[sp.model_dump() for sp in prod_in.size_prices],
+            ingredients=_clean_ingredients(prod_in.ingredients),
             sort_index=i,
         ))
     await db.flush()
     return {"ok": True, "products": [p.model_dump(by_alias=True) for p in products]}
+
+
+# ── Ingredients ───────────────────────────────────────────────────────────────
+
+@catalog_router.get("/api/ingredients")
+async def get_ingredients(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
+    """Ingredientes usados nos produtos, com a marcação de "em falta"."""
+    missing = await _missing_keys(db, auth.tenant_id)
+    result = await db.execute(select(Product).where(Product.tenant_id == auth.tenant_id))
+    found: dict[str, dict] = {}
+    for product in result.scalars().all():
+        for name in _clean_ingredients(product.ingredients or []):
+            entry = found.setdefault(_key(name), {"name": name, "missing": _key(name) in missing, "productCount": 0})
+            entry["productCount"] += 1
+    return {"ingredients": sorted(found.values(), key=lambda item: item["name"].lower())}
+
+
+@catalog_router.put("/api/ingredients")
+async def put_ingredient(
+    body: IngredientMissingUpdate,
+    auth: CurrentAuth,
+    db: AsyncSession = Depends(get_db),
+):
+    key = _key(body.name)
+    if not key:
+        return _error("invalid_ingredient")
+    stmt = insert(IngredientStock).values(tenant_id=auth.tenant_id, key=key, missing=body.missing)
+    await db.execute(stmt.on_conflict_do_update(
+        index_elements=[IngredientStock.tenant_id, IngredientStock.key],
+        set_={"missing": body.missing},
+    ))
+    return {"ok": True, "name": body.name, "missing": body.missing}
 
 
 # ── Public routes ─────────────────────────────────────────────────────────────
@@ -129,24 +203,17 @@ async def get_public_categories(tenant_id: str, db: AsyncSession = Depends(get_d
 
 @public_catalog_router.get("/api/public/{tenant_id}/products")
 async def get_public_products(tenant_id: str, db: AsyncSession = Depends(get_db)):
+    """Cardápio online: produtos desativados ou sem ingrediente (em falta) somem da lista."""
     result = await db.execute(
         select(Product)
         .where(Product.tenant_id == tenant_id, Product.available.is_(True))
         .order_by(Product.sort_index)
     )
-    prods = result.scalars().all()
+    missing = await _missing_keys(db, tenant_id)
     return {
         "products": [
-            {
-                "id": p.id,
-                "name": p.name,
-                "price": float(p.price),
-                "category": p.category_name,
-                "description": p.description,
-                "image": p.image,
-                "available": p.available,
-                "sizePrices": p.size_prices or [],
-            }
-            for p in prods
+            _product_dict(p, missing)
+            for p in result.scalars().all()
+            if not _blocked_by(p, missing)
         ]
     }

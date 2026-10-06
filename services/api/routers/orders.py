@@ -13,6 +13,7 @@ from config import get_settings
 from database import get_db
 from integrations import notify_order, try_enqueue_print
 from models import Order
+from .catalog import blocked_product_names
 from schemas import ALLOWED_STATUSES, OrderIn, OrderStatusUpdate, OrdersPayload
 
 orders_router = APIRouter(tags=["orders"])
@@ -185,6 +186,14 @@ async def create_public_order(tenant_id: str, body: OrderIn, db: AsyncSession = 
     body.status = "Pendente"
     if not body.is_valid():
         return _error(400, "invalid_order_payload")
+
+    # produtos sem ingrediente (em falta) não podem ser pedidos, mesmo com o cardápio aberto desatualizado
+    blocked = await blocked_product_names(db, tenant_id)
+    if blocked:
+        ordered = [item for item in (body.items or []) if isinstance(item, str)]
+        unavailable = [name for name in blocked if any(name in item for item in ordered)]
+        if unavailable:
+            return JSONResponse({"ok": False, "error": "product_unavailable", "products": unavailable}, status_code=409)
 
     # serializa a geração de id por tenant (evita dois pedidos com o mesmo número)
     await db.execute(text("select pg_advisory_xact_lock(hashtext(:tenant))"), {"tenant": tenant_id})
