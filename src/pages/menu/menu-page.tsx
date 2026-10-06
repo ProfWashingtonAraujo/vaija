@@ -326,7 +326,7 @@ export function MenuPage() {
         </div>
       </div>
       <div
-        className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3"
+        className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2 xl:grid-cols-3"
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => {
           event.preventDefault()

@@ -161,8 +161,8 @@ export function PosPage() {
           </div>
         </div>
       </div>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0">
           <div className="sticky top-0 z-30 -mx-1 rounded-[22px] border border-orange-100 bg-background/95 p-3 shadow-[0_14px_36px_rgba(15,23,42,0.06)] backdrop-blur sm:static sm:mx-0 sm:rounded-[30px] sm:bg-gradient-to-br sm:from-white sm:to-[#fffaf5] sm:p-5">
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1"><SearchInput placeholder="Buscar produto" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
@@ -202,7 +202,7 @@ export function PosPage() {
               <Button type="button" variant="outline" aria-label="Próxima página" className="h-10 px-3 sm:h-auto sm:px-4" disabled={currentPage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}><span className="sm:hidden">›</span><span className="hidden sm:inline">Próxima</span></Button>
             </div>
           </div>
-          <div className="mt-6 grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {paginatedProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={(size, price) => addToCart(product, size, price)} onHalf={() => { setHalfProduct(product); setHalfOpen(true) }} />)}
             {paginatedProducts.length === 0 ? <div className="col-span-full rounded-[28px] border border-dashed border-orange-200 bg-orange-50/60 p-8 text-center text-sm font-semibold text-slate-500">Nenhum produto encontrado.</div> : null}
           </div>

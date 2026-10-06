@@ -236,7 +236,7 @@ export function CustomerOrderPage() {
     <main className="min-h-screen bg-[#fff8f1] pb-28 text-slate-900">
       <section className="relative overflow-hidden bg-slate-950 px-4 py-10 text-white sm:px-6 lg:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,107,0,0.38),transparent_32%),linear-gradient(135deg,#111827,#431407_55%,#ff6b00)]" />
-        <div className="relative mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-orange-50 backdrop-blur">
                 {settings.restaurant.logo ? <img src={settings.restaurant.logo} alt={settings.restaurant.name} className="h-6 w-6 rounded-full object-cover" /> : <Sparkles className="h-4 w-4" />} Cardápio premium online
@@ -290,7 +290,7 @@ export function CustomerOrderPage() {
             <div className="mt-4"><CategoryTabs categories={categories} value={category} onChange={setCategory} /></div>
           </div>
 
-          <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredProducts.map((product) => (
               <article key={product.id} className="group overflow-hidden rounded-[34px] border border-orange-100 bg-white shadow-[0_18px_42px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:border-orange-300">
                 <div className="relative h-52 overflow-hidden"><img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute left-4 top-4 rounded-full border border-white/40 bg-white/90 px-3 py-1 text-xs font-semibold text-orange-700 backdrop-blur">{product.category}</div></div>

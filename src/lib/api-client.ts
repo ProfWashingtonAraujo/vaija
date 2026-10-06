@@ -1,4 +1,5 @@
-const apiBaseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL ?? '')
+// Em produção as chamadas /api passam pelo rewrite da Vercel (vercel.json), assim o cookie de sessão é first-party (iOS/Brave bloqueiam cookies de terceiros).
+const apiBaseUrl = ''
 
 async function request(path: string, init?: RequestInit) {
   return fetch(`${apiBaseUrl}${path}`, {

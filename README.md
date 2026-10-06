@@ -148,7 +148,7 @@ Copie `.env.example` para `.env` e ajuste. Principais variáveis:
 
 | Variável | Descrição |
 |---|---|
-| `VITE_API_BASE_URL` | URL pública da API em produção (gravada **no build**: mudou, faça redeploy) |
+| `VITE_API_BASE_URL` | Não é mais usada: em produção o `vercel.json` repassa `/api` para a API do Render (cookie first-party, necessário no iPhone/Brave) |
 | `VITE_OFFLINE_MODE` | `true` só para demonstração sem backend (dados no `localStorage`) |
 
 > `SEED_DEMO_DATA` existe no compose e no `.env.example`, mas **não tem efeito** no backend FastAPI atual.
