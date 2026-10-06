@@ -7,39 +7,55 @@ import { RevenueChart } from '@/components/dashboard/revenue-chart'
 import { RevenueLineChart } from '@/components/dashboard/revenue-line-chart'
 import { CategoryChart } from '@/components/dashboard/category-chart'
 import { LatestOrdersTable } from '@/components/dashboard/latest-orders-table'
-import { orders as mockOrders, type Order } from '@/data/mock-orders'
-import { products as mockProducts, type Product } from '@/data/mock-products'
+import type { Order } from '@/data/mock-orders'
+import type { Product } from '@/data/mock-products'
 import { fetchProducts } from '@/lib/catalog-api'
 import { fetchOrders } from '@/lib/orders-api'
 import { usePolling } from '@/lib/use-polling'
 import { readSettings } from '@/lib/settings'
 
-function getItemName(item: string) {
-  return item.replace(/^\d+x\s+/, '')
+function parseItem(item: string) {
+  const match = item.match(/^(\d+)x\s+(.*)$/)
+  return { quantity: match ? Number(match[1]) : 1, name: match ? match[2] : item }
 }
 
-function getRevenuePeriod(time: string) {
-  const hour = Number(time.split(':')[0])
+function isToday(order: Order) {
+  if (!order.createdAt) return true
+  return new Date(order.createdAt).toDateString() === new Date().toDateString()
+}
+
+function getRevenuePeriod(order: Order) {
+  const hour = order.createdAt ? new Date(order.createdAt).getHours() : Number(order.time.split(':')[0])
   if (Number.isNaN(hour)) return 'Agora'
   return `${String(hour).padStart(2, '0')}h`
 }
 
-function getDashboardData(orders: Order[], products: Product[]) {
+function findCategory(name: string, products: Product[]) {
+  const exact = products.find((product) => product.name === name)
+  if (exact) return exact.category
+  const prefix = products
+    .filter((product) => name.startsWith(product.name))
+    .sort((a, b) => b.name.length - a.name.length)[0]
+  return prefix?.category ?? 'Outros'
+}
+
+function getDashboardData(allOrders: Order[], products: Product[]) {
+  const orders = allOrders.filter(isToday)
   const validOrders = orders.filter((order) => order.status !== 'Cancelado')
   const totalRevenue = validOrders.reduce((sum, order) => sum + order.value, 0)
   const totalDeliveryFees = validOrders.reduce((sum, order) => sum + (order.deliveryFee ?? 0), 0)
   const averageTicket = validOrders.length > 0 ? totalRevenue / validOrders.length : 0
-  const productCategoryByName = new Map(products.map((product) => [product.name, product.category]))
   const revenueByPeriod = new Map<string, number>()
   const salesByCategory = new Map<string, number>()
 
   validOrders.forEach((order) => {
-    const period = getRevenuePeriod(order.time)
+    const period = getRevenuePeriod(order)
     revenueByPeriod.set(period, (revenueByPeriod.get(period) ?? 0) + order.value)
 
     order.items.forEach((item) => {
-      const category = productCategoryByName.get(getItemName(item)) ?? 'Outros'
-      salesByCategory.set(category, (salesByCategory.get(category) ?? 0) + 1)
+      const { quantity, name } = parseItem(item)
+      const category = findCategory(name, products)
+      salesByCategory.set(category, (salesByCategory.get(category) ?? 0) + quantity)
     })
   })
 
@@ -52,9 +68,9 @@ function getDashboardData(orders: Order[], products: Product[]) {
       { label: 'Ticket médio', value: averageTicket, trend: 'Média por pedido', icon: 'ChartPie' as const, currency: true, trendDirection: 'up' as const },
       { label: 'Taxa de entrega', value: totalDeliveryFees, trend: 'Total em entregas', icon: 'Bike' as const, currency: true, trendDirection: 'neutral' as const },
     ],
-    revenueSeries: Array.from(revenueByPeriod.entries()).map(([day, revenue]) => ({ day, revenue })),
+    revenueSeries: Array.from(revenueByPeriod.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([day, revenue]) => ({ day, revenue })),
     categorySeries: Array.from(salesByCategory.entries()).map(([name, value]) => ({ name, value })),
-    latestOrders: validOrders.slice(0, 4),
+    latestOrders: allOrders.filter((order) => order.status !== 'Cancelado').slice(0, 5),
   }
 }
 
@@ -84,8 +100,8 @@ function SkeletonChart() {
 
 export function DashboardPage() {
   const [loaded, setLoaded] = useState(false)
-  const [orders, setOrders] = useState<Order[]>(mockOrders)
-  const [products, setProducts] = useState<Product[]>(mockProducts)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [restaurantSettings] = useState(() => readSettings().restaurant)
   const [chartType, setChartType] = useState<'bar' | 'line'>('bar')
 

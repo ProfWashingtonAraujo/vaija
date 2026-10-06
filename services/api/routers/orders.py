@@ -40,6 +40,7 @@ def _order_to_dict(o: Order) -> dict:
         "tableNumber": o.table_number,
         "deliveryFee": float(o.delivery_fee) if o.delivery_fee is not None else None,
         "notes": o.notes,
+        "createdAt": o.created_at.isoformat() if o.created_at else None,
     }
 
 

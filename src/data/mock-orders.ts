@@ -22,6 +22,7 @@ export type Order = {
   payment: 'Pix' | 'Cartão' | 'Dinheiro'
   time: string
   notes?: string
+  createdAt?: string
 }
 
 export const orders: Order[] = [
