@@ -105,3 +105,14 @@ class Order(Base):
     sort_index: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class CashRegister(Base):
+    __tablename__ = "cash_registers"
+
+    tenant_id: Mapped[str] = mapped_column(String, primary_key=True)
+    is_open: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    opened_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_by: Mapped[str | None] = mapped_column(String, nullable=True)

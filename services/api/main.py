@@ -5,6 +5,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -19,6 +20,8 @@ from routers import (
     users_router,
     platform_router,
     printer_router,
+    cash_register_router,
+    public_cash_register_router,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -66,6 +69,12 @@ async def http_exception_handler(_: Request, exc: HTTPException):
     return JSONResponse({"ok": False, "error": exc.detail}, status_code=exc.status_code, headers=exc.headers)
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(_: Request, exc: RequestValidationError):
+    """Corpo malformado vira 400 {ok:false,error}, como no Go (antes era 422 com 'detail')."""
+    return JSONResponse({"ok": False, "error": "invalid_payload"}, status_code=400)
+
+
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(catalog_router)
@@ -75,6 +84,8 @@ app.include_router(public_orders_router)
 app.include_router(users_router)
 app.include_router(platform_router)
 app.include_router(printer_router)
+app.include_router(cash_register_router)
+app.include_router(public_cash_register_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

@@ -1,13 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models import Category, Product
-from schemas import CategoryIn, CategoryOut, ProductIn, ProductOut
+from schemas import CategoriesPayload, ProductsPayload
 from auth import CurrentAuth
 
 catalog_router = APIRouter(tags=["catalog"])
+
+
+def _error(code: str) -> JSONResponse:
+    return JSONResponse({"ok": False, "error": code}, status_code=400)
 
 
 # ── Categories ────────────────────────────────────────────────────────────────
@@ -30,21 +35,25 @@ async def get_categories(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
 
 @catalog_router.put("/api/categories")
 async def put_categories(
-    body: list[CategoryIn],
+    payload: CategoriesPayload,
     auth: CurrentAuth,
     db: AsyncSession = Depends(get_db),
 ):
+    categories = payload.categories
+    if categories is None or any(not category.is_valid() for category in categories):
+        return _error("invalid_categories_payload")
+
     await db.execute(delete(Category).where(Category.tenant_id == auth.tenant_id))
-    for i, cat_in in enumerate(body):
+    for i, cat_in in enumerate(categories):
         db.add(Category(
             name=cat_in.name,
             tenant_id=auth.tenant_id,
-            menu_enabled=cat_in.resolved_menu(),
-            pos_enabled=cat_in.resolved_pos(),
+            menu_enabled=cat_in.menu_enabled,
+            pos_enabled=cat_in.pos_enabled,
             sort_index=i,
         ))
     await db.flush()
-    return {"ok": True}
+    return {"ok": True, "categories": [c.model_dump(by_alias=True) for c in categories]}
 
 
 # ── Products ──────────────────────────────────────────────────────────────────
@@ -76,12 +85,16 @@ async def get_products(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
 
 @catalog_router.put("/api/products")
 async def put_products(
-    body: list[ProductIn],
+    payload: ProductsPayload,
     auth: CurrentAuth,
     db: AsyncSession = Depends(get_db),
 ):
+    products = payload.products
+    if products is None or any(not product.is_valid() for product in products):
+        return _error("invalid_products_payload")
+
     await db.execute(delete(Product).where(Product.tenant_id == auth.tenant_id))
-    for i, prod_in in enumerate(body):
+    for i, prod_in in enumerate(products):
         db.add(Product(
             id=prod_in.id,
             tenant_id=auth.tenant_id,
@@ -91,11 +104,11 @@ async def put_products(
             description=prod_in.description,
             image=prod_in.image,
             available=prod_in.available,
-            size_prices=[sp.model_dump() for sp in prod_in.resolved_size_prices()],
+            size_prices=[sp.model_dump() for sp in prod_in.size_prices],
             sort_index=i,
         ))
     await db.flush()
-    return {"ok": True}
+    return {"ok": True, "products": [p.model_dump(by_alias=True) for p in products]}
 
 
 # ── Public routes ─────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import { orders as mockOrders, type Order } from '@/data/mock-orders'
 import { products as mockProducts, type Product } from '@/data/mock-products'
 import { fetchProducts } from '@/lib/catalog-api'
 import { fetchOrders } from '@/lib/orders-api'
+import { usePolling } from '@/lib/use-polling'
 import { readSettings } from '@/lib/settings'
 
 function getItemName(item: string) {
@@ -99,6 +100,8 @@ export function DashboardPage() {
       })
       .finally(() => setLoaded(true))
   }, [])
+
+  usePolling(() => fetchOrders().then(setOrders).catch(() => undefined))
 
   const dashboardData = getDashboardData(orders, products)
 

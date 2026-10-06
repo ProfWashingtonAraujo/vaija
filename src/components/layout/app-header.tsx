@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { MobileDrawer } from '@/components/shared/mobile-drawer'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { SidebarProvider } from '@/components/layout/sidebar-context'
-import { cashRegisterUpdatedEvent, closeCashRegister, openCashRegister, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
+import { cashRegisterUpdatedEvent, fetchCashRegister, readCashRegister, setCashRegisterOpen, type CashRegisterState } from '@/lib/cash-register'
 
 const routeLabels: Record<string, string> = {
   '/dashboard': 'Painel Geral',
@@ -24,7 +24,7 @@ const routeLabels: Record<string, string> = {
   '/operator': 'Área do Operador',
 }
 
-export function AppHeader({ title, description }: { title: string; description: string }) {
+export function AppHeader({ title }: { title: string; description?: string }) {
   const { user } = useAuth()
   const location = useLocation()
   const [cashRegister, setCashRegister] = useState(() => readCashRegister())
@@ -36,18 +36,19 @@ export function AppHeader({ title, description }: { title: string; description: 
       setCashRegister((event as CustomEvent<CashRegisterState>).detail ?? readCashRegister())
     }
     window.addEventListener(cashRegisterUpdatedEvent, updateCashRegister)
+    void fetchCashRegister().then(setCashRegister).catch(() => undefined)
     return () => window.removeEventListener(cashRegisterUpdatedEvent, updateCashRegister)
   }, [])
 
-  const toggleCashRegister = () => {
+  const toggleCashRegister = async () => {
     if (!user) return
-    if (cashRegister.isOpen) {
-      setCashRegister(closeCashRegister(user.name))
-      toast.success('Caixa fechado com sucesso.')
-      return
+    const wantOpen = !cashRegister.isOpen
+    try {
+      setCashRegister(await setCashRegisterOpen(wantOpen, user.name))
+      toast.success(wantOpen ? 'Caixa aberto com sucesso.' : 'Caixa fechado com sucesso.')
+    } catch {
+      toast.error('Não foi possível alterar o caixa. Tente novamente.')
     }
-    setCashRegister(openCashRegister(user.name))
-    toast.success('Caixa aberto com sucesso.')
   }
 
   return (

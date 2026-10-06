@@ -5,6 +5,7 @@ from .orders import orders_router, public_orders_router
 from .users import users_router
 from .platform import platform_router
 from .printer import printer_router
+from .cash_register import cash_register_router, public_cash_register_router
 
 __all__ = [
     "auth_router",
@@ -15,4 +16,6 @@ __all__ = [
     "users_router",
     "platform_router",
     "printer_router",
+    "cash_register_router",
+    "public_cash_register_router",
 ]

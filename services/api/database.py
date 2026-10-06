@@ -46,7 +46,7 @@ async def get_db():
 
 async def init_db():
     """Cria tabelas que ainda não existem (idempotente)."""
-    from models import User, AuthSession, Category, Product, Order  # noqa: F401
+    from models import User, AuthSession, Category, Product, Order, CashRegister  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # No Supabase, tabelas do schema public ficam expostas pela Data API (anon key).

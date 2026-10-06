@@ -31,6 +31,20 @@ export async function saveOrders(orders: Order[]): Promise<Order[]> {
   return orders
 }
 
+/**
+ * Salva a lista sem apagar pedidos novos. O PUT /api/orders substitui tudo; se a tela estiver
+ * desatualizada, pedidos feitos pelos clientes nesse meio-tempo seriam excluídos. Aqui buscamos
+ * o que o servidor tem e preservamos o que a tela ainda não conhece.
+ */
+export async function saveOrdersKeepingNew(orders: Order[]): Promise<Order[]> {
+  if (import.meta.env.VITE_OFFLINE_MODE === 'true') return saveOrders(orders)
+  const known = new Set(orders.map((order) => order.id))
+  const latest = await fetchOrders().catch(() => [] as Order[])
+  const merged = [...latest.filter((order) => !known.has(order.id)), ...orders]
+  await saveOrders(merged)
+  return merged
+}
+
 export async function createPublicOrder(order: Omit<Order, 'id'>, tenantId = 'default'): Promise<Order> {
   const response = await apiFetch(`/api/public/${encodeURIComponent(tenantId)}/orders`, {
     method: 'POST',

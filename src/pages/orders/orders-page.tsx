@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { OrderColumn } from '@/components/orders/order-column'
@@ -10,7 +10,8 @@ import { formatCurrency } from '@/lib/formatters'
 import { orders as mockOrders, type Order, type OrderStatus } from '@/data/mock-orders'
 import { fetchProducts, saveProducts } from '@/lib/catalog-api'
 import { products as initialProducts, type Product } from '@/data/mock-products'
-import { fetchOrders, saveOrders } from '@/lib/orders-api'
+import { fetchOrders, saveOrdersKeepingNew } from '@/lib/orders-api'
+import { usePolling } from '@/lib/use-polling'
 import { fetchInventory, saveInventory, type InventoryItem } from '@/lib/inventory-api'
 import { getTenantId } from '@/lib/tenant-storage'
 import { getPublicOrderTrackingUrl } from '@/lib/public-order-url'
@@ -105,6 +106,8 @@ function syncProductsWithInventory(nextProducts: Product[], inventoryItems: Inve
 
 export function OrdersPage() {
   const [orders, setOrders] = useState(mockOrders)
+  const savingRef = useRef(false)
+  const changeVersion = useRef(0)
   const [selected, setSelected] = useState<Order>(mockOrders[0])
   const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<ColumnTitle | null>(null)
@@ -146,17 +149,39 @@ export function OrdersPage() {
       })
   }, [])
 
+  usePolling(() => {
+    if (savingRef.current || isEditOpen || draggedOrderId !== null) return
+    const version = changeVersion.current
+    return fetchOrders()
+      .then((loadedOrders) => {
+        // descarta a resposta se o usuário mexeu em algo enquanto ela estava a caminho
+        if (loadedOrders.length === 0 || savingRef.current || version !== changeVersion.current) return
+        setOrders(loadedOrders)
+        setSelected((current) => loadedOrders.find((order) => order.id === current.id) ?? current)
+      })
+      .catch(() => undefined)
+  })
+
   const orderItemsSubtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const editDeliveryFee = selected.deliveryFee ?? ((selected.source ?? 'Online') === 'Online' ? 8 : 0)
   const editTotal = orderItemsSubtotal + editDeliveryFee
 
   const persistOrders = (nextOrders: Order[], nextSelected: Order) => {
+    changeVersion.current += 1
+    savingRef.current = true
     setOrders(nextOrders)
     setSelected(nextSelected)
 
-    void saveOrders(nextOrders).catch(() => {
-      toast.error('Pedidos atualizados localmente, mas o backend falhou ao salvar.')
-    })
+    void saveOrdersKeepingNew(nextOrders)
+      .then((merged) => {
+        if (merged.length !== nextOrders.length) setOrders(merged)
+      })
+      .catch(() => {
+        toast.error('Pedidos atualizados localmente, mas o backend falhou ao salvar.')
+      })
+      .finally(() => {
+        savingRef.current = false
+      })
   }
 
   const deductInventoryForOrder = async (order: Order) => {

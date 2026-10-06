@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { fetchOrders } from '@/lib/orders-api'
+import { usePolling } from '@/lib/use-polling'
 import { formatCurrency } from '@/lib/formatters'
 import { orders as mockOrders, type Order } from '@/data/mock-orders'
 import { cn } from '@/lib/utils'
@@ -24,6 +25,8 @@ export function OperatorPage() {
         toast.error('Não foi possível carregar os pedidos da operação.')
       })
   }, [])
+
+  usePolling(() => fetchOrders().then((loaded) => { if (loaded.length > 0) setOrders(loaded) }).catch(() => undefined))
 
   const activeOrders = useMemo(() => orders.filter((order) => order.status !== 'Entregue'), [orders])
   const pendingOrders = activeOrders.filter((order) => order.status === 'Pendente')

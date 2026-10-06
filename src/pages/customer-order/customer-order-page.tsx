@@ -12,7 +12,7 @@ import type { Product } from '@/data/mock-products'
 import { HalfAndHalfDialog } from '@/components/shared/half-and-half-dialog'
 import { isHalfEligible } from '@/lib/half-and-half'
 import { readSettings } from '@/lib/settings'
-import { cashRegisterUpdatedEvent, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
+import { cashRegisterUpdatedEvent, fetchPublicCashRegisterOpen, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
 type CustomerProfile = { name: string; email: string; phone: string; provider: 'simple' | 'google' }
@@ -69,7 +69,7 @@ export function CustomerOrderPage() {
   const [signupName, setSignupName] = useState(profile?.name ?? '')
   const [signupEmail, setSignupEmail] = useState(profile?.email ?? '')
   const [signupPhone, setSignupPhone] = useState(profile?.phone ?? '')
-  const [cashRegister, setCashRegister] = useState(() => readCashRegister())
+  const [cashRegister, setCashRegister] = useState<CashRegisterState>({ isOpen: false })
   const googleButtonRef = useRef<HTMLDivElement>(null)
   const settings = readSettings()
 
@@ -95,6 +95,18 @@ export function CustomerOrderPage() {
     window.addEventListener(cashRegisterUpdatedEvent, updateCashRegister)
     return () => window.removeEventListener(cashRegisterUpdatedEvent, updateCashRegister)
   }, [])
+
+  useEffect(() => {
+    let active = true
+    const refresh = () => {
+      void fetchPublicCashRegisterOpen(tenantId)
+        .then((isOpen) => { if (active) setCashRegister({ isOpen }) })
+        .catch(() => undefined)
+    }
+    refresh()
+    const timer = window.setInterval(refresh, 20_000)
+    return () => { active = false; window.clearInterval(timer) }
+  }, [tenantId])
 
   useEffect(() => {
     if (profile || !googleClientId || !googleButtonRef.current) {

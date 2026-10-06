@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ShieldCheck, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/formatters'
 import { createPublicOrder } from '@/lib/orders-api'
 import { parseCurrencyInput, readSettings } from '@/lib/settings'
-import { readCashRegister } from '@/lib/cash-register'
+import { fetchPublicCashRegisterOpen } from '@/lib/cash-register'
 import type { Order } from '@/data/mock-orders'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
@@ -105,6 +105,7 @@ export function CustomerCheckoutPage() {
   const orderPath = routeTenantId ? `/pedido/${encodeURIComponent(tenantId)}` : '/pedido'
   const [profile] = useState<CustomerProfile | null>(readStoredProfile)
   const [cart, setCart] = useState<CartItem[]>(() => readStoredCart(tenantId))
+  const [registerOpen, setRegisterOpen] = useState(false)
   const [customer, setCustomer] = useState(profile?.name ?? '')
   const [phone, setPhone] = useState(profile?.phone ?? '')
   const [address, setAddress] = useState('')
@@ -197,8 +198,20 @@ export function CustomerCheckoutPage() {
     }
   }
 
+  useEffect(() => {
+    let active = true
+    const refresh = () => {
+      void fetchPublicCashRegisterOpen(tenantId).then((isOpen) => { if (active) setRegisterOpen(isOpen) }).catch(() => undefined)
+    }
+    refresh()
+    const timer = window.setInterval(refresh, 20_000)
+    return () => { active = false; window.clearInterval(timer) }
+  }, [tenantId])
+
   const handleSubmitOrder = async () => {
-    if (!readCashRegister().isOpen) {
+    const isOpenNow = await fetchPublicCashRegisterOpen(tenantId).catch(() => false)
+    setRegisterOpen(isOpenNow)
+    if (!isOpenNow) {
       toast.error('No momento não estamos recebendo pedidos online.')
       return
     }
@@ -303,7 +316,7 @@ export function CustomerCheckoutPage() {
         <aside className="lg:sticky lg:top-6 lg:self-start">
           <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_18px_42px_rgba(15,23,42,0.08)]">
             <h2 className="font-heading text-2xl font-bold">Resumo</h2>
-            {!readCashRegister().isOpen ? <p className="mt-3 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-800">Pedidos online pausados porque o caixa está fechado.</p> : null}
+            {!registerOpen ? <p className="mt-3 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-800">Pedidos online pausados porque o caixa está fechado.</p> : null}
             <div className="mt-5 space-y-2 rounded-[24px] border border-orange-100 bg-orange-50/50 p-4 text-sm text-slate-600">
               <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
               <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{formatCurrency(deliveryFee)}</span></div>

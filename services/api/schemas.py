@@ -100,18 +100,19 @@ class CategoryOut(BaseModel):
 
 
 class CategoryIn(BaseModel):
-    name: str
+    """Aceita camelCase (frontend) e snake_case. Flags ausentes invalidam o payload (como no Go)."""
+    model_config = ConfigDict(alias_generator=_camel, populate_by_name=True, extra="ignore")
+
+    name: str = ""
     menu_enabled: bool | None = None
     pos_enabled: bool | None = None
-    # aceita camelCase do frontend
-    menuEnabled: bool | None = None
-    posEnabled: bool | None = None
 
-    def resolved_menu(self) -> bool:
-        return self.menu_enabled if self.menu_enabled is not None else (self.menuEnabled or False)
+    def is_valid(self) -> bool:
+        return bool(self.name) and self.menu_enabled is not None and self.pos_enabled is not None
 
-    def resolved_pos(self) -> bool:
-        return self.pos_enabled if self.pos_enabled is not None else (self.posEnabled or False)
+
+class CategoriesPayload(BaseModel):
+    categories: list[CategoryIn] | None = None
 
 
 # ── Products ──────────────────────────────────────────────────────────────────
@@ -135,18 +136,26 @@ class ProductOut(BaseModel):
 
 
 class ProductIn(BaseModel):
-    id: str
-    name: str
-    price: float
-    category: str
-    description: str
-    image: str
+    model_config = ConfigDict(alias_generator=_camel, populate_by_name=True, extra="ignore")
+
+    id: str = ""
+    name: str = ""
+    price: float = 0
+    category: str = ""
+    description: str = ""
+    image: str = ""
     available: bool = True
     size_prices: list[SizePriceOut] = []
-    sizePrices: list[SizePriceOut] = []
 
-    def resolved_size_prices(self) -> list[SizePriceOut]:
-        return self.size_prices or self.sizePrices
+    def is_valid(self) -> bool:
+        return (
+            all([self.id, self.name, self.category, self.description, self.image])
+            and 0 <= self.price < float("inf")
+        )
+
+
+class ProductsPayload(BaseModel):
+    products: list[ProductIn] | None = None
 
 
 # ── Orders ────────────────────────────────────────────────────────────────────
@@ -177,38 +186,39 @@ class OrderOut(BaseModel):
 
 
 class OrderIn(BaseModel):
-    id: int
-    customer: str
-    phone: str
+    """Pedido como o frontend envia (camelCase). Campos ausentes viram vazio e falham em is_valid()."""
+    model_config = ConfigDict(alias_generator=_camel, populate_by_name=True, extra="ignore")
+
+    id: int = 0
+    customer: str = ""
+    phone: str = ""
     address: str = ""
-    items: Any
-    elapsed: str
-    value: float
-    status: str
-    payment: str
-    time: str
+    items: Any = None
+    elapsed: str = ""
+    value: float = 0
+    status: str = ""
+    payment: str = ""
+    time: str = ""
     source: str = "Online"
     table_number: Any = None
     delivery_fee: float | None = None
-    notes: str = ""
-    # camelCase aliases vindos do frontend
-    tableNumber: Any = None
-    deliveryFee: float | None = None
+    notes: str | None = None
 
-    def resolved_table_number(self) -> Any:
-        return self.table_number if self.table_number is not None else self.tableNumber
+    def is_valid(self) -> bool:
+        return (
+            self.id != 0
+            and all([self.customer, self.phone, self.elapsed, self.payment, self.time])
+            and self.status in ALLOWED_STATUSES
+            and isinstance(self.items, list)
+        )
 
-    def resolved_delivery_fee(self) -> float | None:
-        return self.delivery_fee if self.delivery_fee is not None else self.deliveryFee
+
+class OrdersPayload(BaseModel):
+    orders: list[OrderIn] | None = None
 
 
-class PublicOrderIn(BaseModel):
-    customer: str
-    phone: str
-    address: str = ""
-    items: Any
-    value: float
-    payment: str
-    table_number: Any = None
-    delivery_fee: float | None = None
-    notes: str = ""
+class OrderStatusUpdate(BaseModel):
+    model_config = ConfigDict(alias_generator=_camel, populate_by_name=True, extra="ignore")
+
+    status: str = ""
+    tenant_id: str = ""
