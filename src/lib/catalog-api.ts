@@ -279,6 +279,26 @@ export async function fetchIngredients(): Promise<IngredientRecord[]> {
   return data.ingredients || []
 }
 
+export async function addIngredient(name: string): Promise<IngredientRecord> {
+  const response = await apiFetch('/api/ingredients', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
+    body: JSON.stringify({ name }),
+  })
+  if (!response.ok) throw new Error(`failed_to_add_ingredient:${response.status}`)
+  const data = await response.json() as { ingredient: { name: string; missing: boolean } }
+  return { ...data.ingredient, productCount: 0 }
+}
+
+/** Remove o ingrediente da lista geral e de todos os produtos que o usam. */
+export async function deleteIngredient(name: string): Promise<void> {
+  const response = await apiFetch(`/api/ingredients?name=${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+    headers: getTenantHeaders(),
+  })
+  if (!response.ok) throw new Error(`failed_to_delete_ingredient:${response.status}`)
+}
+
 export async function setIngredientMissing(name: string, missing: boolean): Promise<void> {
   const response = await apiFetch('/api/ingredients', {
     method: 'PUT',

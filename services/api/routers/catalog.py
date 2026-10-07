@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-from sqlalchemy import select, delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
 from models import Category, IngredientStock, Product
-from schemas import CategoriesPayload, IngredientMissingUpdate, ProductsPayload
+from schemas import CategoriesPayload, IngredientCreate, IngredientMissingUpdate, ProductsPayload
 from auth import CurrentAuth
 
 catalog_router = APIRouter(tags=["catalog"])
@@ -60,13 +60,30 @@ def _product_dict(p: Product, missing: set[str]) -> dict:
     }
 
 
-async def blocked_product_names(db: AsyncSession, tenant_id: str) -> list[str]:
-    """Nomes dos produtos que não podem ser vendidos agora por falta de ingrediente."""
+async def blocked_items(db: AsyncSession, tenant_id: str, items: list) -> list[str]:
+    """Produtos dos itens do pedido que não podem ser vendidos agora por falta de ingrediente.
+
+    Os itens são textos como "2x Calabresa (M)" ou "Meio a meio (G): 1/2 A + 1/2 B". Os nomes mais
+    longos são procurados primeiro e consumidos, para "Frango" não casar dentro de "Frango Cheese".
+    """
     missing = await _missing_keys(db, tenant_id)
     if not missing:
         return []
-    result = await db.execute(select(Product).where(Product.tenant_id == tenant_id))
-    return [p.name for p in result.scalars().all() if _blocked_by(p, missing)]
+    products = (await db.execute(select(Product).where(Product.tenant_id == tenant_id))).scalars().all()
+    blocked = {p.name.lower() for p in products if _blocked_by(p, missing)}
+    if not blocked:
+        return []
+    names = sorted({p.name.lower(): p.name for p in products}.items(), key=lambda pair: len(pair[0]), reverse=True)
+    found: dict[str, str] = {}
+    for item in items:
+        if not isinstance(item, str):
+            continue
+        rest = item.lower()
+        for low, original in names:
+            if low in rest:
+                found[low] = original
+                rest = rest.replace(low, "\0")
+    return sorted(original for low, original in found.items() if low in blocked)
 
 
 # ── Categories ────────────────────────────────────────────────────────────────
@@ -155,17 +172,70 @@ async def put_products(
 
 # ── Ingredients ───────────────────────────────────────────────────────────────
 
+MAX_INGREDIENT_NAME = 60
+
+
 @catalog_router.get("/api/ingredients")
 async def get_ingredients(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
-    """Ingredientes usados nos produtos, com a marcação de "em falta"."""
-    missing = await _missing_keys(db, auth.tenant_id)
+    """Lista geral: ingredientes cadastrados mais os usados nos produtos, com a marcação de "em falta"."""
+    stock = (await db.execute(
+        select(IngredientStock).where(IngredientStock.tenant_id == auth.tenant_id)
+    )).scalars().all()
+    missing = {row.key for row in stock if row.missing}
+    found: dict[str, dict] = {
+        row.key: {"name": row.name, "missing": row.missing, "productCount": 0}
+        for row in stock if row.name
+    }
     result = await db.execute(select(Product).where(Product.tenant_id == auth.tenant_id))
-    found: dict[str, dict] = {}
     for product in result.scalars().all():
         for name in _clean_ingredients(product.ingredients or []):
             entry = found.setdefault(_key(name), {"name": name, "missing": _key(name) in missing, "productCount": 0})
             entry["productCount"] += 1
     return {"ingredients": sorted(found.values(), key=lambda item: item["name"].lower())}
+
+
+@catalog_router.post("/api/ingredients")
+async def create_ingredient(
+    body: IngredientCreate,
+    auth: CurrentAuth,
+    db: AsyncSession = Depends(get_db),
+):
+    """Cadastra um ingrediente na lista geral. Se já existir (sem diferenciar maiúsculas), só devolve o atual."""
+    name = " ".join(body.name.split())
+    key = _key(name)
+    if not key or len(name) > MAX_INGREDIENT_NAME:
+        return _error("invalid_ingredient")
+    await db.execute(
+        insert(IngredientStock).values(tenant_id=auth.tenant_id, key=key, name=name, missing=False)
+        .on_conflict_do_update(
+            index_elements=[IngredientStock.tenant_id, IngredientStock.key],
+            set_={"name": func.coalesce(IngredientStock.name, name)},
+        )
+    )
+    row = (await db.execute(
+        select(IngredientStock).where(IngredientStock.tenant_id == auth.tenant_id, IngredientStock.key == key)
+    )).scalar_one()
+    return {"ok": True, "ingredient": {"name": row.name or name, "missing": row.missing}}
+
+
+@catalog_router.delete("/api/ingredients")
+async def delete_ingredient(name: str, auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
+    """Remove o ingrediente da lista geral e de todos os produtos que o usam."""
+    key = _key(name)
+    if not key:
+        return _error("invalid_ingredient")
+    await db.execute(
+        delete(IngredientStock).where(IngredientStock.tenant_id == auth.tenant_id, IngredientStock.key == key)
+    )
+    removed = 0
+    result = await db.execute(select(Product).where(Product.tenant_id == auth.tenant_id))
+    for product in result.scalars().all():
+        current = product.ingredients or []
+        kept = [item for item in current if _key(item) != key]
+        if len(kept) != len(current):
+            product.ingredients = kept
+            removed += 1
+    return {"ok": True, "removedFromProducts": removed}
 
 
 @catalog_router.put("/api/ingredients")
@@ -177,10 +247,11 @@ async def put_ingredient(
     key = _key(body.name)
     if not key:
         return _error("invalid_ingredient")
-    stmt = insert(IngredientStock).values(tenant_id=auth.tenant_id, key=key, missing=body.missing)
+    name = " ".join(body.name.split())
+    stmt = insert(IngredientStock).values(tenant_id=auth.tenant_id, key=key, name=name, missing=body.missing)
     await db.execute(stmt.on_conflict_do_update(
         index_elements=[IngredientStock.tenant_id, IngredientStock.key],
-        set_={"missing": body.missing},
+        set_={"missing": body.missing, "name": func.coalesce(IngredientStock.name, name)},
     ))
     return {"ok": True, "name": body.name, "missing": body.missing}
 

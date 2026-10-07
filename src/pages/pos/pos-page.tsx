@@ -11,7 +11,7 @@ import { CartPanel } from '@/components/pos/cart-panel'
 import { HalfAndHalfDialog } from '@/components/shared/half-and-half-dialog'
 import { Button } from '@/components/ui/button'
 import { MobileDrawer } from '@/components/shared/mobile-drawer'
-import { fetchOrders, saveOrders } from '@/lib/orders-api'
+import { fetchOrders, ProductUnavailableError, saveOrders } from '@/lib/orders-api'
 import { MissingIngredientsDialog } from '@/components/menu/missing-ingredients-dialog'
 import { fetchCategories, fetchProducts, isSellable } from '@/lib/catalog-api'
 import { usePolling } from '@/lib/use-polling'
@@ -141,7 +141,17 @@ export function PosPage() {
       time: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }
 
-    await saveOrders([newOrder, ...currentOrders])
+    try {
+      await saveOrders([newOrder, ...currentOrders])
+    } catch (error) {
+      if (error instanceof ProductUnavailableError) {
+        toast.error(`Sem ingrediente para: ${error.products.join(', ')}. Remova do pedido.`)
+        void loadCatalog().catch(() => undefined)
+      } else {
+        toast.error('Não foi possível enviar o pedido. Tente novamente.')
+      }
+      return
+    }
     const orderTarget = orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : 'Online'
     toast.success(`Pedido ${orderTarget} enviado para a fila.`)
     setCart([])

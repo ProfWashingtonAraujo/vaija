@@ -10,7 +10,8 @@ import type { Product, ProductCategory } from '@/data/mock-products'
 import { MissingIngredientsDialog } from '@/components/menu/missing-ingredients-dialog'
 import { CategoryTabs } from '@/components/pos/category-tabs'
 import { MenuProductCard } from '@/components/menu/menu-product-card'
-import { fetchCategories, fetchProducts, isSellable, saveCategories, saveProducts, type CategoryRecord } from '@/lib/catalog-api'
+import { fetchCategories, fetchIngredients, fetchProducts, isSellable, saveCategories, saveProducts, type CategoryRecord } from '@/lib/catalog-api'
+import { cn } from '@/lib/utils'
 
 type ProductFormValues = {
   name: string
@@ -53,6 +54,22 @@ export function MenuPage() {
   const [newCategoryName, setNewCategoryName] = useState('')
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [productForm, setProductForm] = useState<ProductFormValues>(emptyProductForm)
+  const [knownIngredients, setKnownIngredients] = useState<string[]>([])
+
+  // sugestões do campo Ingredientes: a lista geral, para ligar o item a um ingrediente com um toque
+  useEffect(() => {
+    if (!isFormOpen) return
+    void fetchIngredients()
+      .then((list) => setKnownIngredients(list.map((item) => item.name)))
+      .catch(() => setKnownIngredients([]))
+  }, [isFormOpen])
+
+  const formIngredients = productForm.ingredients.split(/[,;]/).map((item) => item.trim()).filter(Boolean)
+  const toggleFormIngredient = (name: string) => {
+    const has = formIngredients.some((item) => item.toLowerCase() === name.toLowerCase())
+    const next = has ? formIngredients.filter((item) => item.toLowerCase() !== name.toLowerCase()) : [...formIngredients, name]
+    setProductForm((current) => ({ ...current, ingredients: next.join(', ') }))
+  }
 
   const filtered = useMemo(
     () => products.filter((product) => matchesFilters(product, category, query, availability)),
@@ -408,6 +425,27 @@ export function MenuPage() {
               Ingredientes (separados por vírgula)
               <Input value={productForm.ingredients} onChange={(event) => setProductForm((current) => ({ ...current, ingredients: event.target.value }))} placeholder="Ex: Frango desfiado, Catupiry, Mussarela" />
               <span className="text-xs font-normal text-slate-500">Se um ingrediente for marcado como em falta, este item sai do cardápio e do PDV automaticamente.</span>
+              {knownIngredients.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {knownIngredients.map((name) => {
+                    const selected = formIngredients.some((item) => item.toLowerCase() === name.toLowerCase())
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => toggleFormIngredient(name)}
+                        className={cn(
+                          'rounded-full border px-3 py-1 text-xs font-semibold transition',
+                          selected ? 'border-orange-400 bg-orange-50 text-orange-700' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-300',
+                        )}
+                      >
+                        {name}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : null}
             </label>
             <label className="flex items-center justify-between rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 text-sm font-semibold text-slate-700">
               Item disponível

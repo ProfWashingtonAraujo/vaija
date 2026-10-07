@@ -27,6 +27,10 @@ export async function saveOrders(orders: Order[]): Promise<Order[]> {
     headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
     body: JSON.stringify({ orders }),
   })
+  if (response.status === 409) {
+    const body = await response.json().catch(() => ({})) as { error?: string; products?: string[] }
+    if (body.error === 'product_unavailable') throw new ProductUnavailableError(body.products ?? [])
+  }
   if (!response.ok) throw new Error(`failed_to_save_orders:${response.status}`)
   return orders
 }

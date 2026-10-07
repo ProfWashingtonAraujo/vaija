@@ -10,7 +10,7 @@ import { formatCurrency } from '@/lib/formatters'
 import { orders as mockOrders, type Order, type OrderStatus } from '@/data/mock-orders'
 import { fetchProducts } from '@/lib/catalog-api'
 import { products as initialProducts, type Product } from '@/data/mock-products'
-import { fetchOrders, saveOrdersKeepingNew } from '@/lib/orders-api'
+import { fetchOrders, ProductUnavailableError, saveOrdersKeepingNew } from '@/lib/orders-api'
 import { usePolling } from '@/lib/use-polling'
 import { getTenantId } from '@/lib/tenant-storage'
 import { getPublicOrderTrackingUrl } from '@/lib/public-order-url'
@@ -147,8 +147,10 @@ export function OrdersPage() {
       .then((merged) => {
         if (merged.length !== nextOrders.length) setOrders(merged)
       })
-      .catch(() => {
-        toast.error('Pedidos atualizados localmente, mas o backend falhou ao salvar.')
+      .catch((error) => {
+        toast.error(error instanceof ProductUnavailableError
+          ? `Sem ingrediente para: ${error.products.join(', ')}.`
+          : 'Pedidos atualizados localmente, mas o backend falhou ao salvar.')
       })
       .finally(() => {
         savingRef.current = false

@@ -83,11 +83,13 @@ class Product(Base):
 
 
 class IngredientStock(Base):
-    """Ingredientes marcados como em falta. `key` é o nome normalizado (minúsculas, sem espaços nas pontas)."""
+    """Lista geral de ingredientes e se estão em falta. `key` é o nome normalizado (minúsculas, sem espaços
+    nas pontas); `name` é o nome como foi cadastrado (vazio em linhas antigas, que só guardam a marcação)."""
     __tablename__ = "ingredient_stock"
 
     tenant_id: Mapped[str] = mapped_column(String, primary_key=True)
     key: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str | None] = mapped_column(String, nullable=True)  # nome cadastrado na lista geral
     missing: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -168,6 +168,10 @@ class IngredientMissingUpdate(BaseModel):
     missing: bool = False
 
 
+class IngredientCreate(BaseModel):
+    name: str = ""
+
+
 # ── Orders ────────────────────────────────────────────────────────────────────
 
 ALLOWED_STATUSES = {
