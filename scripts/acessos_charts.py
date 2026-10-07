@@ -23,7 +23,7 @@ ROLES = OrderedDict([("admin", ("Administrador", "#2a78d6")),
                      ("operator", ("Operador", "#1baf7a"))])
 TENANT_NAMES = {"default": "Taperas Pizzaria", "admin": "Plataforma Vaija"}
 
-SQL = """select u.tenant_id, u.role_key, u.email,
+SQL = """select u.tenant_id, u.role_key, u.username,
          (select count(*) from auth_sessions s where s.user_id = u.id and s.expires_at > now())
          from users u order by 1, 2, 3"""
 
@@ -34,7 +34,7 @@ def fetch_rows() -> list[dict]:
          "--csv", "-t", "-c", SQL],
         check=True, capture_output=True, text=True, encoding="utf-8",
     ).stdout
-    return [dict(zip(("tenant", "role", "email", "sessions"), r)) for r in csv.reader(io.StringIO(out))]
+    return [dict(zip(("tenant", "role", "username", "sessions"), r)) for r in csv.reader(io.StringIO(out))]
 
 
 def tenant_label(tenant: str) -> str:
@@ -81,13 +81,13 @@ def main():
 
     # 2) Sessões ativas por usuário (refresh tokens não expirados), cor = papel do usuário
     style(ax2)
-    ordered = sorted(rows, key=lambda r: (-int(r["sessions"]), r["email"]))
+    ordered = sorted(rows, key=lambda r: (-int(r["sessions"]), r["username"]))
     ys = range(len(ordered))
     ax2.barh(ys, [int(r["sessions"]) for r in ordered], height=0.5,
              color=[ROLES[r["role"]][1] for r in ordered])
     for y, r in zip(ys, ordered):
         ax2.text(int(r["sessions"]) + 0.1, y, str(r["sessions"]), va="center", color=INK, fontsize=10)
-    ax2.set_yticks(list(ys), [r["email"] for r in ordered], color=INK)
+    ax2.set_yticks(list(ys), [r["username"] for r in ordered], color=INK)
     ax2.invert_yaxis()
     ax2.set_xlim(0, max(int(r["sessions"]) for r in ordered) + 1.2)
     ax2.xaxis.set_major_locator(plt.MultipleLocator(1))

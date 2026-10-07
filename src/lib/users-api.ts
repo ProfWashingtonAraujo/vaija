@@ -9,7 +9,8 @@ export type AppUser = {
   role: string
   roleKey: string
   shift: string
-  email: string
+  username: string
+  email?: string
   restaurantId: string
   tenantId?: string
   isPlatformAdmin?: boolean
@@ -55,6 +56,7 @@ const defaultUsers: StoredUser[] = [
     role: 'Administrador SaaS',
     roleKey: 'admin',
     shift: 'Administração Vaija',
+    username: 'admin',
     email: 'admin@vaija.com.br',
     restaurantId: 'vaija-saas',
     tenantId: 'admin',
@@ -68,6 +70,7 @@ const defaultUsers: StoredUser[] = [
     role: 'Administrador',
     roleKey: 'admin',
     shift: 'Administração - Ativo',
+    username: 'admintaperas',
     email: 'admin@taperaspizzaria.com.br',
     restaurantId: 'taperas-pizzaria',
     tenantId: 'default',
@@ -80,6 +83,7 @@ const defaultUsers: StoredUser[] = [
     role: 'Gerente',
     roleKey: 'manager',
     shift: 'Gerência - Aberto',
+    username: 'gerente',
     email: 'gerente@taperaspizzaria.com.br',
     restaurantId: 'taperas-pizzaria',
     tenantId: 'default',
@@ -92,6 +96,7 @@ const defaultUsers: StoredUser[] = [
     role: 'Operador',
     roleKey: 'operator',
     shift: 'Caixa 02 - Aberto',
+    username: 'operador',
     email: 'operador@taperaspizzaria.com.br',
     restaurantId: 'taperas-pizzaria',
     tenantId: 'default',
@@ -105,11 +110,18 @@ function getPublicUser(user: StoredUser): AppUser {
   return publicUser
 }
 
+// Usuários salvos antes do login por usuário só têm e-mail: o usuário vira a parte antes do '@'.
+function withUsername(user: StoredUser): StoredUser {
+  if (user.username) return user
+  const base = (user.email ?? '').split('@')[0].toLowerCase().replace(/[^a-z0-9._-]+/g, '.').replace(/^[._-]+|[._-]+$/g, '')
+  return { ...user, username: (base || 'usuario').padEnd(3, '0').slice(0, 30) }
+}
+
 function ensureDefaultUsers(users: StoredUser[]) {
-  let nextUsers: StoredUser[] = users.map((user) => user.email.toLowerCase() === 'contato@taperaspizzaria.com.br' || user.isPlatformAdmin ? { ...user, email: 'admin@vaija.com.br', restaurantId: 'vaija-saas', tenantId: 'admin', isPlatformAdmin: true, role: 'Administrador SaaS', shift: 'Administração Vaija', permissions: user.permissions.some((permission) => permission.startsWith('saas:')) ? user.permissions : platformPermissions } : { ...user, restaurantId: user.restaurantId ?? 'taperas-pizzaria', tenantId: user.tenantId ?? 'default' })
+  let nextUsers: StoredUser[] = users.map(withUsername).map((user) => user.username === 'contato' || user.isPlatformAdmin ? { ...user, username: 'admin', email: 'admin@vaija.com.br', restaurantId: 'vaija-saas', tenantId: 'admin', isPlatformAdmin: true, role: 'Administrador SaaS', shift: 'Administração Vaija', permissions: user.permissions.some((permission) => permission.startsWith('saas:')) ? user.permissions : platformPermissions } : { ...user, restaurantId: user.restaurantId ?? 'taperas-pizzaria', tenantId: user.tenantId ?? 'default' })
 
   for (const defaultUser of defaultUsers) {
-    if (!nextUsers.some((user) => user.email.toLowerCase() === defaultUser.email.toLowerCase())) {
+    if (!nextUsers.some((user) => user.username.toLowerCase() === defaultUser.username.toLowerCase())) {
       const nextId = Math.max(0, ...nextUsers.map((user) => user.id)) + 1
       nextUsers = [...nextUsers, { ...defaultUser, id: nextId }]
     }
@@ -168,7 +180,7 @@ export async function fetchAllUsers() {
   return { ok: true, users: readStoredUsers().map(getPublicUser) } as const
 }
 
-export async function createUser(input: { name: string; roleKey: string; shift: string; email: string; password: string }) {
+export async function createUser(input: { name: string; roleKey: string; shift: string; username: string; email?: string; password: string }) {
   const users = readStoredUsers()
   const storedSession = localStorage.getItem(localSessionKey)
   const session = storedSession ? JSON.parse(storedSession) as AppUser : null
@@ -185,11 +197,12 @@ export async function createUser(input: { name: string; roleKey: string; shift: 
 		const result = await response.json() as { ok: true; user: AppUser }
 		return { ...result, user: normalizeRemoteUser(result.user) }
 	}
-  const email = input.email.trim().toLowerCase()
+  const username = input.username.trim().toLowerCase()
+  const email = input.email?.trim().toLowerCase() || undefined
   const tenantId = getTenantId()
 
-  if (users.some((user) => user.email.toLowerCase() === email && user.tenantId === tenantId)) {
-    throw new Error('email_already_exists')
+  if (users.some((user) => user.username.toLowerCase() === username)) {
+    throw new Error('username_already_exists')
   }
 
   const user: StoredUser = {
@@ -198,6 +211,7 @@ export async function createUser(input: { name: string; roleKey: string; shift: 
     role: roleLabels[input.roleKey] ?? 'Operador',
     roleKey: input.roleKey,
     shift: input.shift.trim(),
+    username,
     email,
     restaurantId: session?.restaurantId ?? 'taperas-pizzaria',
     tenantId,
@@ -210,7 +224,7 @@ export async function createUser(input: { name: string; roleKey: string; shift: 
   return { ok: true, user: getPublicUser(user) } as const
 }
 
-export async function createTenantAdminUser(input: { tenantId: string; name: string; email: string; password: string; businessType: BusinessType }) {
+export async function createTenantAdminUser(input: { tenantId: string; name: string; username: string; email?: string; password: string; businessType: BusinessType }) {
   if (!offlineMode) {
     const response = await apiFetch('/api/platform/accesses', {
       method: 'POST',
@@ -225,10 +239,11 @@ export async function createTenantAdminUser(input: { tenantId: string; name: str
     return { ...result, user: normalizeRemoteUser(result.user) }
   }
   const users = readStoredUsers()
-  const email = input.email.trim().toLowerCase()
+  const username = input.username.trim().toLowerCase()
+  const email = input.email?.trim().toLowerCase() || undefined
 
-  if (users.some((user) => user.email.toLowerCase() === email && user.tenantId === input.tenantId)) {
-    throw new Error('email_already_exists')
+  if (users.some((user) => user.username.toLowerCase() === username)) {
+    throw new Error('username_already_exists')
   }
 
   const user: StoredUser = {
@@ -237,6 +252,7 @@ export async function createTenantAdminUser(input: { tenantId: string; name: str
     role: roleLabels.admin,
     roleKey: 'admin',
     shift: 'Administrador - Ativo',
+    username,
     email,
     restaurantId: input.tenantId,
     tenantId: input.tenantId,
@@ -249,7 +265,7 @@ export async function createTenantAdminUser(input: { tenantId: string; name: str
   return { ok: true, user: getPublicUser(user) } as const
 }
 
-export async function createPlatformUser(input: { name: string; email: string; password: string }) {
+export async function createPlatformUser(input: { name: string; username: string; email?: string; password: string }) {
   if (!offlineMode) {
     const response = await apiFetch('/api/platform/users', {
       method: 'POST',
@@ -264,10 +280,11 @@ export async function createPlatformUser(input: { name: string; email: string; p
     return { ...result, user: normalizeRemoteUser(result.user) }
   }
   const users = readStoredUsers()
-  const email = input.email.trim().toLowerCase()
+  const username = input.username.trim().toLowerCase()
+  const email = input.email?.trim().toLowerCase() || undefined
 
-  if (users.some((user) => user.email.toLowerCase() === email)) {
-    throw new Error('email_already_exists')
+  if (users.some((user) => user.username.toLowerCase() === username)) {
+    throw new Error('username_already_exists')
   }
 
   const user: StoredUser = {
@@ -276,6 +293,7 @@ export async function createPlatformUser(input: { name: string; email: string; p
     role: 'Administrador SaaS',
     roleKey: 'admin',
     shift: 'Administração Vaija',
+    username,
     email,
     restaurantId: 'vaija-saas',
     tenantId: 'admin',
@@ -293,7 +311,7 @@ export async function updatePlatformUserPermissions(userId: number, permissions:
     const users = await fetchAllUsers()
     const user = users.users.find((current) => current.id === userId)
     if (!user) throw new Error('user_not_found')
-    await updatePlatformUser(userId, { name: user.name, email: user.email, permissions })
+    await updatePlatformUser(userId, { name: user.name, username: user.username, permissions })
     return fetchAllUsers()
   }
   const users = readStoredUsers()
@@ -302,7 +320,7 @@ export async function updatePlatformUserPermissions(userId: number, permissions:
   return { ok: true, users: nextUsers.map(getPublicUser) } as const
 }
 
-export async function updatePlatformUser(userId: number, input: { name: string; email: string; password?: string; permissions: string[] }) {
+export async function updatePlatformUser(userId: number, input: { name: string; username: string; email?: string; password?: string; permissions: string[] }) {
   if (!offlineMode) {
     const response = await apiFetch(`/api/platform/users/${userId}`, {
       method: 'PUT',
@@ -318,14 +336,15 @@ export async function updatePlatformUser(userId: number, input: { name: string; 
   }
 
   const users = readStoredUsers()
-  const email = input.email.trim().toLowerCase()
-  if (users.some((user) => user.id !== userId && user.email.toLowerCase() === email)) {
-    throw new Error('email_already_exists')
+  const username = input.username.trim().toLowerCase()
+  if (users.some((user) => user.id !== userId && user.username.toLowerCase() === username)) {
+    throw new Error('username_already_exists')
   }
   const nextUsers = users.map((user) => user.id === userId && user.isPlatformAdmin ? {
     ...user,
     name: input.name.trim(),
-    email,
+    username,
+    email: input.email === undefined ? user.email : input.email.trim().toLowerCase() || undefined,
     permissions: input.permissions,
     password: input.password || user.password,
   } : user)
@@ -340,7 +359,7 @@ export async function resetUserPassword(userId: number, nextPassword: string) {
     const result = await fetchAllUsers()
     const user = result.users.find((current) => current.id === userId)
     if (!user || user.isPlatformAdmin) throw new Error('user_not_found')
-    await updateTenantAccess(userId, { name: user.name, email: user.email, roleKey: user.roleKey, shift: user.shift, password: nextPassword })
+    await updateTenantAccess(userId, { name: user.name, username: user.username, roleKey: user.roleKey, shift: user.shift, password: nextPassword })
     return { ok: true } as const
   }
   const users = readStoredUsers()
@@ -349,7 +368,7 @@ export async function resetUserPassword(userId: number, nextPassword: string) {
   return { ok: true } as const
 }
 
-export async function updateTenantAccess(userId: number, input: { name: string; email: string; roleKey: string; shift: string; password?: string }) {
+export async function updateTenantAccess(userId: number, input: { name: string; username: string; email?: string; roleKey: string; shift: string; password?: string }) {
   if (!offlineMode) {
     const response = await apiFetch(`/api/platform/accesses/${userId}`, {
       method: 'PUT',
@@ -365,11 +384,15 @@ export async function updateTenantAccess(userId: number, input: { name: string; 
   }
 
   const users = readStoredUsers()
-  const email = input.email.trim().toLowerCase()
+  const username = input.username.trim().toLowerCase()
+  if (users.some((user) => user.id !== userId && user.username.toLowerCase() === username)) {
+    throw new Error('username_already_exists')
+  }
   const nextUsers = users.map((user) => user.id === userId && !user.isPlatformAdmin ? {
     ...user,
     name: input.name.trim(),
-    email,
+    username,
+    email: input.email === undefined ? user.email : input.email.trim().toLowerCase() || undefined,
     roleKey: input.roleKey,
     role: roleLabels[input.roleKey] ?? user.role,
     shift: input.shift.trim(),

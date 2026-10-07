@@ -20,7 +20,7 @@ _camel_config = ConfigDict(alias_generator=_camel, populate_by_name=True, from_a
 class LoginRequest(BaseModel):
     model_config = ConfigDict(alias_generator=_camel, populate_by_name=True)
 
-    email: str = ""
+    username: str = ""
     password: str = ""
     tenant_id: str | None = None
 
@@ -33,7 +33,8 @@ class UserOut(BaseModel):
     role: str
     role_key: str
     shift: str
-    email: str
+    username: str
+    email: str = ""
     tenant_id: str
     is_platform_admin: bool = False
     permissions: list[str]
@@ -47,13 +48,15 @@ class CreateUserRequest(BaseModel):
     name: str = ""
     role_key: str = ""
     shift: str = ""
-    email: str = ""
+    username: str = ""
+    email: str | None = None  # contato opcional; None = não alterar
     password: str = ""
 
 
 class PlatformUserRequest(BaseModel):
     name: str = ""
-    email: str = ""
+    username: str = ""
+    email: str | None = None
     password: str = ""
     permissions: list[str] = []
 
@@ -63,7 +66,8 @@ class TenantUserRequest(BaseModel):
 
     tenant_id: str = ""
     name: str = ""
-    email: str = ""
+    username: str = ""
+    email: str | None = None
     password: str = ""
     role_key: str = ""
     shift: str = ""

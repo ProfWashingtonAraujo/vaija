@@ -1,4 +1,6 @@
 """Helpers compartilhados de usuário — espelham models.go/store.go do Go."""
+import re
+
 from sqlalchemy.exc import IntegrityError
 
 from models import User
@@ -20,6 +22,33 @@ BUSINESS_CATEGORIES = {
     "confectionery": ["Bolos", "Doces", "Salgados", "Kits e caixas", "Sobremesas", "Bebidas"],
     "delivery": ["Combos", "Refeições", "Lanches", "Porções", "Sobremesas", "Bebidas", "Adicionais"],
 }
+
+
+_USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,29}$")
+
+
+def normalize_username(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
+def is_valid_username(value: str) -> bool:
+    """3 a 30 caracteres: letras minúsculas, números, '.', '_' e '-' (sem espaços)."""
+    return bool(_USERNAME_RE.match(value))
+
+
+def normalize_email(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
+def is_valid_optional_email(value: str) -> bool:
+    """E-mail é só contato: vazio vale; se preenchido, precisa ter '@'."""
+    return not value or "@" in value
+
+
+def username_from_email(email: str) -> str:
+    """Sugere um usuário a partir do e-mail (parte antes do '@'), usado na migração."""
+    base = re.sub(r"[^a-z0-9._-]+", ".", email.split("@")[0].strip().lower()).strip("._-")
+    return (base or "usuario").ljust(3, "0")[:30]
 
 
 def role_permissions(role_key: str) -> list[str]:
@@ -46,7 +75,8 @@ def user_to_dict(user: User) -> dict:
         "role": user.role,
         "roleKey": user.role_key,
         "shift": user.shift,
-        "email": user.email,
+        "username": user.username,
+        "email": user.email or "",
         "tenantId": user.tenant_id,
         "permissions": permissions,
     }

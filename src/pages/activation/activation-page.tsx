@@ -14,6 +14,7 @@ import { createPlatformUser, createTenantAdminUser, deleteTenantAccess, fetchAll
 import { formatCurrency } from '@/lib/formatters'
 import { addAuditLog, createSupportTicket, readAuditLogs, readBillingInvoices, readPlanConfigs, readSupportTickets, saveBillingInvoices, savePlanConfigs, syncCurrentBillingInvoices, updateBillingInvoice, updateSupportTicket, type BillingInvoice, type PlanConfig, type SupportTicket } from '@/lib/saas-admin-api'
 import { businessTypeLabels, businessTypeOptions, type BusinessType } from '@/lib/business-types'
+import { isValidOptionalEmail, isValidUsername, normalizeUsername, userErrorMessage, usernameHint } from '@/lib/username'
 
 const defaultPlanPrices: Record<PlanKey, number> = {
   Free: 0,
@@ -36,6 +37,7 @@ export function ActivationPage() {
   const [auditLogs, setAuditLogs] = useState(() => readAuditLogs())
   const [restaurantName, setRestaurantName] = useState('')
   const [ownerName, setOwnerName] = useState('')
+  const [adminUsername, setAdminUsername] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
@@ -47,14 +49,17 @@ export function ActivationPage() {
   const [supportSubject, setSupportSubject] = useState('')
   const [supportPriority, setSupportPriority] = useState<SupportTicket['priority']>('Média')
   const [platformUserName, setPlatformUserName] = useState('')
+  const [platformUserUsername, setPlatformUserUsername] = useState('')
   const [platformUserEmail, setPlatformUserEmail] = useState('')
   const [platformUserPassword, setPlatformUserPassword] = useState('')
   const [editingPlatformUserId, setEditingPlatformUserId] = useState<number | null>(null)
   const [editingPlatformUserName, setEditingPlatformUserName] = useState('')
+  const [editingPlatformUserUsername, setEditingPlatformUserUsername] = useState('')
   const [editingPlatformUserEmail, setEditingPlatformUserEmail] = useState('')
   const [editingPlatformUserPassword, setEditingPlatformUserPassword] = useState('')
   const [editingAccessId, setEditingAccessId] = useState<number | null>(null)
   const [editingAccessName, setEditingAccessName] = useState('')
+  const [editingAccessUsername, setEditingAccessUsername] = useState('')
   const [editingAccessEmail, setEditingAccessEmail] = useState('')
   const [editingAccessRole, setEditingAccessRole] = useState('operator')
   const [editingAccessShift, setEditingAccessShift] = useState('')
@@ -124,12 +129,17 @@ export function ActivationPage() {
 
     const trimmedRestaurantName = restaurantName.trim()
     const trimmedOwnerName = ownerName.trim()
+    const trimmedUsername = normalizeUsername(adminUsername)
     const trimmedEmail = email.trim().toLowerCase()
     const trimmedPhone = phone.trim()
     const trimmedCity = city.trim()
 
     if (!trimmedRestaurantName || !trimmedOwnerName || !trimmedEmail || !trimmedPhone || !trimmedCity || password.length < 8) {
       toast.error('Preencha cliente, responsável, contato, cidade e senha com 8 caracteres ou mais.')
+      return
+    }
+    if (!isValidUsername(trimmedUsername)) {
+      toast.error(`Usuário do admin inválido. Use ${usernameHint}`)
       return
     }
 
@@ -146,11 +156,12 @@ export function ActivationPage() {
         status: 'active',
       })
 
-      await createTenantAdminUser({ tenantId: tenant.id, name: trimmedOwnerName, email: trimmedEmail, password, businessType })
+      await createTenantAdminUser({ tenantId: tenant.id, name: trimmedOwnerName, username: trimmedUsername, email: trimmedEmail, password, businessType })
       logAction('Cliente ativado', `${tenant.restaurantName} · ${planLabels[tenant.plan]}`)
       refreshData()
       setRestaurantName('')
       setOwnerName('')
+      setAdminUsername('')
       setEmail('')
       setPhone('')
       setCity('')
@@ -160,7 +171,7 @@ export function ActivationPage() {
       toast.success('Cliente ativado e usuário administrador criado.')
     } catch (error) {
       if (tenant) deleteTenant(tenant.id)
-      toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um usuário com esse e-mail.' : 'Não foi possível ativar o cliente.')
+      toast.error(userErrorMessage(error, 'Não foi possível ativar o cliente.'))
     }
   }
 
@@ -206,7 +217,7 @@ export function ActivationPage() {
     const permissions = user.permissions.includes(permission) ? user.permissions.filter((item) => item !== permission) : [...user.permissions, permission]
     const result = await updatePlatformUserPermissions(user.id, permissions)
     setUsers(result.users)
-    logAction('Permissões atualizadas', user.email)
+    logAction('Permissões atualizadas', user.username)
     toast.success('Permissões atualizadas.')
   }
 
@@ -240,62 +251,67 @@ export function ActivationPage() {
 
   const createSaasUser = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!platformUserName.trim() || !platformUserEmail.trim() || platformUserPassword.length < 8) {
-      toast.error('Informe nome, e-mail e senha com 8 caracteres ou mais.')
+    const username = normalizeUsername(platformUserUsername)
+    if (!platformUserName.trim() || !isValidUsername(username) || !isValidOptionalEmail(platformUserEmail) || platformUserPassword.length < 8) {
+      toast.error(`Informe nome, usuário (${usernameHint}) e senha com 8 caracteres ou mais. O e-mail é opcional.`)
       return
     }
 
     try {
-      await createPlatformUser({ name: platformUserName, email: platformUserEmail, password: platformUserPassword })
+      await createPlatformUser({ name: platformUserName, username, email: platformUserEmail, password: platformUserPassword })
       setPlatformUserName('')
+      setPlatformUserUsername('')
       setPlatformUserEmail('')
       setPlatformUserPassword('')
       refreshData()
-      logAction('Usuário SaaS criado', platformUserEmail)
+      logAction('Usuário SaaS criado', username)
       toast.success('Usuário interno do SaaS criado.')
     } catch (error) {
-      toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um usuário com esse e-mail.' : 'Não foi possível criar o usuário SaaS.')
+      toast.error(userErrorMessage(error, 'Não foi possível criar o usuário SaaS.'))
     }
   }
 
   const startEditingPlatformUser = (user: AppUser) => {
     setEditingPlatformUserId(user.id)
     setEditingPlatformUserName(user.name)
-    setEditingPlatformUserEmail(user.email)
+    setEditingPlatformUserUsername(user.username)
+    setEditingPlatformUserEmail(user.email ?? '')
     setEditingPlatformUserPassword('')
   }
 
   const cancelEditingPlatformUser = () => {
     setEditingPlatformUserId(null)
     setEditingPlatformUserName('')
+    setEditingPlatformUserUsername('')
     setEditingPlatformUserEmail('')
     setEditingPlatformUserPassword('')
   }
 
   const savePlatformUser = async (event: FormEvent<HTMLFormElement>, user: AppUser) => {
     event.preventDefault()
-    if (!editingPlatformUserName.trim() || !editingPlatformUserEmail.trim() || (editingPlatformUserPassword && editingPlatformUserPassword.length < 8)) {
-      toast.error('Informe nome e e-mail. A nova senha deve ter pelo menos 8 caracteres.')
+    const updatedUsername = normalizeUsername(editingPlatformUserUsername)
+    if (!editingPlatformUserName.trim() || !isValidUsername(updatedUsername) || !isValidOptionalEmail(editingPlatformUserEmail) || (editingPlatformUserPassword && editingPlatformUserPassword.length < 8)) {
+      toast.error(`Informe nome e usuário (${usernameHint}). A nova senha deve ter pelo menos 8 caracteres.`)
       return
     }
 
     try {
-      const updatedEmail = editingPlatformUserEmail.trim().toLowerCase()
       await updatePlatformUser(user.id, {
         name: editingPlatformUserName,
-        email: updatedEmail,
+        username: updatedUsername,
+        email: editingPlatformUserEmail.trim().toLowerCase(),
         password: editingPlatformUserPassword || undefined,
         permissions: user.permissions,
       })
       cancelEditingPlatformUser()
       refreshData()
-      logAction('Usuário SaaS atualizado', updatedEmail)
+      logAction('Usuário SaaS atualizado', updatedUsername)
       toast.success('Usuário SaaS atualizado.')
     } catch (error) {
       const message = error instanceof Error ? error.message : ''
       const errorMessages: Record<string, string> = {
-        email_already_exists: 'Já existe um usuário com esse e-mail.',
-        invalid_platform_user: 'Confira nome, e-mail, permissões e use uma senha com pelo menos 8 caracteres.',
+        username_already_exists: 'Já existe um usuário com esse nome de login.',
+        invalid_platform_user: 'Confira nome, usuário, e-mail, permissões e use uma senha com pelo menos 8 caracteres.',
         user_not_found: 'O usuário SaaS não foi encontrado no banco de dados.',
         forbidden: 'Sua sessão não tem permissão para alterar este usuário.',
       }
@@ -306,7 +322,8 @@ export function ActivationPage() {
   const startEditingAccess = (user: AppUser) => {
     setEditingAccessId(user.id)
     setEditingAccessName(user.name)
-    setEditingAccessEmail(user.email)
+    setEditingAccessUsername(user.username)
+    setEditingAccessEmail(user.email ?? '')
     setEditingAccessRole(user.roleKey)
     setEditingAccessShift(user.shift)
     setEditingAccessPassword('')
@@ -315,6 +332,7 @@ export function ActivationPage() {
   const cancelEditingAccess = () => {
     setEditingAccessId(null)
     setEditingAccessName('')
+    setEditingAccessUsername('')
     setEditingAccessEmail('')
     setEditingAccessRole('operator')
     setEditingAccessShift('')
@@ -323,25 +341,26 @@ export function ActivationPage() {
 
   const saveAccess = async (event: FormEvent<HTMLFormElement>, user: AppUser) => {
     event.preventDefault()
-    if (!editingAccessName.trim() || !editingAccessEmail.trim() || !editingAccessShift.trim() || (editingAccessPassword && editingAccessPassword.length < 8)) {
-      toast.error('Preencha nome, e-mail e turno. A nova senha deve ter pelo menos 8 caracteres.')
+    const updatedUsername = normalizeUsername(editingAccessUsername)
+    if (!editingAccessName.trim() || !isValidUsername(updatedUsername) || !isValidOptionalEmail(editingAccessEmail) || !editingAccessShift.trim() || (editingAccessPassword && editingAccessPassword.length < 8)) {
+      toast.error(`Preencha nome, usuário (${usernameHint}) e turno. A nova senha deve ter pelo menos 8 caracteres.`)
       return
     }
     try {
-      const updatedEmail = editingAccessEmail.trim().toLowerCase()
       await updateTenantAccess(user.id, {
         name: editingAccessName,
-        email: updatedEmail,
+        username: updatedUsername,
+        email: editingAccessEmail.trim().toLowerCase(),
         roleKey: editingAccessRole,
         shift: editingAccessShift,
         password: editingAccessPassword || undefined,
       })
       cancelEditingAccess()
       refreshData()
-      logAction('Acesso atualizado', updatedEmail)
+      logAction('Acesso atualizado', updatedUsername)
       toast.success('Acesso atualizado.')
     } catch (error) {
-      toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um acesso com esse e-mail.' : 'Não foi possível atualizar o acesso.')
+      toast.error(userErrorMessage(error, 'Não foi possível atualizar o acesso.'))
     }
   }
 
@@ -350,7 +369,7 @@ export function ActivationPage() {
       await deleteTenantAccess(user.id)
       if (editingAccessId === user.id) cancelEditingAccess()
       refreshData()
-      logAction('Acesso excluído', user.email)
+      logAction('Acesso excluído', user.username)
       toast.success('Acesso excluído.')
     } catch {
       toast.error('Não foi possível excluir o acesso.')
@@ -521,7 +540,8 @@ export function ActivationPage() {
       <div className="mt-6 grid gap-3">
         <Input value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} placeholder="Nome do restaurante" />
         <Input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} placeholder="Responsável" />
-        <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-mail do admin" type="email" />
+        <Input value={adminUsername} onChange={(event) => setAdminUsername(event.target.value)} placeholder="Usuário de login do admin (ex.: pizzaria.admin)" autoCapitalize="none" />
+        <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-mail de contato" type="email" />
         <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="WhatsApp" inputMode="tel" />
         <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Cidade/UF" />
         <label className="grid gap-2 text-sm font-semibold text-slate-700">
@@ -576,7 +596,7 @@ export function ActivationPage() {
       <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
         <h2 className="font-heading text-2xl font-bold text-slate-900">Acessos</h2>
         <div className="mt-5 space-y-3">
-          {selectedTenantUsers.map((user) => <div key={user.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4"><p className="font-semibold text-slate-900">{user.name}</p><p className="mt-1 text-sm text-slate-500">{user.email} · {user.role}</p></div>)}
+          {selectedTenantUsers.map((user) => <div key={user.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4"><p className="font-semibold text-slate-900">{user.name}</p><p className="mt-1 text-sm text-slate-500">{user.username} · {user.role}</p></div>)}
           {selectedTenantUsers.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhum acesso criado.</p> : null}
         </div>
       </section>
@@ -716,7 +736,8 @@ export function ActivationPage() {
               {editingAccessId === user.id ? (
                 <form onSubmit={(event) => { void saveAccess(event, user) }} className="grid gap-3">
                   <Input value={editingAccessName} onChange={(event) => setEditingAccessName(event.target.value)} placeholder="Nome" />
-                  <Input value={editingAccessEmail} onChange={(event) => setEditingAccessEmail(event.target.value)} placeholder="E-mail" type="email" />
+                  <Input value={editingAccessUsername} onChange={(event) => setEditingAccessUsername(event.target.value)} placeholder="Usuário de login" autoCapitalize="none" />
+                  <Input value={editingAccessEmail} onChange={(event) => setEditingAccessEmail(event.target.value)} placeholder="E-mail (opcional)" type="email" />
                   <select value={editingAccessRole} onChange={(event) => setEditingAccessRole(event.target.value)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
                     <option value="admin">Administrador</option>
                     <option value="manager">Gerente</option>
@@ -733,7 +754,7 @@ export function ActivationPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-slate-900">{user.name}</p>
-                    <p className="mt-1 text-xs text-slate-500">{user.email}</p>
+                    <p className="mt-1 text-xs text-slate-500">{user.username}{user.email ? ` · ${user.email}` : ''}</p>
                     <p className="mt-1 text-xs text-slate-500">{tenant?.restaurantName ?? 'Cliente não identificado'}</p>
                     <span className="mt-2 inline-flex rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{user.role}</span>
                   </div>
@@ -885,7 +906,8 @@ export function ActivationPage() {
         <div className="flex items-center gap-3"><UserCog className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Criar usuário SaaS</h2></div>
         <div className="mt-5 grid gap-3">
           <Input value={platformUserName} onChange={(event) => setPlatformUserName(event.target.value)} placeholder="Nome do usuário" />
-          <Input value={platformUserEmail} onChange={(event) => setPlatformUserEmail(event.target.value)} placeholder="E-mail do usuário SaaS" type="email" />
+          <Input value={platformUserUsername} onChange={(event) => setPlatformUserUsername(event.target.value)} placeholder="Usuário de login" autoCapitalize="none" />
+          <Input value={platformUserEmail} onChange={(event) => setPlatformUserEmail(event.target.value)} placeholder="E-mail (opcional)" type="email" />
           <Input value={platformUserPassword} onChange={(event) => setPlatformUserPassword(event.target.value)} placeholder="Senha inicial" type="password" />
         </div>
         <Button type="submit" className="mt-5 w-full">Criar usuário do SaaS</Button>
@@ -898,7 +920,8 @@ export function ActivationPage() {
               {editingPlatformUserId === user.id ? (
                 <form onSubmit={(event) => { void savePlatformUser(event, user) }} className="grid gap-3">
                   <Input value={editingPlatformUserName} onChange={(event) => setEditingPlatformUserName(event.target.value)} placeholder="Nome do usuário" />
-                  <Input value={editingPlatformUserEmail} onChange={(event) => setEditingPlatformUserEmail(event.target.value)} placeholder="E-mail" type="email" />
+                  <Input value={editingPlatformUserUsername} onChange={(event) => setEditingPlatformUserUsername(event.target.value)} placeholder="Usuário de login" autoCapitalize="none" />
+                  <Input value={editingPlatformUserEmail} onChange={(event) => setEditingPlatformUserEmail(event.target.value)} placeholder="E-mail (opcional)" type="email" />
                   <Input value={editingPlatformUserPassword} onChange={(event) => setEditingPlatformUserPassword(event.target.value)} placeholder="Nova senha (mínimo 8 caracteres)" type="password" autoComplete="new-password" minLength={8} />
                   <div className="flex gap-2">
                     <Button type="submit" className="flex-1">Salvar alterações</Button>
@@ -909,7 +932,7 @@ export function ActivationPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-slate-900">{user.name}</p>
-                    <p className="mt-1 text-sm text-slate-500">{user.email}</p>
+                    <p className="mt-1 text-sm text-slate-500">{user.username}{user.email ? ` · ${user.email}` : ''}</p>
                   </div>
                   <button type="button" onClick={() => startEditingPlatformUser(user)} className="inline-flex items-center gap-1 rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs font-semibold text-orange-700 transition-colors hover:bg-orange-50">
                     <Pencil className="h-3.5 w-3.5" /> Editar

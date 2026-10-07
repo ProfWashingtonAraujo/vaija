@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     internal_api_key: str = "vaija-dev-internal-secret"
     n8n_order_status_webhook_url: str = ""
     seed_demo_data: bool = False
-    bootstrap_admin_email: str = ""
+    bootstrap_admin_username: str = ""
     bootstrap_admin_password: str = ""
     app_env: str = "development"
     redis_url: str = "redis://localhost:6379"

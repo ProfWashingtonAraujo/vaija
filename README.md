@@ -119,7 +119,7 @@ Atalhos:
 
 > No Windows, algumas políticas de segurança bloqueiam extensões nativas de pacotes Python no `.venv`. Se o `uvicorn` local falhar ao importar o SQLAlchemy, rode a API pelo Docker (`docker compose up -d api`).
 
-**Primeiro acesso local:** o banco começa vazio. Defina `BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_PASSWORD` (senha com 12 ou mais caracteres) no ambiente da API para criar o administrador da plataforma na primeira subida. Veja também [Scripts utilitários](#scripts-utilitários) para redefinir a senha depois.
+**Primeiro acesso local:** o banco começa vazio. Defina `BOOTSTRAP_ADMIN_USERNAME` e `BOOTSTRAP_ADMIN_PASSWORD` (senha com 12 ou mais caracteres) no ambiente da API para criar o administrador da plataforma na primeira subida. Veja também [Scripts utilitários](#scripts-utilitários) para redefinir a senha depois.
 
 ## Variáveis de ambiente
 
@@ -134,7 +134,7 @@ Copie `.env.example` para `.env` e ajuste. Principais variáveis:
 | `AUTH_JWT_SECRET` | Segredo do JWT. **Obrigatório trocar em produção** |
 | `INTERNAL_API_KEY` | Chave compartilhada entre API e `payments` (header `X-Internal-API-Key`) |
 | `APP_ENV` | `development` ou `production` |
-| `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD` | Criam o primeiro admin da plataforma **somente se ainda não existir nenhum** (senha com 12+ caracteres) |
+| `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_PASSWORD` | Criam o primeiro admin da plataforma **somente se ainda não existir nenhum** (senha com 12+ caracteres) |
 | `AUTH_REFRESH_DAYS` | Validade do refresh token (padrão 7) |
 | `AUTH_COOKIE_SECURE` | `true` em produção |
 | `COOKIE_SAME_SITE` | `lax` local; `none` em produção (Vercel ↔ Render) |
@@ -155,7 +155,7 @@ Copie `.env.example` para `.env` e ajuste. Principais variáveis:
 
 ## API
 
-Base: `/api`. Erros seguem o formato `{"ok": false, "error": "<codigo>"}` (por exemplo `invalid_credentials`, `forbidden`, `missing_token`, `email_already_exists`).
+Base: `/api`. Erros seguem o formato `{"ok": false, "error": "<codigo>"}` (por exemplo `invalid_credentials`, `forbidden`, `missing_token`, `username_already_exists`).
 
 | Grupo | Rotas |
 |---|---|
@@ -173,7 +173,7 @@ Base: `/api`. Erros seguem o formato `{"ok": false, "error": "<codigo>"}` (por e
 
 - *Access token* (JWT, 15 min) e *refresh token* (rotativo) em **cookies HTTP-only**; o frontend renova sozinho ao receber `401`.
 - O JWT carrega `sub`, `tid` (tenant) e `rk` (papel). A API também aceita `Authorization: Bearer`.
-- **Login:** aceita `tenantId` no corpo ou o header `X-Tenant-Id`. Sem tenant, o e-mail precisa ser único entre todos os tenants; se estiver repetido, o login falha por ambiguidade e o cliente deve informar o tenant.
+- **Login:** aceita `tenantId` no corpo ou o header `X-Tenant-Id`. O login é feito por **usuário** (`username`) e senha. O usuário é único em todo o sistema (3 a 30 caracteres: `a-z`, `0-9`, `.`, `_`, `-`), então não é preciso informar o tenant. O e-mail é só um dado de contato opcional e não entra no login.
 - **Papéis:** `admin`, `manager`, `operator`. Listar usuários exige `users:read` (admin e gerente); criar exige `users:create` (admin). O admin da plataforma é o `admin` do tenant `admin`.
 
 ## Funcionalidades
@@ -236,7 +236,7 @@ Cole o SQL impresso no **SQL Editor** do Supabase e execute.
 | Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
 | Health Check Path | `/api/health` |
 
-Variáveis de ambiente: `DATABASE_URL` (Session pooler), `AUTH_JWT_SECRET` e `INTERNAL_API_KEY` (valores aleatórios longos), `FRONTEND_ORIGIN` (`https://vaija.vercel.app`), `PYTHON_VERSION=3.12.8`, `APP_ENV=production`, `AUTH_COOKIE_SECURE=true`, `COOKIE_SAME_SITE=none`, `BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_PASSWORD` (12+ caracteres).
+Variáveis de ambiente: `DATABASE_URL` (Session pooler), `AUTH_JWT_SECRET` e `INTERNAL_API_KEY` (valores aleatórios longos), `FRONTEND_ORIGIN` (`https://vaija.vercel.app`), `PYTHON_VERSION=3.12.8`, `APP_ENV=production`, `AUTH_COOKIE_SECURE=true`, `COOKIE_SAME_SITE=none`, `BOOTSTRAP_ADMIN_USERNAME` e `BOOTSTRAP_ADMIN_PASSWORD` (12+ caracteres).
 
 > O serviço **não pode trocar de runtime** depois de criado (Go → Python exige um serviço novo). O plano gratuito hiberna e a primeira requisição pode levar ~50 s.
 
@@ -293,7 +293,7 @@ O backend em Go (`backend/`) foi substituído por Python/FastAPI em `services/ap
 - **Rotas:** todas as rotas do Go foram portadas, incluindo as da **plataforma SaaS** (usuários e acessos de clientes) e da **impressora** (fila no Redis).
 - **JWT:** passou a incluir o papel (`rk`), necessário para identificar o admin da plataforma e aplicar permissões.
 - **Bootstrap do admin:** `BOOTSTRAP_ADMIN_*` cria o primeiro admin da plataforma (como o `EnsureBootstrapAdmin` do Go).
-- **Login:** aceita `tenantId`/`X-Tenant-Id`; e-mail repetido entre tenants sem tenant informado é tratado como credencial inválida; corpo vazio retorna `missing_credentials`.
+- **Login:** aceita `tenantId`/`X-Tenant-Id`; usuário ou senha ausentes retornam `missing_credentials`.
 - **Erros:** retornam `{ok:false, error}` como no Go.
 - **Senhas:** fixado `bcrypt==4.0.1` por incompatibilidade do `passlib` 1.7.4 com versões novas do `bcrypt`.
 - **Supabase:** conversão de `sslmode`/TLS para o `asyncpg`, aceitação de `postgres://` e RLS automático nas tabelas.
@@ -303,7 +303,7 @@ O backend em Go (`backend/`) foi substituído por Python/FastAPI em `services/ap
 ## Limitações conhecidas e próximos passos
 
 - **Clientes, planos, cobrança e suporte do painel SaaS ficam no `localStorage` do navegador**, não no banco. Os usuários ficam no banco; os cartões de cliente, não. Mover tenants e cobrança para o backend resolve a perda de dados ao limpar o cache, o nome/plano do restaurante em outros navegadores e a contagem de acessos por cliente.
-- **"Acessar como cliente"** usa só dados locais e **não funciona com a API real**; para entrar como restaurante, faça login com o e-mail e a senha dele.
+- **"Acessar como cliente"** usa só dados locais e **não funciona com a API real**; para entrar como restaurante, faça login com o usuário e a senha dele.
 - **Ligação cliente ↔ usuário:** a contagem de acessos só funciona se o `tenantId` do usuário for igual ao id do cliente (slug do nome). Ao criar acessos fora da tela de Ativações, use o slug correto.
 - **Preço calculado no navegador:** o servidor aceita o valor do pedido enviado pelo cliente. Antes de vender de verdade, o servidor deve recalcular o total a partir do cardápio.
 - **Relatórios por sabor:** itens de meio a meio ficam em um texto só. Um formato estruturado de itens permitiria ranking de sabores e controle de estoque.

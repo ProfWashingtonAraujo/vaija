@@ -86,7 +86,7 @@ export function saveTenants(tenants: Tenant[]) {
 
 export function getTenantForUser(user: Pick<AuthUser, 'restaurantId' | 'email'> | null | undefined) {
   const tenants = readTenants()
-  return tenants.find((tenant) => tenant.id === user?.restaurantId) ?? tenants.find((tenant) => tenant.email.toLowerCase() === user?.email.toLowerCase()) ?? tenants[0]
+  return tenants.find((tenant) => tenant.id === user?.restaurantId) ?? tenants.find((tenant) => Boolean(user?.email) && tenant.email.toLowerCase() === user?.email?.toLowerCase()) ?? tenants[0]
 }
 
 export function createTenant(input: Omit<Tenant, 'id' | 'createdAt'>) {

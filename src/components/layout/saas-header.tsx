@@ -30,7 +30,7 @@ export function SaasHeader({ title, description }: { title: string; description:
           <UserAvatar name={user?.name ?? 'Vaija'} />
           <div>
             <p className="text-sm font-semibold leading-tight">{user?.name ?? 'Administrador'}</p>
-            <p className="text-xs leading-tight text-orange-50">{user?.email ?? 'admin@vaija.com.br'}</p>
+            <p className="text-xs leading-tight text-orange-50">{user?.username ?? 'admin'}</p>
           </div>
         </div>
       </div>

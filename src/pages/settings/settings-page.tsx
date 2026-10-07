@@ -12,6 +12,7 @@ import { readSettings, saveSettings, type BusinessHour, type DeliverySettings } 
 import { planLabels } from '@/lib/plan-access'
 import { getTenantForUser } from '@/lib/tenants-api'
 import { getPublicOrderUrl } from '@/lib/public-order-url'
+import { userErrorMessage, usernameHint, usernamePattern } from '@/lib/username'
 
 const schema = z.object({
   restaurantName: z.string().min(2),
@@ -29,7 +30,8 @@ type FormValues = z.infer<typeof schema>
 
 const userSchema = z.object({
   name: z.string().min(2),
-  email: z.email(),
+  username: z.string().trim().toLowerCase().regex(usernamePattern, usernameHint),
+  email: z.email().or(z.literal('')),
   shift: z.string().min(2),
   roleKey: z.enum(['admin', 'manager', 'operator']),
   password: z.string().min(6),
@@ -64,6 +66,7 @@ export function SettingsPage() {
     resolver: zodResolver(userSchema),
     defaultValues: {
       name: '',
+      username: '',
       email: '',
       shift: 'Caixa 02 - Fechado',
       roleKey: 'operator',
@@ -354,7 +357,7 @@ export function SettingsPage() {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="font-semibold text-slate-900">{listedUser.name}</p>
-                      <p className="mt-1 text-xs text-slate-500">{listedUser.email}</p>
+                      <p className="mt-1 text-xs text-slate-500">{listedUser.username}{listedUser.email ? ` · ${listedUser.email}` : ''}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{listedUser.role}</span>
@@ -373,13 +376,15 @@ export function SettingsPage() {
                     usersForm.reset()
                     toast.success('Usuário criado com sucesso.')
                   } catch (error) {
-                    toast.error(error instanceof Error && error.message === 'email_already_exists' ? 'Já existe um usuário com esse e-mail.' : 'Não foi possível criar o usuário.')
+                    toast.error(userErrorMessage(error, 'Não foi possível criar o usuário.'))
                   }
                 })}
                 className="mt-5 grid gap-3"
               >
                 <Input {...usersForm.register('name')} placeholder="Nome do usuário" />
-                <Input {...usersForm.register('email')} placeholder="email@empresa.com" />
+                <Input {...usersForm.register('username')} placeholder="Usuário de login (ex.: maria.caixa)" autoCapitalize="none" />
+                {usersForm.formState.errors.username ? <p className="text-xs text-rose-600">{usersForm.formState.errors.username.message}</p> : null}
+                <Input {...usersForm.register('email')} placeholder="E-mail (opcional)" />
                 <Input {...usersForm.register('shift')} placeholder="Turno" />
                 <select {...usersForm.register('roleKey')} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none">
                   <option value="admin">Administrador</option>

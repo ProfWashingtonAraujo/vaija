@@ -10,7 +10,7 @@ from typing import Annotated
 from database import get_db
 from models import User
 from schemas import LoginRequest, UserOut
-from user_utils import user_to_dict
+from user_utils import normalize_username, user_to_dict
 from auth import (
     verify_password, new_session, rotate_session, delete_session,
     set_auth_cookies, clear_auth_cookies, require_auth, CurrentAuth,
@@ -26,7 +26,8 @@ def _to_user_out(user: User) -> UserOut:
         role=user.role,
         role_key=user.role_key,
         shift=user.shift,
-        email=user.email,
+        username=user.username,
+        email=user.email or "",
         tenant_id=user.tenant_id,
         is_platform_admin=(user.tenant_id == "admin" and user.role_key == "admin"),
         permissions=user_to_dict(user)["permissions"],
@@ -40,17 +41,17 @@ async def login(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
-    if not body.email or not body.password:
+    username = normalize_username(body.username)
+    if not username or not body.password:
         raise HTTPException(status_code=400, detail="missing_credentials")
-    email = body.email.strip().lower()
     tenant_id = request.headers.get("X-Tenant-Id") or body.tenant_id or ""
 
     if tenant_id:
         result = await db.execute(
-            select(User).where(func.lower(User.email) == email, User.tenant_id == tenant_id)
+            select(User).where(func.lower(User.username) == username, User.tenant_id == tenant_id)
         )
     else:
-        result = await db.execute(select(User).where(func.lower(User.email) == email))
+        result = await db.execute(select(User).where(func.lower(User.username) == username))
 
     matches = result.scalars().all()
     user = matches[0] if len(matches) == 1 else None

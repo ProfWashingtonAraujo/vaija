@@ -6,7 +6,8 @@ export type AuthUser = {
   role: string
   roleKey: string
   shift: string
-  email: string
+  username: string
+  email?: string
   tenantId: string
   restaurantId: string
   isPlatformAdmin?: boolean
@@ -32,6 +33,7 @@ const defaultUsers: StoredUser[] = [
     role: 'Administrador SaaS',
     roleKey: 'admin',
     shift: 'Administração Vaija',
+    username: 'admin',
     email: 'admin@vaija.com.br',
     tenantId: 'admin',
     restaurantId: 'vaija-saas',
@@ -45,7 +47,7 @@ const defaultUsers: StoredUser[] = [
     role: 'Administrador',
     roleKey: 'admin',
     shift: 'Administração - Ativo',
-    // e-mail principal usado no seed do banco Go
+    username: 'taperas',
     email: 'contato@taperaspizzaria.com.br',
     tenantId: 'default',
     restaurantId: 'taperas-pizzaria',
@@ -58,6 +60,7 @@ const defaultUsers: StoredUser[] = [
     role: 'Administrador',
     roleKey: 'admin',
     shift: 'Administração - Ativo',
+    username: 'admintaperas',
     email: 'admin@taperaspizzaria.com.br',
     tenantId: 'default',
     restaurantId: 'taperas-pizzaria',
@@ -70,6 +73,7 @@ const defaultUsers: StoredUser[] = [
     role: 'Gerente',
     roleKey: 'manager',
     shift: 'Gerência - Aberto',
+    username: 'gerente',
     email: 'gerente@taperaspizzaria.com.br',
     tenantId: 'default',
     restaurantId: 'taperas-pizzaria',
@@ -82,6 +86,7 @@ const defaultUsers: StoredUser[] = [
     role: 'Operador',
     roleKey: 'operator',
     shift: 'Caixa 02 - Aberto',
+    username: 'operador',
     email: 'operador@taperaspizzaria.com.br',
     tenantId: 'default',
     restaurantId: 'taperas-pizzaria',
@@ -95,11 +100,18 @@ function getPublicUser(user: StoredUser): AuthUser {
   return publicUser
 }
 
+// Usuários salvos antes do login por usuário só têm e-mail: o usuário vira a parte antes do '@'.
+function withUsername(user: StoredUser): StoredUser {
+  if (user.username) return user
+  const base = (user.email ?? '').split('@')[0].toLowerCase().replace(/[^a-z0-9._-]+/g, '.').replace(/^[._-]+|[._-]+$/g, '')
+  return { ...user, username: (base || 'usuario').padEnd(3, '0').slice(0, 30) }
+}
+
 function ensureDefaultUsers(users: StoredUser[]) {
-  let nextUsers = users.map((user) => user.email.toLowerCase() === 'contato@taperaspizzaria.com.br' || user.isPlatformAdmin ? { ...user, email: 'admin@vaija.com.br', tenantId: 'admin', restaurantId: 'vaija-saas', isPlatformAdmin: true, role: 'Administrador SaaS', shift: 'Administração Vaija' } : { ...user, tenantId: user.tenantId ?? 'default', restaurantId: user.restaurantId ?? 'taperas-pizzaria' })
+  let nextUsers: StoredUser[] = users.map(withUsername).map((user) => user.username === 'contato' || user.isPlatformAdmin ? { ...user, username: 'admin', email: 'admin@vaija.com.br', tenantId: 'admin', restaurantId: 'vaija-saas', isPlatformAdmin: true, role: 'Administrador SaaS', shift: 'Administração Vaija' } : { ...user, tenantId: user.tenantId ?? 'default', restaurantId: user.restaurantId ?? 'taperas-pizzaria' })
 
   for (const defaultUser of defaultUsers) {
-    if (!nextUsers.some((user) => user.email.toLowerCase() === defaultUser.email.toLowerCase())) {
+    if (!nextUsers.some((user) => user.username.toLowerCase() === defaultUser.username.toLowerCase())) {
       const nextId = Math.max(0, ...nextUsers.map((user) => user.id)) + 1
       nextUsers = [...nextUsers, { ...defaultUser, id: nextId }]
     }
@@ -125,21 +137,21 @@ function readUsers() {
   return usersWithDefaults
 }
 
-export async function loginRequest(email: string, password: string) {
-  const normalizedEmail = email.trim().toLowerCase()
+export async function loginRequest(username: string, password: string) {
+  const normalizedUsername = username.trim().toLowerCase()
   if (offlineMode) {
-    const localUser = readUsers().find((user) => user.email.toLowerCase() === normalizedEmail && user.password === password)
+    const localUser = readUsers().find((user) => user.username.toLowerCase() === normalizedUsername && user.password === password)
     if (!localUser) throw new Error('invalid_credentials')
     const publicUser = getPublicUser(localUser)
     localStorage.setItem(localSessionKey, JSON.stringify(publicUser))
     return { user: publicUser }
   }
 
-  const tenantId = normalizedEmail === 'admin@vaija.com.br' ? 'admin' : undefined
+  const tenantId = normalizedUsername === 'admin' ? 'admin' : undefined
   const response = await apiFetch('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: normalizedEmail, password, tenantId }),
+    body: JSON.stringify({ username: normalizedUsername, password, tenantId }),
   }, false)
   if (response.status === 401) throw new Error('invalid_credentials')
   if (!response.ok) throw new Error('server_unavailable')

@@ -5,7 +5,7 @@ type AuthContextValue = {
   user: AuthUser | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (email: string, password: string) => Promise<AuthUser>
+  login: (username: string, password: string) => Promise<AuthUser>
   logout: () => Promise<void>
 }
 
@@ -28,8 +28,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       })
   }, [])
 
-  const login = async (email: string, password: string) => {
-    const session = await loginRequest(email, password)
+  const login = async (username: string, password: string) => {
+    const session = await loginRequest(username, password)
     setUser(session.user)
     return session.user
   }

@@ -26,7 +26,7 @@ services:
         generateValue: true
       - key: INTERNAL_API_KEY
         sync: false
-      - key: BOOTSTRAP_ADMIN_EMAIL
+      - key: BOOTSTRAP_ADMIN_USERNAME
         sync: false
       - key: BOOTSTRAP_ADMIN_PASSWORD
         sync: false

@@ -8,7 +8,10 @@ from database import get_db
 from models import User
 from schemas import CreateUserRequest, ChangePasswordRequest
 from auth import CurrentAuth, hash_password, verify_password
-from user_utils import ROLE_LABELS, has_permission, is_unique_violation, role_permissions, user_to_dict
+from user_utils import (
+    ROLE_LABELS, has_permission, is_unique_violation, is_valid_optional_email, is_valid_username,
+    normalize_email, normalize_username, role_permissions, user_to_dict,
+)
 
 users_router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -33,8 +36,14 @@ async def create_user(
 ):
     if not has_permission(auth.role_key, "users:create"):
         return _error(403, "forbidden")
-    if not (body.name and body.role_key and body.shift and body.email and body.password):
+    username = normalize_username(body.username)
+    email = normalize_email(body.email)
+    if not (body.name and body.role_key and body.shift and username and body.password):
         return _error(400, "missing_user_fields")
+    if not is_valid_username(username):
+        return _error(400, "invalid_username")
+    if not is_valid_optional_email(email):
+        return _error(400, "invalid_email")
     role = ROLE_LABELS.get(body.role_key)
     if not role:
         return _error(400, "invalid_role")
@@ -47,7 +56,8 @@ async def create_user(
         role=role,
         role_key=body.role_key,
         shift=body.shift,
-        email=body.email,
+        username=username,
+        email=email or None,
         password_hash=hash_password(body.password),
         permissions=[],
     )
@@ -57,7 +67,7 @@ async def create_user(
     except IntegrityError as e:
         if is_unique_violation(e):
             await db.rollback()
-            return _error(400, "email_already_exists")
+            return _error(400, "username_already_exists")
         raise
     data = user_to_dict(user)
     data["permissions"] = role_permissions(user.role_key)

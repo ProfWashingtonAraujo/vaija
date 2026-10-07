@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from sqlalchemy import (
     BigInteger, Boolean, DateTime, Integer, Numeric,
-    String, Text, func, UniqueConstraint, Index,
+    String, Text, func, Index,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -16,7 +16,7 @@ from database import Base
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
-        UniqueConstraint("tenant_id", "email", name="users_tenant_email_idx"),
+        Index("users_username_idx", "username", unique=True),
         Index("users_tenant_idx", "tenant_id"),
     )
 
@@ -26,7 +26,8 @@ class User(Base):
     role: Mapped[str] = mapped_column(String, nullable=False)
     role_key: Mapped[str] = mapped_column(String, nullable=False, default="operator")
     shift: Mapped[str] = mapped_column(String, nullable=False)
-    email: Mapped[str] = mapped_column(String, nullable=False)
+    username: Mapped[str] = mapped_column(String, nullable=False)  # login; único em todo o sistema
+    email: Mapped[str | None] = mapped_column(String, nullable=True)  # contato opcional, não é usado no login
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     permissions: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { getHomePathForUser } from '@/lib/navigation'
 
 const schema = z.object({
-  email: z.email('Informe um e-mail válido'),
+  username: z.string().trim().min(1, 'Informe seu usuário'),
   password: z.string().min(6, 'Informe sua senha'),
 })
 
@@ -24,17 +24,17 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { username: '', password: '' },
   })
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const loggedUser = await login(values.email, values.password)
+      const loggedUser = await login(values.username, values.password)
       toast.success('Login realizado com sucesso.')
       navigate(location.state?.from?.pathname ?? getHomePathForUser(loggedUser), { replace: true })
     } catch (error) {
       toast.error(error instanceof Error && error.message === 'invalid_credentials'
-        ? 'E-mail ou senha inválidos.'
+        ? 'Usuário ou senha inválidos.'
         : 'Servidor indisponível. Tente novamente em alguns instantes.')
     }
   }
@@ -64,9 +64,9 @@ export function LoginPage() {
               <p className="mt-3 text-sm leading-7 text-slate-600">Acesse com um usuário cadastrado em Configurações para gerenciar seu restaurante.</p>
               <div className="mt-8 space-y-5">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">E-mail corporativo</label>
-                  <Input {...register('email')} placeholder="seuemail@empresa.com" />
-                  {errors.email ? <p className="mt-2 text-xs text-rose-600">{errors.email.message}</p> : null}
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Usuário</label>
+                  <Input {...register('username')} placeholder="seu.usuario" autoComplete="username" autoCapitalize="none" />
+                  {errors.username ? <p className="mt-2 text-xs text-rose-600">{errors.username.message}</p> : null}
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-700">Senha segura</label>

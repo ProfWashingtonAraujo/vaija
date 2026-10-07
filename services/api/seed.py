@@ -24,7 +24,8 @@ async def create_tables(conn):
             role TEXT NOT NULL,
             role_key TEXT NOT NULL DEFAULT 'operator',
             shift TEXT NOT NULL,
-            email TEXT NOT NULL,
+            username TEXT NOT NULL,
+            email TEXT,
             password_hash TEXT NOT NULL,
             permissions JSONB NOT NULL DEFAULT '[]',
             created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -32,7 +33,7 @@ async def create_tables(conn):
         )
     """))
     await conn.execute(text("""
-        CREATE UNIQUE INDEX IF NOT EXISTS users_tenant_email_idx ON users (tenant_id, email)
+        CREATE UNIQUE INDEX IF NOT EXISTS users_username_idx ON users (username)
     """))
 
     await conn.execute(text("""
@@ -116,21 +117,21 @@ async def seed_users(session: AsyncSession):
     }
 
     users = [
-        ("Washington", "Administrador", "admin", "Caixa 01 - Aberto", "contato@taperaspizzaria.com.br"),
-        ("Gerente Teste", "Gerente", "manager", "Gerencia - Aberto", "gerente@taperaspizzaria.com.br"),
-        ("Operador Teste", "Operador", "operator", "Caixa 02 - Aberto", "operador@taperaspizzaria.com.br"),
+        ("Washington", "Administrador", "admin", "Caixa 01 - Aberto", "taperas"),
+        ("Gerente Teste", "Gerente", "manager", "Gerencia - Aberto", "gerente"),
+        ("Operador Teste", "Operador", "operator", "Caixa 02 - Aberto", "operador"),
     ]
 
-    for name, role, role_key, shift, email in users:
+    for name, role, role_key, shift, username in users:
         h = pwd.hash("123456")
         p = json.dumps(perms[role_key])
         await session.execute(text("""
-            INSERT INTO users (tenant_id, name, role, role_key, shift, email, password_hash, permissions)
-            VALUES ('default', :name, :role, :role_key, :shift, :email, :hash, :perms::jsonb)
-            ON CONFLICT (tenant_id, email) DO NOTHING
-        """), {"name": name, "role": role, "role_key": role_key, "shift": shift, "email": email, "hash": h, "perms": p})
+            INSERT INTO users (tenant_id, name, role, role_key, shift, username, password_hash, permissions)
+            VALUES ('default', :name, :role, :role_key, :shift, :username, :hash, :perms::jsonb)
+            ON CONFLICT (username) DO NOTHING
+        """), {"name": name, "role": role, "role_key": role_key, "shift": shift, "username": username, "hash": h, "perms": p})
 
-    print("✅ Usuários criados: contato@, gerente@, operador@ (senha: 123456)")
+    print("✅ Usuários criados: taperas, gerente, operador (senha: 123456)")
 
 
 async def seed_categories(session: AsyncSession):
@@ -223,7 +224,7 @@ async def main():
             await seed_products(session)
             await seed_orders(session)
 
-    print("\n✅ Seed completo! Login: contato@taperaspizzaria.com.br / 123456")
+    print("\n✅ Seed completo! Login: taperas / 123456")
     await engine.dispose()
 
 

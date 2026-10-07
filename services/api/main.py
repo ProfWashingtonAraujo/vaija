@@ -33,12 +33,12 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     logger.info("Vaija API starting — initializing database…")
     await init_db()
-    if bool(settings.bootstrap_admin_email) != bool(settings.bootstrap_admin_password):
-        logger.warning("BOOTSTRAP_ADMIN_EMAIL e BOOTSTRAP_ADMIN_PASSWORD devem ser definidos juntos — ignorando.")
+    if bool(settings.bootstrap_admin_username) != bool(settings.bootstrap_admin_password):
+        logger.warning("BOOTSTRAP_ADMIN_USERNAME e BOOTSTRAP_ADMIN_PASSWORD devem ser definidos juntos — ignorando.")
     elif settings.bootstrap_admin_password and len(settings.bootstrap_admin_password) < 12:
         logger.warning("BOOTSTRAP_ADMIN_PASSWORD precisa ter ao menos 12 caracteres — ignorando.")
-    elif await ensure_bootstrap_admin(settings.bootstrap_admin_email, settings.bootstrap_admin_password):
-        logger.info("Admin da plataforma criado a partir de BOOTSTRAP_ADMIN_EMAIL.")
+    elif await ensure_bootstrap_admin(settings.bootstrap_admin_username, settings.bootstrap_admin_password):
+        logger.info("Admin da plataforma criado a partir de BOOTSTRAP_ADMIN_USERNAME.")
     logger.info("Database ready.")
     yield
     logger.info("Vaija API shutting down.")
