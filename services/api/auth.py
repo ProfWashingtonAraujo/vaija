@@ -62,15 +62,15 @@ def set_auth_cookies(response: Response, access: str, refresh: str) -> None:
     secure = settings.auth_cookie_secure
     same_site = settings.cookie_same_site
 
+    # Sem max_age: são cookies de sessão e o navegador os descarta ao ser fechado.
+    # A validade real continua limitada no servidor (JWT de 15 min e AUTH_REFRESH_DAYS no refresh).
     response.set_cookie(
         COOKIE_ACCESS, access,
         httponly=True, secure=secure, samesite=same_site,
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     response.set_cookie(
         COOKIE_REFRESH, refresh,
         httponly=True, secure=secure, samesite=same_site,
-        max_age=settings.auth_refresh_days * 86400,
         path="/api/auth",
     )
 
