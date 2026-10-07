@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your environment}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
@@ -63,9 +63,13 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       BACKEND_INTERNAL_URL: http://api:3002
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in your environment}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in your environment}
+      MERCADO_PAGO_WEBHOOK_SECRET: ${MERCADO_PAGO_WEBHOOK_SECRET:-}
+      APP_ENV: production
       CORS_ORIGINS: ${FRONTEND_ORIGIN}
+    # Só webhooks precisam ser públicos: publique via proxy reverso apenas /webhooks/*
     ports:
-      - "${PAYMENTS_PORT:-8000}:8000"
+      - "127.0.0.1:${PAYMENTS_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy

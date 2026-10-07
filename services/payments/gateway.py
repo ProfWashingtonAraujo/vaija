@@ -71,13 +71,6 @@ class MercadoPagoGateway:
             result = self.sdk.payment().refund(payment_id)
         return result["response"]
 
-    def validate_webhook(self, headers: dict, body: bytes) -> bool:
-        x_signature = headers.get("x-signature", "")
-        x_request_id = headers.get("x-request-id", "")
-        if not x_signature:
-            return False
-        return True
-
 
 class StripeGateway:
     def __init__(self):

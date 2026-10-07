@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -23,7 +23,7 @@ services:
     container_name: vaija-redis
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -74,6 +74,8 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       BACKEND_INTERNAL_URL: http://api:3002
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-vaija-dev-internal-secret}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-vaija-dev-secret}
+      MERCADO_PAGO_WEBHOOK_SECRET: ${MERCADO_PAGO_WEBHOOK_SECRET:-}
       CORS_ORIGINS: http://localhost:5173,http://localhost:3000
     ports:
       - "8000:8000"

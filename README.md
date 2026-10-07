@@ -133,6 +133,9 @@ Copie `.env.example` para `.env` e ajuste. Principais variáveis:
 | `BACKEND_PORT` | Porta local (3002) |
 | `AUTH_JWT_SECRET` | Segredo do JWT. **Obrigatório trocar em produção** |
 | `INTERNAL_API_KEY` | Chave compartilhada entre API e `payments` (header `X-Internal-API-Key`) |
+| `AUTH_JWT_SECRET` (no `payments`) | Mesmo segredo da API; o `payments` valida o JWT e restringe cada usuário ao próprio tenant |
+| `MERCADO_PAGO_WEBHOOK_SECRET` / `STRIPE_WEBHOOK_SECRET` | Segredos de assinatura dos webhooks do `payments`. Sem eles os webhooks respondem 401 |
+| `PRINT_WORKER_TOKEN` | Token (`X-Print-Token`) do endpoint HTTP do print-worker; sem ele o endpoint fica desativado |
 | `APP_ENV` | `development` ou `production` |
 | `BOOTSTRAP_ADMIN_USERNAME`, `BOOTSTRAP_ADMIN_PASSWORD` | Criam o primeiro admin da plataforma **somente se ainda não existir nenhum** (senha com 12+ caracteres) |
 | `AUTH_REFRESH_DAYS` | Validade do refresh token (padrão 7) |
@@ -314,6 +317,6 @@ O backend em Go (`backend/`) foi substituído por Python/FastAPI em `services/ap
 ## Segurança
 
 - Nunca versione `.env`, senhas, chaves de API ou URLs de banco com senha.
-- Em produção troque `AUTH_JWT_SECRET` e `INTERNAL_API_KEY` por valores aleatórios longos e mantenha `AUTH_COOKIE_SECURE=true` e `COOKIE_SAME_SITE=none`.
+- Em produção troque `AUTH_JWT_SECRET` e `INTERNAL_API_KEY` por valores aleatórios com 32+ caracteres (com `APP_ENV=production` a API e o `payments` recusam subir sem isso) e mantenha `AUTH_COOKIE_SECURE=true` e `COOKIE_SAME_SITE=none`.
 - Troque imediatamente senhas que tenham sido compartilhadas em conversas, tickets ou capturas de tela (inclusive a senha do banco e a do admin).
 - O RLS fica ativo em todas as tabelas; não crie policies para `anon`/`authenticated`, pois a API acessa o banco diretamente.

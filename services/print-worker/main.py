@@ -10,6 +10,8 @@ PRINTER_IP = os.getenv('PRINTER_IP', '192.168.1.100')
 PRINTER_PORT = int(os.getenv('PRINTER_PORT', '9100'))
 PRINTER_MODEL = os.getenv('PRINTER_MODEL', 'epson')
 PRINT_COPIES = int(os.getenv('PRINT_COPIES', '1'))
+PRINT_WORKER_TOKEN = os.getenv('PRINT_WORKER_TOKEN', '')
+PRINT_WORKER_HOST = os.getenv('PRINT_WORKER_HOST', '127.0.0.1')
 
 printer = ThermalPrinter(PRINTER_IP, PRINTER_PORT, PRINTER_MODEL)
 
@@ -58,6 +60,10 @@ def main():
     except Exception as e:
         print(f"Cannot connect to Redis: {e}")
         print("Running in standalone mode - waiting for print jobs via HTTP")
+        if not PRINT_WORKER_TOKEN:
+            print("PRINT_WORKER_TOKEN não definido - endpoint HTTP desativado")
+            return
+        import hmac
         from flask import Flask, request, jsonify
         app = Flask(__name__)
 
@@ -67,14 +73,19 @@ def main():
 
         @app.route('/print', methods=['POST'])
         def print_order():
-            data = request.json
+            supplied = request.headers.get('X-Print-Token', '')
+            if not hmac.compare_digest(supplied, PRINT_WORKER_TOKEN):
+                return jsonify({'success': False, 'error': 'unauthorized'}), 401
+            data = request.get_json(silent=True)
+            if not isinstance(data, dict):
+                return jsonify({'success': False, 'error': 'invalid_payload'}), 400
             try:
                 process_print_job(data)
                 return jsonify({'success': True})
             except Exception as e:
                 return jsonify({'success': False, 'error': str(e)}), 500
 
-        app.run(host='0.0.0.0', port=8001)
+        app.run(host=PRINT_WORKER_HOST, port=8001)
         return
 
     print("Waiting for print jobs...")

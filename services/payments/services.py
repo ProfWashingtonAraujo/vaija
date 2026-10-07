@@ -76,8 +76,12 @@ async def create_payment(db: AsyncSession, data: CreatePaymentRequest) -> Create
     )
 
 
-async def get_payment_by_order(db: AsyncSession, order_id: int) -> Payment | None:
-    result = await db.execute(select(Payment).where(Payment.order_id == order_id).order_by(Payment.created_at.desc()))
+async def get_payment_by_order(db: AsyncSession, order_id: int, tenant_id: str | None = None) -> Payment | None:
+    """tenant_id=None só para chamadas internas; usuários sempre filtram pelo próprio tenant."""
+    stmt = select(Payment).where(Payment.order_id == order_id)
+    if tenant_id is not None:
+        stmt = stmt.where(Payment.tenant_id == tenant_id)
+    result = await db.execute(stmt.order_by(Payment.created_at.desc()))
     return result.scalars().first()
 
 

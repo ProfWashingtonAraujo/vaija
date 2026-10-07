@@ -27,6 +27,7 @@ from routers import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 settings = get_settings()
+settings.assert_secure()
 
 
 @asynccontextmanager

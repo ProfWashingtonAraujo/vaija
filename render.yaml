@@ -59,9 +59,15 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      - key: MERCADO_PAGO_WEBHOOK_SECRET
+        sync: false
+      - key: APP_ENV
+        value: production
       - key: BACKEND_INTERNAL_URL
         sync: false
-      - key: INTERNAL_API_KEY
+      - key: INTERNAL_API_KEY  # mesmo valor da vaija-api
+        sync: false
+      - key: AUTH_JWT_SECRET  # mesmo valor da vaija-api
         sync: false
 
   - type: worker

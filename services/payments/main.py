@@ -18,6 +18,7 @@ from services import (
     refund_payment,
     get_financial_summary,
 )
+from auth import CurrentCaller
 from webhooks import router as webhooks_router
 from config import get_settings
 import logging
@@ -32,12 +33,13 @@ app = FastAPI(
 )
 
 settings = get_settings()
+settings.assert_secure()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins.split(","),
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "X-Internal-API-Key"],
 )
 
 app.include_router(webhooks_router)
@@ -55,7 +57,8 @@ async def health():
 
 
 @app.post("/payments/create", response_model=CreatePaymentResponse)
-async def create_new_payment(data: CreatePaymentRequest, db: AsyncSession = Depends(get_db)):
+async def create_new_payment(data: CreatePaymentRequest, caller: CurrentCaller, db: AsyncSession = Depends(get_db)):
+    caller.ensure_tenant(data.tenant_id)
     if data.amount <= 0:
         raise HTTPException(status_code=400, detail="Valor deve ser maior que zero")
 
@@ -63,46 +66,58 @@ async def create_new_payment(data: CreatePaymentRequest, db: AsyncSession = Depe
     return payment
 
 
-@app.get("/payments/{order_id}", response_model=PaymentResponse)
-async def get_payment(order_id: int, db: AsyncSession = Depends(get_db)):
-    payment = await get_payment_by_order(db, order_id)
-    if not payment:
-        raise HTTPException(status_code=404, detail="Pagamento não encontrado para este pedido")
-    return payment
+@app.get("/payments/tenant/{tenant_id}", response_model=list[PaymentResponse])
+async def list_tenant_payments(
+    tenant_id: str,
+    caller: CurrentCaller,
+    limit: int = Query(default=50, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    caller.ensure_tenant(tenant_id)
+    return await get_payments_by_tenant(db, tenant_id, limit)
+
+
+@app.get("/payments/financial/{tenant_id}", response_model=FinancialSummary)
+async def financial_summary(tenant_id: str, caller: CurrentCaller, db: AsyncSession = Depends(get_db)):
+    caller.ensure_tenant(tenant_id)
+    return await get_financial_summary(db, tenant_id)
 
 
 @app.get("/payments/by-id/{payment_id}", response_model=PaymentResponse)
-async def get_payment_by_id_route(payment_id: int, db: AsyncSession = Depends(get_db)):
+async def get_payment_by_id_route(payment_id: int, caller: CurrentCaller, db: AsyncSession = Depends(get_db)):
     payment = await get_payment_by_id(db, payment_id)
-    if not payment:
+    # outro tenant responde 404 (não revela que o pagamento existe)
+    if not payment or not _can_access(caller, payment.tenant_id):
         raise HTTPException(status_code=404, detail="Pagamento não encontrado")
     return payment
 
 
-@app.get("/payments/tenant/{tenant_id}", response_model=list[PaymentResponse])
-async def list_tenant_payments(
-    tenant_id: str,
-    limit: int = Query(default=50, le=200),
-    db: AsyncSession = Depends(get_db),
-):
-    return await get_payments_by_tenant(db, tenant_id, limit)
+@app.get("/payments/{order_id}", response_model=PaymentResponse)
+async def get_payment(order_id: int, caller: CurrentCaller, db: AsyncSession = Depends(get_db)):
+    payment = await get_payment_by_order(db, order_id, tenant_id=caller.tenant_id)
+    if not payment:
+        raise HTTPException(status_code=404, detail="Pagamento não encontrado para este pedido")
+    return payment
 
 
 @app.post("/payments/{payment_id}/refund", response_model=RefundResponse)
 async def refund(
     payment_id: int,
     data: RefundRequest,
+    caller: CurrentCaller,
     db: AsyncSession = Depends(get_db),
 ):
+    payment = await get_payment_by_id(db, payment_id)
+    if not payment or not _can_access(caller, payment.tenant_id):
+        raise HTTPException(status_code=404, detail="Pagamento não encontrado")
     try:
         return await refund_payment(db, payment_id, data.reason)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.get("/payments/financial/{tenant_id}", response_model=FinancialSummary)
-async def financial_summary(tenant_id: str, db: AsyncSession = Depends(get_db)):
-    return await get_financial_summary(db, tenant_id)
+def _can_access(caller, tenant_id: str) -> bool:
+    return caller.internal or caller.tenant_id == tenant_id
 
 
 if __name__ == "__main__":
