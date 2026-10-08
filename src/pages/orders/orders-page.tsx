@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/formatters'
-import { orders as mockOrders, type Order, type OrderStatus } from '@/data/mock-orders'
+import type { Order, OrderStatus } from '@/data/mock-orders'
 import { fetchProducts } from '@/lib/catalog-api'
-import { products as initialProducts, type Product } from '@/data/mock-products'
+import type { Product } from '@/data/mock-products'
 import { fetchOrders, ProductUnavailableError, saveOrdersKeepingNew } from '@/lib/orders-api'
 import { usePolling } from '@/lib/use-polling'
 import { getTenantId } from '@/lib/tenant-storage'
@@ -76,17 +76,17 @@ function getWhatsappUrl(order: Order) {
 }
 
 export function OrdersPage() {
-  const [orders, setOrders] = useState(mockOrders)
+  const [orders, setOrders] = useState<Order[]>([])
   const savingRef = useRef(false)
   const changeVersion = useRef(0)
-  const [selected, setSelected] = useState<Order>(mockOrders[0])
+  const [selected, setSelected] = useState<Order | null>(null)
   const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<ColumnTitle | null>(null)
   const [dropTargetOrderId, setDropTargetOrderId] = useState<number | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
-  const [orderForm, setOrderForm] = useState<OrderFormValues>(() => getOrderFormValues(mockOrders[0]))
-  const [products, setProducts] = useState<Product[]>(initialProducts)
-  const [orderItems, setOrderItems] = useState<EditableOrderItem[]>(() => getOrderItemsFromMenu(mockOrders[0], initialProducts))
+  const [orderForm, setOrderForm] = useState<OrderFormValues>({ customer: '', phone: '', address: '', tableNumber: '', payment: 'Pix', notes: '' })
+  const [products, setProducts] = useState<Product[]>([])
+  const [orderItems, setOrderItems] = useState<EditableOrderItem[]>([])
 
   const columns = useMemo(
     () => ({
@@ -100,12 +100,8 @@ export function OrdersPage() {
   useEffect(() => {
     void fetchOrders()
       .then((loadedOrders) => {
-        if (loadedOrders.length === 0) {
-          return
-        }
-
         setOrders(loadedOrders)
-        setSelected((current) => loadedOrders.find((order) => order.id === current.id) ?? loadedOrders[0])
+        setSelected((current) => loadedOrders.find((order) => order.id === current?.id) ?? loadedOrders[0] ?? null)
       })
       .catch(() => {
         toast.error('Não foi possível carregar os pedidos do backend.')
@@ -126,15 +122,15 @@ export function OrdersPage() {
     return fetchOrders()
       .then((loadedOrders) => {
         // descarta a resposta se o usuário mexeu em algo enquanto ela estava a caminho
-        if (loadedOrders.length === 0 || savingRef.current || version !== changeVersion.current) return
+        if (savingRef.current || version !== changeVersion.current) return
         setOrders(loadedOrders)
-        setSelected((current) => loadedOrders.find((order) => order.id === current.id) ?? current)
+        setSelected((current) => loadedOrders.find((order) => order.id === current?.id) ?? loadedOrders[0] ?? null)
       })
       .catch(() => undefined)
   })
 
   const orderItemsSubtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const editDeliveryFee = selected.deliveryFee ?? ((selected.source ?? 'Online') === 'Online' ? 8 : 0)
+  const editDeliveryFee = selected?.deliveryFee ?? ((selected?.source ?? 'Online') === 'Online' ? 8 : 0)
   const editTotal = orderItemsSubtotal + editDeliveryFee
 
   const persistOrders = (nextOrders: Order[], nextSelected: Order) => {
@@ -158,6 +154,7 @@ export function OrdersPage() {
   }
 
   const handleAdvance = () => {
+    if (!selected) return
     const nextStatus: OrderStatus =
       selected.status === 'Pendente'
         ? 'Em producao'
@@ -233,7 +230,7 @@ export function OrdersPage() {
     }
 
     const nextOrders = remainingOrders
-    const nextSelected = selected.id === orderId ? updatedOrder : selected
+    const nextSelected = selected?.id === orderId ? updatedOrder : selected
 
     persistOrders(nextOrders, nextSelected)
     resetDragState()
@@ -252,7 +249,7 @@ export function OrdersPage() {
   }
 
   const openEditOrderForm = () => {
-    if (selected.status !== 'Pendente' && selected.status !== 'Em producao') {
+    if (!selected || (selected.status !== 'Pendente' && selected.status !== 'Em producao')) {
       return
     }
 
@@ -281,11 +278,13 @@ export function OrdersPage() {
   }
 
   const handleOpenWhatsapp = () => {
+    if (!selected) return
     window.open(getWhatsappUrl(selected), '_blank', 'noopener,noreferrer')
   }
 
   const handleSaveOrder = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (!selected) return
 
     const customer = orderForm.customer.trim()
     const phone = orderForm.phone.trim()
@@ -342,7 +341,7 @@ export function OrdersPage() {
           <OrderColumn
             title="Pendente"
             orders={columns.Pendente}
-            selectedId={selected.id}
+            selectedId={selected?.id}
             draggedOrderId={draggedOrderId}
             isDropTarget={dropTarget === 'Pendente'}
             dropTargetOrderId={dropTargetOrderId}
@@ -357,7 +356,7 @@ export function OrdersPage() {
           <OrderColumn
             title="Em Produção"
             orders={columns['Em Produção']}
-            selectedId={selected.id}
+            selectedId={selected?.id}
             draggedOrderId={draggedOrderId}
             isDropTarget={dropTarget === 'Em Produção'}
             dropTargetOrderId={dropTargetOrderId}
@@ -372,7 +371,7 @@ export function OrdersPage() {
           <OrderColumn
             title="Pronto/Retirada"
             orders={columns['Pronto/Retirada']}
-            selectedId={selected.id}
+            selectedId={selected?.id}
             draggedOrderId={draggedOrderId}
             isDropTarget={dropTarget === 'Pronto/Retirada'}
             dropTargetOrderId={dropTargetOrderId}
@@ -386,10 +385,14 @@ export function OrdersPage() {
           />
         </div>
         <div>
-          <OrderDetailsPanel order={selected} onAdvance={handleAdvance} onEdit={openEditOrderForm} onOpenWhatsapp={handleOpenWhatsapp} />
+          {selected ? (
+            <OrderDetailsPanel order={selected} onAdvance={handleAdvance} onEdit={openEditOrderForm} onOpenWhatsapp={handleOpenWhatsapp} />
+          ) : (
+            <div className="rounded-[30px] border border-orange-100 bg-white p-6 text-center text-sm text-slate-500">Nenhum pedido ainda. Os pedidos aparecem aqui assim que forem feitos.</div>
+          )}
         </div>
       </div>
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+      {selected && <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-h-[calc(100vh-2rem)] max-w-2xl overflow-y-auto">
           <form onSubmit={handleSaveOrder} className="grid gap-4">
             <div>
@@ -475,7 +478,7 @@ export function OrdersPage() {
             </div>
           </form>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </AdminLayout>
   )
 }

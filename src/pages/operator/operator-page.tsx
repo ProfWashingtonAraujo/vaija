@@ -6,27 +6,23 @@ import { AdminLayout } from '@/components/layout/admin-layout'
 import { fetchOrders } from '@/lib/orders-api'
 import { usePolling } from '@/lib/use-polling'
 import { formatCurrency } from '@/lib/formatters'
-import { orders as mockOrders, type Order } from '@/data/mock-orders'
+import type { Order } from '@/data/mock-orders'
 import { cn } from '@/lib/utils'
 
 const actionLinkClass = 'inline-flex items-center justify-center rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-orange-200'
 
 export function OperatorPage() {
-  const [orders, setOrders] = useState<Order[]>(mockOrders)
+  const [orders, setOrders] = useState<Order[]>([])
 
   useEffect(() => {
     void fetchOrders()
-      .then((loadedOrders) => {
-        if (loadedOrders.length > 0) {
-          setOrders(loadedOrders)
-        }
-      })
+      .then(setOrders)
       .catch(() => {
         toast.error('Não foi possível carregar os pedidos da operação.')
       })
   }, [])
 
-  usePolling(() => fetchOrders().then((loaded) => { if (loaded.length > 0) setOrders(loaded) }).catch(() => undefined))
+  usePolling(() => fetchOrders().then(setOrders).catch(() => undefined))
 
   const activeOrders = useMemo(() => orders.filter((order) => order.status !== 'Entregue'), [orders])
   const pendingOrders = activeOrders.filter((order) => order.status === 'Pendente')
