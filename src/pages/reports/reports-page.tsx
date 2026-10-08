@@ -10,6 +10,7 @@ import type { Order } from '@/data/mock-orders'
 import type { Product } from '@/data/mock-products'
 import { fetchProducts } from '@/lib/catalog-api'
 import { fetchOrders } from '@/lib/orders-api'
+import { readSettings } from '@/lib/settings'
 import { usePolling } from '@/lib/use-polling'
 import { formatCurrency } from '@/lib/formatters'
 import { buildReport, downloadCsv, printReport, reportPeriodLabels, reportToCsv, type ReportPeriod } from '@/lib/reports'
@@ -44,11 +45,11 @@ export function ReportsPage() {
   ]
 
   const exportCsv = () => {
-    downloadCsv(reportToCsv(report, periodLabel), `relatorio-${period}-${new Date().toISOString().slice(0, 10)}.csv`)
+    downloadCsv(reportToCsv(report, periodLabel, readSettings().restaurant), `relatorio-${period}-${new Date().toISOString().slice(0, 10)}.csv`)
     toast.success('Arquivo CSV gerado.')
   }
   const exportPdf = () => {
-    if (!printReport(report, periodLabel)) toast.error('Permita pop-ups para exportar o PDF.')
+    if (!printReport(report, periodLabel, readSettings().restaurant)) toast.error('Permita pop-ups para exportar o PDF.')
   }
 
   return (

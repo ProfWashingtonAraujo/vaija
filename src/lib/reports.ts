@@ -127,8 +127,11 @@ function csvCell(value: string | number) {
   return /[;"\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
-export function reportToCsv(report: ReportData, periodLabel: string) {
+export type ReportRestaurant = { name: string; logo?: string }
+
+export function reportToCsv(report: ReportData, periodLabel: string, restaurant: ReportRestaurant) {
   const rows: Array<Array<string | number>> = [
+    ['Restaurante', restaurant.name],
     ['Relatório', periodLabel],
     [],
     ['Indicador', 'Valor'],
@@ -166,12 +169,13 @@ const htmlEscapes: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&
 const escapeHtml = (value: string | number) => String(value).replace(/[&<>"']/g, (char) => htmlEscapes[char])
 
 /** Abre uma janela de impressão; o usuário escolhe "Salvar como PDF". */
-export function printReport(report: ReportData, periodLabel: string) {
+export function printReport(report: ReportData, periodLabel: string, restaurant: ReportRestaurant) {
+  const logo = restaurant.logo ? `<img src="${escapeHtml(restaurant.logo)}" alt="" style="max-height:64px;max-width:160px;object-fit:contain" />` : ''
   const table = (head: string[], body: Array<Array<string | number>>) =>
     `<table><thead><tr>${head.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${body.map((row) => `<tr>${row.map((c) => `<td>${escapeHtml(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório - ${escapeHtml(periodLabel)}</title>
-<style>body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}h1{margin:0}h2{margin-top:24px;font-size:16px}p{color:#64748b}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #e2e8f0}</style></head><body>
-<h1>Relatório de vendas</h1><p>${escapeHtml(periodLabel)} · gerado em ${escapeHtml(new Date().toLocaleString('pt-BR'))}</p>
+<style>body{font-family:Arial,sans-serif;padding:24px;color:#0f172a}h1{margin:0}h2{margin-top:24px;font-size:16px}p{color:#64748b}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #e2e8f0}.head{display:flex;align-items:center;gap:16px;margin-bottom:8px}</style></head><body onload="window.print()">
+<div class="head">${logo}<div><h1>${escapeHtml(restaurant.name)}</h1><strong>Relatório de vendas</strong></div></div><p>${escapeHtml(periodLabel)} · gerado em ${escapeHtml(new Date().toLocaleString('pt-BR'))}</p>
 ${table(['Indicador', 'Valor'], [['Faturamento total', money(report.revenue)], ['Pedidos concluídos', report.completed], ['Cancelamentos', report.cancelled], ['Produto mais vendido', report.topProduct], ['Horário de pico', report.peakHour]])}
 <h2>Faturamento por dia</h2>${table(['Dia', 'Faturamento'], report.dailyRevenue.map((i) => [i.day, money(i.value)]))}
 <h2>Pedidos por status</h2>${table(['Status', 'Pedidos'], report.statusSeries.map((i) => [i.name, i.value]))}
@@ -183,6 +187,5 @@ ${table(['Indicador', 'Valor'], [['Faturamento total', money(report.revenue)], [
   win.document.write(html)
   win.document.close()
   win.focus()
-  win.print()
   return true
 }
