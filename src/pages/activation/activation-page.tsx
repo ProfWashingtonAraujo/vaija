@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { AlertTriangle, ArrowUpRight, Building2, CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, KeyRound, Pencil, ReceiptText, Trash2, TrendingUp, UserCog, UserPlus, Users, WalletCards, X } from 'lucide-react'
+import { AlertTriangle, ArrowUpRight, Building2, CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, Eye, EyeOff, KeyRound, Pencil, ReceiptText, Trash2, TrendingUp, UserCog, UserPlus, Users, WalletCards, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { SaasLayout } from '@/components/layout/saas-layout'
@@ -24,6 +24,23 @@ const defaultPlanPrices: Record<PlanKey, number> = {
 }
 
 const planOrder: PlanKey[] = ['Free', 'Start', 'Pro', 'Premium']
+
+function PasswordInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="relative">
+      <Input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={visible ? 'text' : 'password'} autoComplete="new-password" className="pr-12" />
+      <button
+        type="button"
+        onClick={() => setVisible((current) => !current)}
+        aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+      >
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  )
+}
 
 export function ActivationPage() {
   const navigate = useNavigate()
@@ -64,6 +81,7 @@ export function ActivationPage() {
   const [editingAccessRole, setEditingAccessRole] = useState('operator')
   const [editingAccessShift, setEditingAccessShift] = useState('')
   const [editingAccessPassword, setEditingAccessPassword] = useState('')
+  const [editingAccessPasswordConfirm, setEditingAccessPasswordConfirm] = useState('')
   const [editingTenantId, setEditingTenantId] = useState<string | null>(null)
   const [editingRestaurantName, setEditingRestaurantName] = useState('')
   const [editingOwnerName, setEditingOwnerName] = useState('')
@@ -327,6 +345,7 @@ export function ActivationPage() {
     setEditingAccessRole(user.roleKey)
     setEditingAccessShift(user.shift)
     setEditingAccessPassword('')
+    setEditingAccessPasswordConfirm('')
   }
 
   const cancelEditingAccess = () => {
@@ -337,11 +356,16 @@ export function ActivationPage() {
     setEditingAccessRole('operator')
     setEditingAccessShift('')
     setEditingAccessPassword('')
+    setEditingAccessPasswordConfirm('')
   }
 
   const saveAccess = async (event: FormEvent<HTMLFormElement>, user: AppUser) => {
     event.preventDefault()
     const updatedUsername = normalizeUsername(editingAccessUsername)
+    if (editingAccessPassword !== editingAccessPasswordConfirm) {
+      toast.error('A confirmação da senha não confere.')
+      return
+    }
     if (!editingAccessName.trim() || !isValidUsername(updatedUsername) || !isValidOptionalEmail(editingAccessEmail) || !editingAccessShift.trim() || (editingAccessPassword && editingAccessPassword.length < 8)) {
       toast.error(`Preencha nome, usuário (${usernameHint}) e turno. A nova senha deve ter pelo menos 8 caracteres.`)
       return
@@ -744,7 +768,8 @@ export function ActivationPage() {
                     <option value="operator">Operador</option>
                   </select>
                   <Input value={editingAccessShift} onChange={(event) => setEditingAccessShift(event.target.value)} placeholder="Turno ou função" />
-                  <Input value={editingAccessPassword} onChange={(event) => setEditingAccessPassword(event.target.value)} placeholder="Nova senha (opcional)" type="password" />
+                  <PasswordInput value={editingAccessPassword} onChange={setEditingAccessPassword} placeholder="Nova senha (opcional)" />
+                  <PasswordInput value={editingAccessPasswordConfirm} onChange={setEditingAccessPasswordConfirm} placeholder="Confirmar nova senha" />
                   <div className="flex gap-2">
                     <Button type="submit" className="flex-1">Salvar</Button>
                     <Button type="button" variant="outline" onClick={cancelEditingAccess} aria-label="Cancelar edição"><X className="h-4 w-4" /></Button>
