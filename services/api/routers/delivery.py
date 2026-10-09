@@ -42,6 +42,10 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
 async def _delivery_by_token(db: AsyncSession, token: str) -> Delivery | None:
     return (await db.execute(select(Delivery).where(Delivery.token_hash == _hash(token)))).scalar_one_or_none()
 
@@ -129,7 +133,7 @@ async def post_location(token: str, body: LocationIn, db: AsyncSession = Depends
         return _error(409, "delivery_not_active")
 
     now = _now()
-    if delivery.location_at and (now - delivery.location_at).total_seconds() < MIN_SECONDS_BETWEEN_LOCATIONS:
+    if delivery.location_at and (now - _aware(delivery.location_at)).total_seconds() < MIN_SECONDS_BETWEEN_LOCATIONS:
         return {"ok": True}  # enviado rápido demais: ignora sem erro
     delivery.latitude, delivery.longitude = body.latitude, body.longitude
     delivery.accuracy = body.accuracy
@@ -176,5 +180,5 @@ async def get_public_courier_location(tenant_id: str, order_id: int, db: AsyncSe
         "active": True,
         "latitude": delivery.latitude,
         "longitude": delivery.longitude,
-        "updatedAt": delivery.location_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z") if delivery.location_at else None,
+        "updatedAt": _aware(delivery.location_at).astimezone(timezone.utc).isoformat().replace("+00:00", "Z") if delivery.location_at else None,
     }
