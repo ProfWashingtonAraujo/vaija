@@ -14,7 +14,7 @@ import { fetchOrders, ProductUnavailableError, saveOrdersKeepingNew } from '@/li
 import { usePolling } from '@/lib/use-polling'
 import { getTenantId } from '@/lib/tenant-storage'
 import { getCourierUrl, getPublicOrderTrackingUrl } from '@/lib/public-order-url'
-import { createCourierLink } from '@/lib/delivery-api'
+import { createCourierLink, fetchDeliveries } from '@/lib/delivery-api'
 
 const COLUMN_STATUS = {
   Pendente: 'Pendente',
@@ -85,7 +85,8 @@ export function OrdersPage() {
   const [dropTarget, setDropTarget] = useState<ColumnTitle | null>(null)
   const [dropTargetOrderId, setDropTargetOrderId] = useState<number | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
-  const [courierLink, setCourierLink] = useState<{ orderId: number; url: string } | null>(null)
+  const [courierDialog, setCourierDialog] = useState<{ orderId: number; name: string; url: string | null; busy: boolean } | null>(null)
+  const [knownCouriers, setKnownCouriers] = useState<string[]>([])
   const [orderForm, setOrderForm] = useState<OrderFormValues>({ customer: '', phone: '', address: '', tableNumber: '', payment: 'Pix', notes: '' })
   const [products, setProducts] = useState<Product[]>([])
   const [orderItems, setOrderItems] = useState<EditableOrderItem[]>([])
@@ -279,20 +280,29 @@ export function OrdersPage() {
     setOrderItems((current) => current.filter((item) => item.id !== id))
   }
 
-  const handleSendCourier = async () => {
+  const handleSendCourier = () => {
     if (!selected) return
+    setCourierDialog({ orderId: selected.id, name: '', url: null, busy: false })
+    // lista de entregadores já usados (só gerente/administrador consegue ler; para os outros fica vazia)
+    void fetchDeliveries(new Date().toISOString()).then((result) => setKnownCouriers(result.couriers)).catch(() => undefined)
+  }
+
+  const generateCourierLink = async () => {
+    if (!courierDialog) return
+    setCourierDialog({ ...courierDialog, busy: true })
     try {
-      const url = getCourierUrl(await createCourierLink(selected.id))
-      setCourierLink({ orderId: selected.id, url })
+      const url = getCourierUrl(await createCourierLink(courierDialog.orderId, courierDialog.name))
+      setCourierDialog((current) => current && { ...current, url, busy: false })
     } catch {
+      setCourierDialog((current) => current && { ...current, busy: false })
       toast.error('Não foi possível gerar o link do entregador. Tente de novo.')
     }
   }
 
   const copyCourierLink = async () => {
-    if (!courierLink) return
+    if (!courierDialog?.url) return
     try {
-      await navigator.clipboard.writeText(courierLink.url)
+      await navigator.clipboard.writeText(courierDialog.url)
       toast.success('Link copiado.')
     } catch {
       toast.error('Não foi possível copiar. Selecione e copie o link manualmente.')
@@ -408,21 +418,32 @@ export function OrdersPage() {
         </div>
         <div>
           {selected ? (
-            <OrderDetailsPanel order={selected} onAdvance={handleAdvance} onEdit={openEditOrderForm} onOpenWhatsapp={handleOpenWhatsapp} onSendCourier={() => void handleSendCourier()} />
+            <OrderDetailsPanel order={selected} onAdvance={handleAdvance} onEdit={openEditOrderForm} onOpenWhatsapp={handleOpenWhatsapp} onSendCourier={handleSendCourier} />
           ) : (
             <div className="rounded-[30px] border border-orange-100 bg-white p-6 text-center text-sm text-slate-500">Nenhum pedido ainda. Os pedidos aparecem aqui assim que forem feitos.</div>
           )}
         </div>
       </div>
-      <Dialog open={courierLink !== null} onOpenChange={(open) => { if (!open) setCourierLink(null) }}>
+      <Dialog open={courierDialog !== null} onOpenChange={(open) => { if (!open) setCourierDialog(null) }}>
         <DialogContent className="max-w-md">
-          <h3 className="font-heading text-2xl font-bold text-slate-900">Link do entregador</h3>
-          <p className="text-sm text-slate-500">Pedido #{courierLink?.orderId}. Envie ao entregador: ele abre o link no celular e toca em &quot;Iniciar entrega&quot;. Um novo link invalida o anterior.</p>
-          <Input readOnly value={courierLink?.url ?? ''} onFocus={(event) => event.currentTarget.select()} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Button variant="outline" onClick={() => void copyCourierLink()}>Copiar link</Button>
-            <Button onClick={() => { if (courierLink) window.open(`https://wa.me/?text=${encodeURIComponent(`Entrega do pedido #${courierLink.orderId}: ${courierLink.url}`)}`, '_blank', 'noopener,noreferrer') }}>Enviar pelo WhatsApp</Button>
-          </div>
+          <h3 className="font-heading text-2xl font-bold text-slate-900">Entregador do pedido #{courierDialog?.orderId}</h3>
+          {courierDialog?.url === null ? (
+            <>
+              <p className="text-sm text-slate-500">Informe quem vai entregar (opcional) para acompanhar na tela de Entregas.</p>
+              <Input list="known-couriers" value={courierDialog.name} maxLength={60} onChange={(event) => setCourierDialog({ ...courierDialog, name: event.target.value })} placeholder="Nome do entregador" />
+              <datalist id="known-couriers">{knownCouriers.map((name) => <option key={name} value={name} />)}</datalist>
+              <Button onClick={() => void generateCourierLink()} disabled={courierDialog.busy}>{courierDialog.busy ? 'Gerando...' : 'Gerar link'}</Button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-500">Envie ao entregador: ele abre o link no celular e toca em &quot;Iniciar entrega&quot;. Um novo link invalida o anterior.</p>
+              <Input readOnly value={courierDialog?.url ?? ''} onFocus={(event) => event.currentTarget.select()} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Button variant="outline" onClick={() => void copyCourierLink()}>Copiar link</Button>
+                <Button onClick={() => { if (courierDialog?.url) window.open(`https://wa.me/?text=${encodeURIComponent(`Entrega do pedido #${courierDialog.orderId}: ${courierDialog.url}`)}`, '_blank', 'noopener,noreferrer') }}>Enviar pelo WhatsApp</Button>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
       {selected && <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>

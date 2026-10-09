@@ -157,6 +157,7 @@ class Delivery(Base):
     tenant_id: Mapped[str] = mapped_column(String, primary_key=True)
     order_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     token_hash: Mapped[str] = mapped_column(String, nullable=False)
+    courier_name: Mapped[str | None] = mapped_column(String, nullable=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     accuracy: Mapped[float | None] = mapped_column(Float, nullable=True)

@@ -56,6 +56,7 @@ async def init_db():
         # create_all não altera tabelas existentes: colunas novas entram aqui.
         await conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS ingredients JSONB NOT NULL DEFAULT '[]'::jsonb"))
         await conn.execute(text("ALTER TABLE ingredient_stock ADD COLUMN IF NOT EXISTS name TEXT"))
+        await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS courier_name TEXT"))
         await _migrate_users_to_username(conn)
         # No Supabase, tabelas do schema public ficam expostas pela Data API (anon key).
         # RLS ligado e sem policies bloqueia esse acesso; a conexão direta do backend

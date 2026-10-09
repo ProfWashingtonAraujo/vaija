@@ -9,6 +9,7 @@ import {
   Plus,
   Rocket,
   ShoppingBag,
+  Truck,
   UserCog,
   Users,
   ChevronLeft,
@@ -31,6 +32,7 @@ const navGroups = [
       { to: '/dashboard', label: 'Painel Geral', icon: LayoutDashboard },
       { to: '/orders', label: 'Pedidos', icon: ShoppingBag },
       { to: '/pos', label: 'PDV / Caixa', icon: CreditCard },
+      { to: '/deliveries', label: 'Entregas', icon: Truck },
     ],
   },
   {

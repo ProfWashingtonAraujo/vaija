@@ -23,11 +23,32 @@ export type CourierLocation = {
 
 const jsonHeaders = { 'Content-Type': 'application/json' }
 
+export type DeliveryEntry = {
+  orderId: number
+  state: 'waiting' | 'active' | 'finished'
+  courierName: string | null
+  customer: string
+  address: string
+  value: number
+  createdAt: string | null
+  startedAt: string | null
+  finishedAt: string | null
+  location: { latitude: number; longitude: number; updatedAt: string | null } | null
+}
+
+/** Gerente/administrador: entregas em rota, aguardando início e finalizadas desde `since`. */
+export async function fetchDeliveries(since: string): Promise<{ deliveries: DeliveryEntry[]; couriers: string[] }> {
+  const response = await apiFetch(`/api/deliveries?since=${encodeURIComponent(since)}`, { headers: { 'X-Tenant-Id': getTenantId() } })
+  if (!response.ok) throw new Error(`failed_to_fetch_deliveries:${response.status}`)
+  return await response.json() as { deliveries: DeliveryEntry[]; couriers: string[] }
+}
+
 /** Restaurante: gera o link do entregador. O token só é devolvido nesta chamada. */
-export async function createCourierLink(orderId: number): Promise<string> {
+export async function createCourierLink(orderId: number, courierName?: string): Promise<string> {
   const response = await apiFetch(`/api/orders/${orderId}/courier-link`, {
     method: 'POST',
-    headers: { 'X-Tenant-Id': getTenantId() },
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': getTenantId() },
+    body: JSON.stringify({ courierName: courierName?.trim() || undefined }),
   })
   if (!response.ok) throw new Error(`failed_to_create_courier_link:${response.status}`)
   const data = await response.json() as { token: string }

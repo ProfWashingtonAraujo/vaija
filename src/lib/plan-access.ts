@@ -10,8 +10,8 @@ export const planLabels: Record<PlanKey, string> = {
 export const planRoutes: Record<PlanKey, string[]> = {
   Free: ['/orders', '/settings', '/activation'],
   Start: ['/orders', '/settings', '/activation'],
-  Pro: ['/dashboard', '/orders', '/pos', '/menu', '/settings', '/activation'],
-  Premium: ['/dashboard', '/operator', '/orders', '/pos', '/menu', '/reports', '/settings', '/activation'],
+  Pro: ['/dashboard', '/orders', '/pos', '/menu', '/deliveries', '/settings', '/activation'],
+  Premium: ['/dashboard', '/operator', '/orders', '/pos', '/menu', '/deliveries', '/reports', '/settings', '/activation'],
 }
 
 export function canAccessPath(plan: PlanKey, path: string) {
