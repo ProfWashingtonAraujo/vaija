@@ -1,4 +1,5 @@
-import { readTenantStorage, writeTenantStorage } from '@/lib/tenant-storage'
+import { apiFetch } from '@/lib/api-client'
+import { getTenantId, readTenantStorage, writeTenantStorage } from '@/lib/tenant-storage'
 
 export type BusinessHour = {
   day: string
@@ -102,7 +103,10 @@ export function readSettings(): AppSettings {
     preferences: defaultPreferenceSettings,
   }
 
-  const parsedSettings = readTenantStorage(settingsKey, defaultSettings) as Partial<AppSettings>
+  return mergeSettings(readTenantStorage(settingsKey, defaultSettings) as Partial<AppSettings>)
+}
+
+function mergeSettings(parsedSettings: Partial<AppSettings>): AppSettings {
   return {
     restaurant: { ...defaultRestaurantSettings, ...parsedSettings.restaurant },
     subscription: { ...defaultSubscriptionSettings, ...parsedSettings.subscription },
@@ -116,4 +120,55 @@ export function readSettings(): AppSettings {
 export function saveSettings(settings: AppSettings) {
   writeTenantStorage(settingsKey, settings)
   window.dispatchEvent(new CustomEvent(settingsUpdatedEvent, { detail: settings }))
+}
+
+const offlineMode = import.meta.env.VITE_OFFLINE_MODE === 'true'
+
+export type PublicSettings = {
+  restaurant: RestaurantSettings
+  delivery: DeliverySettings
+}
+
+/** Configurações que o cliente (sem login) enxerga no link público: nome, logo e regras de entrega. */
+export async function fetchPublicSettings(tenantId: string): Promise<PublicSettings> {
+  if (offlineMode) {
+    const local = readSettings()
+    return { restaurant: local.restaurant, delivery: local.delivery }
+  }
+  const response = await apiFetch(`/api/public/${encodeURIComponent(tenantId)}/settings`, undefined, false)
+  if (!response.ok) throw new Error(`failed_to_fetch_public_settings:${response.status}`)
+  const data = await response.json() as Partial<PublicSettings>
+  return {
+    restaurant: { ...defaultRestaurantSettings, ...data.restaurant },
+    delivery: { ...defaultDeliverySettings, ...data.delivery },
+  }
+}
+
+/**
+ * Painel: o servidor é a fonte da verdade (o navegador é só cache). Se o servidor ainda não tem
+ * configurações, envia as deste navegador para ele, assim o que já foi configurado não se perde.
+ */
+export async function syncSettingsFromServer(): Promise<AppSettings | null> {
+  if (offlineMode) return null
+  const response = await apiFetch('/api/settings', { headers: { 'X-Tenant-Id': getTenantId() } })
+  if (!response.ok) throw new Error(`failed_to_fetch_settings:${response.status}`)
+  const { settings } = await response.json() as { settings: Partial<AppSettings> | null }
+  if (!settings) {
+    await pushSettingsToServer(readSettings()).catch(() => undefined)
+    return null
+  }
+  const merged = mergeSettings(settings)
+  writeTenantStorage(settingsKey, merged)
+  window.dispatchEvent(new CustomEvent(settingsUpdatedEvent, { detail: merged }))
+  return merged
+}
+
+export async function pushSettingsToServer(settings: AppSettings) {
+  if (offlineMode) return
+  const response = await apiFetch('/api/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': getTenantId() },
+    body: JSON.stringify({ settings }),
+  })
+  if (!response.ok) throw new Error(`failed_to_save_settings:${response.status}`)
 }

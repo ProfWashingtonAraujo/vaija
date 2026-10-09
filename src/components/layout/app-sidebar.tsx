@@ -19,7 +19,7 @@ import { restaurant } from '@/data/mock-restaurant'
 import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { readSettings, settingsUpdatedEvent, type AppSettings } from '@/lib/settings'
+import { readSettings, settingsUpdatedEvent, syncSettingsFromServer, type AppSettings } from '@/lib/settings'
 import { canAccessPath, planLabels } from '@/lib/plan-access'
 import { getTenantForUser, tenantsUpdatedEvent, type Tenant } from '@/lib/tenants-api'
 import { useSidebar } from '@/components/layout/sidebar-context'
@@ -76,6 +76,10 @@ export function AppSidebar() {
     window.addEventListener(settingsUpdatedEvent, updateSettings)
     return () => window.removeEventListener(settingsUpdatedEvent, updateSettings)
   }, [])
+
+  useEffect(() => {
+    if (user && !user.isPlatformAdmin) void syncSettingsFromServer().catch(() => undefined)
+  }, [user])
 
   useEffect(() => {
     const updateTenant = (event: Event) => {

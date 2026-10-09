@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { formatCurrency } from '@/lib/formatters'
 import { findPublicOrders } from '@/lib/orders-api'
 import type { Order, OrderStatus } from '@/data/mock-orders'
-import { readSettings } from '@/lib/settings'
+import { usePublicSettings } from '@/lib/use-public-settings'
 
 const trackingSteps: Array<{ status: OrderStatus; label: string; description: string; icon: typeof Clock }> = [
   { status: 'Pendente', label: 'Pedido recebido', description: 'Seu pedido entrou na fila do restaurante.', icon: Clock },
@@ -35,7 +35,8 @@ export function CustomerTrackingPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [query, setQuery] = useState(searchParams.get('pedido') ?? '')
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
-  const [restaurantSettings] = useState(() => readSettings().restaurant)
+  const { settings: publicSettings } = usePublicSettings(tenantId)
+  const restaurantSettings = publicSettings.restaurant
 
   useEffect(() => {
     const initialQuery = searchParams.get('pedido')

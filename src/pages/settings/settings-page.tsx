@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { changeOwnPassword, createUser, fetchUsers, type AppUser } from '@/lib/users-api'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { readSettings, saveSettings, type BusinessHour, type DeliverySettings } from '@/lib/settings'
+import { pushSettingsToServer, readSettings, saveSettings, syncSettingsFromServer, type BusinessHour, type DeliverySettings } from '@/lib/settings'
 import { planLabels } from '@/lib/plan-access'
 import { getTenantForUser } from '@/lib/tenants-api'
 import { getPublicOrderUrl } from '@/lib/public-order-url'
@@ -46,6 +46,21 @@ type UserFormValues = z.infer<typeof userSchema>
 type PasswordFormValues = z.infer<typeof passwordSchema>
 
 export function SettingsPage() {
+  const [synced, setSynced] = useState(false)
+
+  // o servidor é a fonte da verdade: carrega antes de montar o formulário, que lê o valor inicial uma vez só
+  useEffect(() => {
+    void syncSettingsFromServer().catch(() => undefined).finally(() => setSynced(true))
+  }, [])
+
+  if (!synced) {
+    return <AdminLayout title="Configurações" description="Carregando configurações do restaurante..."><div className="h-40 animate-pulse rounded-[30px] bg-orange-50" /></AdminLayout>
+  }
+
+  return <SettingsForm />
+}
+
+function SettingsForm() {
   const { user } = useAuth()
   const storedSettings = readSettings()
   const { register, handleSubmit } = useForm<FormValues>({
@@ -166,8 +181,8 @@ export function SettingsPage() {
   return (
     <AdminLayout title="Configurações" description="Ajuste dados do restaurante, operação, usuários e preferências visuais da plataforma.">
       <form
-        onSubmit={handleSubmit((values) => {
-          saveSettings({
+        onSubmit={handleSubmit(async (values) => {
+          const nextSettings = {
             restaurant: {
               name: values.restaurantName,
               phone: values.phone,
@@ -187,8 +202,14 @@ export function SettingsPage() {
               density: values.density,
               cardStyle: values.cardStyle,
             },
-          })
-          toast.success('Configurações salvas com sucesso.')
+          }
+          saveSettings(nextSettings)
+          try {
+            await pushSettingsToServer(nextSettings)
+            toast.success('Configurações salvas com sucesso.')
+          } catch {
+            toast.error('Salvo só neste navegador: não foi possível enviar ao servidor. Seus clientes não verão a mudança até salvar de novo.')
+          }
         })}
         className="grid gap-6"
       >

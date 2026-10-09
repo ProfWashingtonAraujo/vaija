@@ -22,6 +22,8 @@ from routers import (
     printer_router,
     cash_register_router,
     public_cash_register_router,
+    settings_router,
+    public_settings_router,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -86,6 +88,8 @@ app.include_router(platform_router)
 app.include_router(printer_router)
 app.include_router(cash_register_router)
 app.include_router(public_cash_register_router)
+app.include_router(settings_router)
+app.include_router(public_settings_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

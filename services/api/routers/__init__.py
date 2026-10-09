@@ -6,6 +6,7 @@ from .users import users_router
 from .platform import platform_router
 from .printer import printer_router
 from .cash_register import cash_register_router, public_cash_register_router
+from .settings import settings_router, public_settings_router
 
 __all__ = [
     "auth_router",
@@ -18,4 +19,6 @@ __all__ = [
     "printer_router",
     "cash_register_router",
     "public_cash_register_router",
+    "settings_router",
+    "public_settings_router",
 ]

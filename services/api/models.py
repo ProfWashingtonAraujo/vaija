@@ -130,3 +130,16 @@ class CashRegister(Base):
     opened_by: Mapped[str | None] = mapped_column(String, nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     closed_by: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class RestaurantSettings(Base):
+    """Configurações do restaurante (dados, entrega, horários, pagamentos, preferências) como JSON.
+
+    Precisam viver no servidor: o cliente que pede pelo link público usa a taxa de entrega, o CEP de
+    origem, o nome e a logo, e o navegador dele não tem nada do que foi salvo no navegador do dono.
+    """
+    __tablename__ = "restaurant_settings"
+
+    tenant_id: Mapped[str] = mapped_column(String, primary_key=True)
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

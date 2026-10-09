@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ShieldCheck, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/formatters'
 import { createPublicOrder, ProductUnavailableError } from '@/lib/orders-api'
-import { parseCurrencyInput, readSettings } from '@/lib/settings'
+import { parseCurrencyInput } from '@/lib/settings'
+import { usePublicSettings } from '@/lib/use-public-settings'
 import { fetchPublicCashRegisterOpen } from '@/lib/cash-register'
 import type { Order } from '@/data/mock-orders'
 
@@ -112,8 +113,10 @@ export function CustomerCheckoutPage() {
   const [reference, setReference] = useState('')
   const [notes, setNotes] = useState('')
   const [payment, setPayment] = useState<Order['payment']>('Pix')
-  const [deliverySettings] = useState(() => readSettings().delivery)
-  const [restaurantSettings] = useState(() => readSettings().restaurant)
+  const { settings: publicSettings, ready: settingsReady } = usePublicSettings(tenantId)
+  const deliverySettings = publicSettings.delivery
+  const restaurantSettings = publicSettings.restaurant
+  const latestCep = useRef('')
   const [deliveryCep, setDeliveryCep] = useState('')
   const [calculatedDistanceKm, setCalculatedDistanceKm] = useState<number | null>(null)
   const [calculatedDeliveryFee, setCalculatedDeliveryFee] = useState<number | null>(null)
@@ -127,10 +130,6 @@ export function CustomerCheckoutPage() {
       ? calculatedDeliveryFee ?? 0
       : parseCurrencyInput(deliverySettings.fixedFee)
   const total = subtotal + deliveryFee
-
-  if (!profile) {
-    return <Navigate to={orderPath} replace />
-  }
 
   const persistCart = (nextCart: CartItem[]) => {
     setCart(nextCart)
@@ -166,17 +165,18 @@ export function CustomerCheckoutPage() {
     }
   }
 
-  const calculateDeliveryByCep = async () => {
+  const calculateDeliveryByCep = async (silent = false) => {
     if (!deliverySettings.originCep.trim()) {
-      toast.error('Configure o CEP da pizzaria em Configurações.')
+      if (!silent) toast.error('O restaurante ainda não configurou o CEP de origem da entrega.')
       return null
     }
 
     if (normalizeCep(deliveryCep).length !== 8) {
-      toast.error('Informe um CEP de entrega válido.')
+      if (!silent) toast.error('Informe um CEP de entrega válido.')
       return null
     }
 
+    const requestedCep = normalizeCep(deliveryCep)
     try {
       setIsCalculatingDelivery(true)
       const [originCoordinates, destinationCoordinates] = await Promise.all([
@@ -186,9 +186,11 @@ export function CustomerCheckoutPage() {
       const nextDistanceKm = getDistanceKm(originCoordinates, destinationCoordinates)
       const nextDeliveryFee = nextDistanceKm * parseCurrencyInput(deliverySettings.feePerKm)
 
+      // o cliente pode ter mudado o CEP enquanto a consulta estava a caminho
+      if (latestCep.current !== requestedCep) return null
       setCalculatedDistanceKm(nextDistanceKm)
       setCalculatedDeliveryFee(nextDeliveryFee)
-      toast.success(`Entrega calculada: ${nextDistanceKm.toFixed(1).replace('.', ',')} km.`)
+      if (!silent) toast.success(`Entrega calculada: ${nextDistanceKm.toFixed(1).replace('.', ',')} km.`)
       return nextDeliveryFee
     } catch {
       toast.error('Não foi possível calcular a entrega por CEP. Confira os CEPs informados.')
@@ -197,6 +199,16 @@ export function CustomerCheckoutPage() {
       setIsCalculatingDelivery(false)
     }
   }
+
+  // CEP completo: preenche o endereço e, na cobrança por km, calcula a entrega sozinho
+  useEffect(() => {
+    if (!settingsReady || normalizeCep(deliveryCep).length !== 8) return
+    const timer = window.setTimeout(() => {
+      void fillAddressFromCep()
+      if (deliverySettings.mode === 'perKm') void calculateDeliveryByCep(true)
+    }, 500)
+    return () => window.clearTimeout(timer)
+  }, [deliveryCep, settingsReady, deliverySettings.mode, deliverySettings.originCep, deliverySettings.feePerKm])
 
   useEffect(() => {
     let active = true
@@ -209,6 +221,10 @@ export function CustomerCheckoutPage() {
   }, [tenantId])
 
   const handleSubmitOrder = async () => {
+    if (!settingsReady) {
+      toast.error('Carregando as regras de entrega. Tente novamente em instantes.')
+      return
+    }
     const isOpenNow = await fetchPublicCashRegisterOpen(tenantId).catch(() => false)
     setRegisterOpen(isOpenNow)
     if (!isOpenNow) {
@@ -272,6 +288,10 @@ export function CustomerCheckoutPage() {
     navigate(`${orderPath}/acompanhar?pedido=${createdOrder.id}`)
   }
 
+  if (!profile) {
+    return <Navigate to={orderPath} replace />
+  }
+
   return (
     <main className="min-h-screen bg-[#fff8f1] text-slate-900">
       <section className="bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -293,13 +313,14 @@ export function CustomerCheckoutPage() {
               <Input value={customer} onChange={(event) => setCustomer(event.target.value)} placeholder="Seu nome" />
               <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="WhatsApp" inputMode="tel" />
               <Input value={deliveryCep} onChange={(event) => {
+                latestCep.current = normalizeCep(event.target.value)
                 setDeliveryCep(event.target.value)
                 setCalculatedDistanceKm(null)
                 setCalculatedDeliveryFee(null)
-              }} onBlur={fillAddressFromCep} placeholder="CEP de entrega" inputMode="numeric" />
+              }} placeholder="CEP de entrega" inputMode="numeric" />
               <Input className="md:col-span-2" value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Endereço completo" />
               <Input className="md:col-span-2" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Ponto de referência ou complemento" />
-              {deliverySettings.mode === 'perKm' ? <Button type="button" variant="outline" onClick={calculateDeliveryByCep} disabled={isCalculatingDelivery || isLoadingCep}>{isCalculatingDelivery ? 'Calculando...' : 'Calcular entrega'}</Button> : null}
+              {deliverySettings.mode === 'perKm' ? <Button type="button" variant="outline" onClick={() => void calculateDeliveryByCep()} disabled={isCalculatingDelivery || isLoadingCep}>{isCalculatingDelivery ? 'Calculando...' : 'Recalcular entrega'}</Button> : null}
               <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Observações do pedido. Ex: sem cebola, sem molho, sem salada" className="min-h-24 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100 md:col-span-2" />
               <select value={payment} onChange={(event) => setPayment(event.target.value as Order['payment'])} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
                 <option value="Pix">Pix</option>
@@ -329,11 +350,11 @@ export function CustomerCheckoutPage() {
             {!registerOpen ? <p className="mt-3 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-800">Pedidos online pausados porque o caixa está fechado.</p> : null}
             <div className="mt-5 space-y-2 rounded-[24px] border border-orange-100 bg-orange-50/50 p-4 text-sm text-slate-600">
               <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
-              <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{formatCurrency(deliveryFee)}</span></div>
+              <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{deliverySettings.mode === 'perKm' && calculatedDeliveryFee === null ? (isCalculatingDelivery ? 'Calculando...' : 'Informe o CEP') : formatCurrency(deliveryFee)}</span></div>
               {calculatedDistanceKm !== null ? <div className="flex justify-between"><span>Distância</span><span className="font-mono">{calculatedDistanceKm.toFixed(1).replace('.', ',')} km</span></div> : null}
               <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(total)}</span></div>
             </div>
-            {deliverySettings.mode === 'perKm' ? <p className="mt-3 text-center text-xs text-slate-500">A distância é calculada automaticamente pelo CEP da pizzaria e pelo CEP de entrega.</p> : null}
+            {deliverySettings.mode === 'perKm' ? <p className="mt-3 text-center text-xs text-slate-500">Digite o CEP de entrega: a taxa é calculada automaticamente pela distância até a pizzaria.</p> : null}
             <Button className="mt-5 w-full" onClick={handleSubmitOrder} disabled={cart.length === 0}>Enviar pedido</Button>
             <Link to={orderPath} className="mt-3 block text-center text-sm font-semibold text-orange-700">Adicionar mais itens</Link>
           </div>

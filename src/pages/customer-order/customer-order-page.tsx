@@ -11,7 +11,7 @@ import { fetchPublicCategories, fetchPublicProducts } from '@/lib/catalog-api'
 import type { Product } from '@/data/mock-products'
 import { HalfAndHalfDialog } from '@/components/shared/half-and-half-dialog'
 import { isHalfEligible } from '@/lib/half-and-half'
-import { readSettings } from '@/lib/settings'
+import { usePublicSettings } from '@/lib/use-public-settings'
 import { cashRegisterUpdatedEvent, fetchPublicCashRegisterOpen, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
@@ -71,7 +71,7 @@ export function CustomerOrderPage() {
   const [signupPhone, setSignupPhone] = useState(profile?.phone ?? '')
   const [cashRegister, setCashRegister] = useState<CashRegisterState>({ isOpen: false })
   const googleButtonRef = useRef<HTMLDivElement>(null)
-  const settings = readSettings()
+  const { settings } = usePublicSettings(tenantId)
 
   useEffect(() => {
     setProducts([])
