@@ -13,7 +13,8 @@ import type { Product } from '@/data/mock-products'
 import { fetchOrders, ProductUnavailableError, saveOrdersKeepingNew } from '@/lib/orders-api'
 import { usePolling } from '@/lib/use-polling'
 import { getTenantId } from '@/lib/tenant-storage'
-import { getPublicOrderTrackingUrl } from '@/lib/public-order-url'
+import { getCourierUrl, getPublicOrderTrackingUrl } from '@/lib/public-order-url'
+import { createCourierLink } from '@/lib/delivery-api'
 
 const COLUMN_STATUS = {
   Pendente: 'Pendente',
@@ -84,6 +85,7 @@ export function OrdersPage() {
   const [dropTarget, setDropTarget] = useState<ColumnTitle | null>(null)
   const [dropTargetOrderId, setDropTargetOrderId] = useState<number | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [courierLink, setCourierLink] = useState<{ orderId: number; url: string } | null>(null)
   const [orderForm, setOrderForm] = useState<OrderFormValues>({ customer: '', phone: '', address: '', tableNumber: '', payment: 'Pix', notes: '' })
   const [products, setProducts] = useState<Product[]>([])
   const [orderItems, setOrderItems] = useState<EditableOrderItem[]>([])
@@ -277,6 +279,26 @@ export function OrdersPage() {
     setOrderItems((current) => current.filter((item) => item.id !== id))
   }
 
+  const handleSendCourier = async () => {
+    if (!selected) return
+    try {
+      const url = getCourierUrl(await createCourierLink(selected.id))
+      setCourierLink({ orderId: selected.id, url })
+    } catch {
+      toast.error('Não foi possível gerar o link do entregador. Tente de novo.')
+    }
+  }
+
+  const copyCourierLink = async () => {
+    if (!courierLink) return
+    try {
+      await navigator.clipboard.writeText(courierLink.url)
+      toast.success('Link copiado.')
+    } catch {
+      toast.error('Não foi possível copiar. Selecione e copie o link manualmente.')
+    }
+  }
+
   const handleOpenWhatsapp = () => {
     if (!selected) return
     window.open(getWhatsappUrl(selected), '_blank', 'noopener,noreferrer')
@@ -386,12 +408,23 @@ export function OrdersPage() {
         </div>
         <div>
           {selected ? (
-            <OrderDetailsPanel order={selected} onAdvance={handleAdvance} onEdit={openEditOrderForm} onOpenWhatsapp={handleOpenWhatsapp} />
+            <OrderDetailsPanel order={selected} onAdvance={handleAdvance} onEdit={openEditOrderForm} onOpenWhatsapp={handleOpenWhatsapp} onSendCourier={() => void handleSendCourier()} />
           ) : (
             <div className="rounded-[30px] border border-orange-100 bg-white p-6 text-center text-sm text-slate-500">Nenhum pedido ainda. Os pedidos aparecem aqui assim que forem feitos.</div>
           )}
         </div>
       </div>
+      <Dialog open={courierLink !== null} onOpenChange={(open) => { if (!open) setCourierLink(null) }}>
+        <DialogContent className="max-w-md">
+          <h3 className="font-heading text-2xl font-bold text-slate-900">Link do entregador</h3>
+          <p className="text-sm text-slate-500">Pedido #{courierLink?.orderId}. Envie ao entregador: ele abre o link no celular e toca em &quot;Iniciar entrega&quot;. Um novo link invalida o anterior.</p>
+          <Input readOnly value={courierLink?.url ?? ''} onFocus={(event) => event.currentTarget.select()} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Button variant="outline" onClick={() => void copyCourierLink()}>Copiar link</Button>
+            <Button onClick={() => { if (courierLink) window.open(`https://wa.me/?text=${encodeURIComponent(`Entrega do pedido #${courierLink.orderId}: ${courierLink.url}`)}`, '_blank', 'noopener,noreferrer') }}>Enviar pelo WhatsApp</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {selected && <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="max-h-[calc(100vh-2rem)] max-w-2xl overflow-y-auto">
           <form onSubmit={handleSaveOrder} className="grid gap-4">

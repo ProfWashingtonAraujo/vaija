@@ -24,6 +24,9 @@ from routers import (
     public_cash_register_router,
     settings_router,
     public_settings_router,
+    delivery_router,
+    courier_router,
+    public_delivery_router,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -90,6 +93,9 @@ app.include_router(cash_register_router)
 app.include_router(public_cash_register_router)
 app.include_router(settings_router)
 app.include_router(public_settings_router)
+app.include_router(delivery_router)
+app.include_router(courier_router)
+app.include_router(public_delivery_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

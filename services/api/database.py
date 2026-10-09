@@ -50,7 +50,7 @@ async def get_db():
 
 async def init_db():
     """Cria tabelas que ainda não existem (idempotente)."""
-    from models import User, AuthSession, Category, Product, IngredientStock, Order, CashRegister, RestaurantSettings  # noqa: F401
+    from models import User, AuthSession, Category, Product, IngredientStock, Order, CashRegister, RestaurantSettings, Delivery  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # create_all não altera tabelas existentes: colunas novas entram aqui.

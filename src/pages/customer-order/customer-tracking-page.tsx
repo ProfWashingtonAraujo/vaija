@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Clock, PackageCheck, Search, Truck } from 'lucide-react'
 import { toast } from 'sonner'
@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { formatCurrency } from '@/lib/formatters'
 import { findPublicOrders } from '@/lib/orders-api'
+import { usePolling } from '@/lib/use-polling'
+import { CourierTracking } from '@/components/delivery/courier-tracking'
 import type { Order, OrderStatus } from '@/data/mock-orders'
 import { usePublicSettings } from '@/lib/use-public-settings'
 
@@ -35,12 +37,14 @@ export function CustomerTrackingPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [query, setQuery] = useState(searchParams.get('pedido') ?? '')
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
+  const lastQuery = useRef('')
   const { settings: publicSettings } = usePublicSettings(tenantId)
   const restaurantSettings = publicSettings.restaurant
 
   useEffect(() => {
     const initialQuery = searchParams.get('pedido')
     if (!initialQuery) return
+    lastQuery.current = initialQuery
     void findPublicOrders(initialQuery, tenantId)
       .then((loadedOrders) => {
         setOrders(loadedOrders)
@@ -73,6 +77,7 @@ export function CustomerTrackingPage() {
     }
 
     try {
+      lastQuery.current = query.trim()
       const loadedOrders = await findPublicOrders(query.trim(), tenantId)
       setOrders(loadedOrders)
       setSelectedOrderId(loadedOrders[0]?.id ?? null)
@@ -84,6 +89,12 @@ export function CustomerTrackingPage() {
     }
 
   }
+
+  // o status avança sozinho enquanto a página está aberta
+  usePolling(() => {
+    if (!lastQuery.current) return
+    return findPublicOrders(lastQuery.current, tenantId).then(setOrders).catch(() => undefined)
+  }, 8_000)
 
   return (
     <main className="min-h-screen bg-[#fff8f1] text-slate-900">
@@ -161,6 +172,8 @@ export function CustomerTrackingPage() {
                   )
                 })}
               </div>
+
+              {selectedOrder.status === 'Saiu para entrega' ? <CourierTracking tenantId={tenantId} orderId={selectedOrder.id} address={selectedOrder.address} /> : null}
 
               <div className="mt-6 grid gap-4 rounded-[24px] border border-orange-100 bg-orange-50/40 p-4 text-sm text-slate-600 sm:grid-cols-2">
                 <div><span className="font-semibold text-slate-900">Total:</span> {formatCurrency(selectedOrder.value)}</div>

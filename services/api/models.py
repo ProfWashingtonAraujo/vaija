@@ -5,7 +5,7 @@ Tabelas são criadas com create_all (idempotente) ou via Alembic.
 from datetime import datetime
 from typing import Any
 from sqlalchemy import (
-    BigInteger, Boolean, DateTime, Integer, Numeric,
+    BigInteger, Boolean, DateTime, Float, Integer, Numeric,
     String, Text, func, Index,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -143,3 +143,24 @@ class RestaurantSettings(Base):
     tenant_id: Mapped[str] = mapped_column(String, primary_key=True)
     data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class Delivery(Base):
+    """Entrega de um pedido com rastreamento do entregador.
+
+    O entregador não tem login: o restaurante gera um link com token secreto (guardamos só o hash).
+    A posição é sobrescrita a cada atualização; não guardamos histórico do trajeto.
+    """
+    __tablename__ = "deliveries"
+    __table_args__ = (Index("deliveries_token_hash_idx", "token_hash", unique=True),)
+
+    tenant_id: Mapped[str] = mapped_column(String, primary_key=True)
+    order_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String, nullable=False)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    accuracy: Mapped[float | None] = mapped_column(Float, nullable=True)
+    location_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
