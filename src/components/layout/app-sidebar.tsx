@@ -16,7 +16,6 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { restaurant } from '@/data/mock-restaurant'
 import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -136,7 +135,7 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="min-w-0 overflow-hidden">
             <p className="truncate font-heading text-sm font-bold text-slate-900">{tenant.restaurantName}</p>
-            <p className="truncate text-xs font-medium text-orange-600">{planLabels[currentPlan] ?? restaurant.plan}</p>
+            <p className="truncate text-xs font-medium text-orange-600">{planLabels[currentPlan] ?? ''}</p>
           </div>
         )}
       </div>

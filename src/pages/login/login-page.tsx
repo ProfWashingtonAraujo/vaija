@@ -47,7 +47,7 @@ export function LoginPage() {
           <p className="mt-6 font-heading text-4xl font-extrabold text-slate-900">Vaija</p>
           <p className="mt-3 text-orange-700">Sistema de Gestão Gastronômica</p>
           <div className="mt-10 space-y-4">
-            {['Operação clara para delivery, salão e balcão', 'Visual premium com foco em produtividade', 'Demonstração pronta para apresentação comercial'].map((item) => <div key={item} className="rounded-2xl border border-orange-100 bg-white/90 px-4 py-4 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">{item}</div>)}
+            {['Operação clara para delivery, salão e balcão', 'Visual premium com foco em produtividade', 'Pedidos, cardápio e entregas em um só lugar'].map((item) => <div key={item} className="rounded-2xl border border-orange-100 bg-white/90 px-4 py-4 text-sm font-medium text-slate-700 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">{item}</div>)}
           </div>
         </div>
         <div className="p-6 sm:p-10">

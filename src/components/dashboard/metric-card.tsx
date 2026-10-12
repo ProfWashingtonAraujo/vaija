@@ -1,5 +1,4 @@
 import { Bike, ChartPie, Receipt, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
-import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { formatCurrency, formatNumber } from '@/lib/formatters'
 
 const icons = {
@@ -7,15 +6,6 @@ const icons = {
   Receipt,
   ChartPie,
   Bike,
-}
-
-/** Generates stable-looking fake sparkline data seeded from the metric value */
-function generateSparkline(seed: number, points = 8): Array<{ v: number }> {
-  let s = Math.abs(seed % 1000) || 1
-  return Array.from({ length: points }, () => {
-    s = (s * 1664525 + 1013904223) & 0xffffffff
-    return { v: 30 + (Math.abs(s) % 70) }
-  })
 }
 
 const trendColors = {
@@ -40,7 +30,6 @@ export function MetricCard({
   trendDirection?: 'up' | 'down' | 'neutral'
 }) {
   const Icon = icons[icon]
-  const sparkData = generateSparkline(value)
   const colors = trendColors[trendDirection]
   const TrendIcon = trendDirection === 'up' ? TrendingUp : trendDirection === 'down' ? TrendingDown : null
 
@@ -64,24 +53,6 @@ export function MetricCard({
         <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${colors.bg} ${colors.border} ${colors.text}`}>
           {TrendIcon && <TrendIcon className="h-3 w-3" />}
           <span>{trend}</span>
-        </div>
-
-        {/* Mini Sparkline */}
-        <div className="h-9 w-20 opacity-70">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={sparkData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
-              <Tooltip content={() => null} />
-              <Line
-                type="monotone"
-                dataKey="v"
-                stroke={trendDirection === 'down' ? '#f43f5e' : '#ff6b00'}
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive
-                animationDuration={800}
-              />
-            </LineChart>
-          </ResponsiveContainer>
         </div>
       </div>
     </div>

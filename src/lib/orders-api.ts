@@ -1,4 +1,4 @@
-import { orders as mockOrders, type Order } from '@/data/mock-orders'
+import type { Order } from '@/data/mock-orders'
 import { readTenantStorage, writeTenantStorage, getTenantId } from '@/lib/tenant-storage'
 import { apiFetch } from '@/lib/api-client'
 
@@ -10,7 +10,7 @@ function getTenantHeaders(): HeadersInit {
 }
 
 export async function fetchOrders(): Promise<Order[]> {
-  if (import.meta.env.VITE_OFFLINE_MODE === 'true') return readTenantStorage(localOrdersKey, mockOrders)
+  if (import.meta.env.VITE_OFFLINE_MODE === 'true') return readTenantStorage<Order[]>(localOrdersKey, [])
   const response = await apiFetch('/api/orders', { headers: getTenantHeaders() })
   if (!response.ok) throw new Error(`failed_to_fetch_orders:${response.status}`)
   const data = await response.json()
