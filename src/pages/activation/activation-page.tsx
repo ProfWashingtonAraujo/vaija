@@ -933,7 +933,7 @@ export function ActivationPage() {
           <Input value={platformUserName} onChange={(event) => setPlatformUserName(event.target.value)} placeholder="Nome do usuário" />
           <Input value={platformUserUsername} onChange={(event) => setPlatformUserUsername(event.target.value)} placeholder="Usuário de login" autoCapitalize="none" />
           <Input value={platformUserEmail} onChange={(event) => setPlatformUserEmail(event.target.value)} placeholder="E-mail (opcional)" type="email" />
-          <Input value={platformUserPassword} onChange={(event) => setPlatformUserPassword(event.target.value)} placeholder="Senha inicial" type="password" />
+          <PasswordInput value={platformUserPassword} onChange={setPlatformUserPassword} placeholder="Senha inicial" />
         </div>
         <Button type="submit" className="mt-5 w-full">Criar usuário do SaaS</Button>
       </form>
