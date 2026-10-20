@@ -1,12 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { MapPin, Navigation, Phone } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { fetchCourierJob, finishDelivery, sendCourierLocation, startDelivery, type CourierJob } from '@/lib/delivery-api'
 import { formatCurrency } from '@/lib/formatters'
+import { distanceBetween, fetchRoute, formatRouteSummary, geocodeAddress, type Point, type RouteInfo } from '@/lib/geo'
+
+const CourierMap = lazy(() => import('@/components/delivery/courier-map').then((module) => ({ default: module.CourierMap })))
 
 const SEND_INTERVAL_MS = 5_000
+// o trajeto é recalculado quando o entregador anda um pouco ou depois de um tempo, para não sobrecarregar o serviço de rotas
+const ROUTE_MIN_INTERVAL_MS = 15_000
+const ROUTE_MAX_AGE_MS = 90_000
+const ROUTE_MIN_MOVE_METERS = 100
 
 type WakeLockSentinelLike = { release: () => Promise<void> }
 
@@ -25,6 +32,10 @@ export function CourierPage() {
   const [lastSentAt, setLastSentAt] = useState<Date | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [position, setPosition] = useState<Point | null>(null)
+  const [destination, setDestination] = useState<Point | null>(null)
+  const [route, setRoute] = useState<RouteInfo | null>(null)
+  const lastRouted = useRef<{ point: Point; at: number } | null>(null)
   const watchId = useRef<number | null>(null)
   const lastSent = useRef(0)
   const wakeLock = useRef<WakeLockSentinelLike | null>(null)
@@ -49,6 +60,7 @@ export function CourierPage() {
     watchId.current = navigator.geolocation.watchPosition(
       (position) => {
         setLocationError(null)
+        setPosition({ latitude: position.coords.latitude, longitude: position.coords.longitude })
         const now = Date.now()
         if (now - lastSent.current < SEND_INTERVAL_MS) return
         lastSent.current = now
@@ -78,6 +90,26 @@ export function CourierPage() {
       stopWatching()
     }
   }, [token, startWatching, stopWatching])
+
+  const jobAddress = job?.address
+  useEffect(() => {
+    if (!jobAddress) return
+    let active = true
+    void geocodeAddress(jobAddress).then((point) => { if (active) setDestination(point) })
+    return () => { active = false }
+  }, [jobAddress])
+
+  useEffect(() => {
+    if (!position || !destination) return
+    const last = lastRouted.current
+    if (last) {
+      const elapsed = Date.now() - last.at
+      const moved = distanceBetween(last.point, position)
+      if (elapsed < ROUTE_MIN_INTERVAL_MS || (moved < ROUTE_MIN_MOVE_METERS && elapsed < ROUTE_MAX_AGE_MS)) return
+    }
+    lastRouted.current = { point: position, at: Date.now() }
+    void fetchRoute(position, destination).then((result) => { if (result) setRoute(result) })
+  }, [position, destination])
 
   // o navegador libera o wake lock ao trocar de aba; pede de novo ao voltar
   useEffect(() => {
@@ -148,6 +180,16 @@ export function CourierPage() {
           {job.notes ? <p className="rounded-2xl bg-amber-50 p-3 text-amber-800">{job.notes}</p> : null}
           <p className="font-semibold">{job.payment}: {formatCurrency(job.value)}</p>
         </div>
+
+        {!job.finished && (destination || position) ? (
+          <div className="space-y-2">
+            <Suspense fallback={<div className="h-64 animate-pulse rounded-[24px] bg-orange-50" />}>
+              <CourierMap courier={position} destination={destination} destinationLabel="Destino" route={route?.coordinates ?? null} className="h-64" />
+            </Suspense>
+            {route ? <p className="text-center text-sm font-semibold text-slate-700">{formatRouteSummary(route)}</p> : null}
+            <p className="text-center text-xs text-slate-400">O ponto do destino é aproximado. Para navegar curva a curva, use Abrir rota.</p>
+          </div>
+        ) : null}
 
         {job.finished ? (
           <p className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-4 text-center font-semibold text-emerald-800">Entrega finalizada. Obrigado!</p>

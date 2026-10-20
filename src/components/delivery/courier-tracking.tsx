@@ -2,28 +2,9 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { Truck } from 'lucide-react'
 import { fetchPublicCourierLocation, type CourierLocation } from '@/lib/delivery-api'
 import { usePolling } from '@/lib/use-polling'
+import { geocodeAddress, type Point } from '@/lib/geo'
 
 const CourierMap = lazy(() => import('@/components/delivery/courier-map').then((module) => ({ default: module.CourierMap })))
-
-type Point = { latitude: number; longitude: number }
-
-const destinationCache = new Map<string, Point | null>()
-
-/** Endereço do pedido -> coordenadas (aproximadas), só para marcar o destino no mapa. */
-async function geocodeDestination(address: string): Promise<Point | null> {
-  const query = address.split(' - Ref:')[0].trim()
-  if (!query) return null
-  if (destinationCache.has(query)) return destinationCache.get(query) ?? null
-  try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(`${query}, Brasil`)}`)
-    const results = response.ok ? await response.json() as Array<{ lat: string; lon: string }> : []
-    const point = results[0] ? { latitude: Number(results[0].lat), longitude: Number(results[0].lon) } : null
-    destinationCache.set(query, point)
-    return point
-  } catch {
-    return null
-  }
-}
 
 function secondsAgo(iso?: string | null) {
   if (!iso) return null
@@ -45,7 +26,7 @@ export function CourierTracking({ tenantId, orderId, address }: { tenantId: stri
 
   useEffect(() => {
     let active = true
-    void geocodeDestination(address).then((point) => { if (active) setDestination(point) })
+    void geocodeAddress(address).then((point) => { if (active) setDestination(point) })
     return () => { active = false }
   }, [address])
 
