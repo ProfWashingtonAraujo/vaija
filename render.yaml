@@ -33,9 +33,7 @@ services:
       - key: N8N_ORDER_STATUS_WEBHOOK_URL
         sync: false
       - key: DATABASE_URL
-        fromDatabase:
-          name: vaija-postgres
-          property: connectionString
+        sync: false
       - key: REDIS_URL
         sync: false
 
@@ -48,9 +46,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: vaija-postgres
-          property: connectionString
+        sync: false
       - key: MERCADO_PAGO_ACCESS_TOKEN
         sync: false
       - key: MERCADO_PAGO_PUBLIC_KEY
@@ -81,7 +77,3 @@ services:
         value: epson
       - key: PRINT_COPIES
         value: 1
-
-databases:
-  - name: vaija-postgres
-    plan: free

@@ -16,7 +16,7 @@ Plataforma SaaS multi-restaurante para pizzarias, buffets e delivery: cardápio 
 - [API](#api)
 - [Funcionalidades](#funcionalidades)
 - [Scripts utilitários](#scripts-utilitários)
-- [Deploy: Vercel + Render + Supabase](#deploy-vercel--render--supabase)
+- [Deploy: Vercel + Render + Neon](#deploy-vercel--render--neon)
 - [n8n + WhatsApp](#n8n--whatsapp)
 - [Impressão térmica](#impressão-térmica)
 - [Migração do backend Go para FastAPI](#migração-do-backend-go-para-fastapi)
@@ -38,11 +38,11 @@ Os módulos do painel do restaurante liberados dependem do **plano** do cliente 
 
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4, Radix UI, React Router, Recharts, Sonner. Lint com Oxlint.
 - **Backend:** Python 3.12, FastAPI, SQLAlchemy 2 (async) + asyncpg, Pydantic v2, JWT (python-jose) e bcrypt (passlib).
-- **Banco:** PostgreSQL (Docker em desenvolvimento; Supabase em produção).
+- **Banco:** PostgreSQL (Docker em desenvolvimento; Neon em produção).
 - **Fila de impressão:** Redis.
 - **Serviços auxiliares:** `payments` (Mercado Pago/Stripe, Python) e `print-worker` (impressora térmica, Python).
 - **Automação:** n8n (WhatsApp Cloud API).
-- **Hospedagem:** Vercel (frontend), Render (API) e Supabase (banco).
+- **Hospedagem:** Vercel (frontend), Render (API) e Neon (banco).
 
 ## Arquitetura
 
@@ -51,7 +51,7 @@ Os módulos do painel do restaurante liberados dependem do **plano** do cliente 
      │
      │  HTTPS + cookies HTTP-only (access + refresh)
      ▼
- Render: vaija-api-py (FastAPI)  ──► Supabase (PostgreSQL)
+ Render: vaija-api-py (FastAPI)  ──► Neon (PostgreSQL)
      │            │
      │            └──► Redis ──► print-worker ──► impressora térmica
      └──► webhook n8n ──► WhatsApp
@@ -129,7 +129,7 @@ Copie `.env.example` para `.env` e ajuste. Principais variáveis:
 
 | Variável | Descrição |
 |---|---|
-| `DATABASE_URL` | Conexão Postgres. Aceita `postgresql://`, `postgres://` e `?sslmode=require`; hosts do Supabase usam TLS automaticamente |
+| `DATABASE_URL` | Conexão Postgres. Aceita `postgresql://`, `postgres://` e `?sslmode=require` (o `channel_binding` do Neon é ignorado); hosts `*.neon.tech` usam TLS automaticamente e o endpoint `-pooler` desliga o cache de prepared statements |
 | `BACKEND_PORT` | Porta local (3002) |
 | `AUTH_JWT_SECRET` | Segredo do JWT. **Obrigatório trocar em produção** |
 | `INTERNAL_API_KEY` | Chave compartilhada entre API e `payments` (header `X-Internal-API-Key`) |
@@ -201,6 +201,7 @@ Visão geral, clientes, planos, financeiro, acessos, ativações, leads, suporte
 |---|---|
 | `scripts/backup-postgres.ps1` / `restore-postgres.ps1 -BackupFile ./backups/arquivo.sql` | Backup e restore do Postgres via `docker exec` |
 | `scripts/acessos_charts.py` | Gera `reports/acessos.png` (usuários por cliente/papel e sessões ativas) lendo do Postgres do Docker. Requer `matplotlib` |
+| `scripts/migrate-to-neon.ps1` | Copia o schema `public` de um Postgres de origem (ex.: Supabase) para o Neon via Docker |
 | `scripts/gen_admin_reset_sql.py` | Gera o SQL para **redefinir a senha do admin da plataforma**. Pede a senha no terminal (sem eco) e imprime só o hash bcrypt |
 
 Redefinir a senha do admin da plataforma:
@@ -210,18 +211,18 @@ docker build -q -t vaija-api-tools services/api
 docker run --rm -it -v "${PWD}/scripts:/s" vaija-api-tools python /s/gen_admin_reset_sql.py
 ```
 
-Cole o SQL impresso no **SQL Editor** do Supabase e execute.
+Cole o SQL impresso no **SQL Editor** do Neon e execute.
 
-## Deploy: Vercel + Render + Supabase
+## Deploy: Vercel + Render + Neon
 
-### 1. Banco (Supabase)
+### 1. Banco (Neon)
 
-1. Crie um projeto (plano Free), de preferência em `South America (São Paulo)`.
-2. Em **Connect**, copie a **Session pooler** (`postgresql://postgres.<ref>:[SENHA]@aws-?-sa-east-1.pooler.supabase.com:5432/postgres`). Use **Session pooler**, não a conexão direta (que é só IPv6 e o Render gratuito não alcança). Troque `[SENHA]` pela senha **sem os colchetes** e codifique caracteres especiais (`@` vira `%40`).
-3. Em **Data API**, desative a exposição automática de tabelas, se houver.
-4. Não é preciso criar tabelas: a API cria o esquema ao subir e **liga RLS em todas as tabelas** (sem policies), o que bloqueia leitura/escrita via Data API/chave `anon`. A conexão direta da API não é afetada.
+1. Crie um projeto no [Neon](https://neon.tech) (plano Free), de preferência na região `AWS South America (São Paulo)`.
+2. Em **Connect**, copie a connection string (`postgresql://<usuario>:<senha>@ep-xxx-pooler.<regiao>.aws.neon.tech/<banco>?sslmode=require`). O endpoint `-pooler` é recomendado; a API ajusta TLS e prepared statements sozinha, e o parâmetro `channel_binding` é ignorado.
+3. Não é preciso criar tabelas: a API cria o esquema ao subir e **liga RLS em todas as tabelas** (sem policies) como defesa caso a Data API do Neon seja ativada. A conexão da API (dona das tabelas) não é afetada.
+4. **Migrar dados de um banco existente** (ex.: Supabase): defina `SOURCE_DATABASE_URL` e `NEON_DATABASE_URL` (conexão direta, sem `-pooler`) e rode `scripts/migrate-to-neon.ps1`. Ele usa o Postgres via Docker, restaura em transação única e imprime a contagem de linhas por tabela. O dump fica em `backups/` (ignorado pelo git).
 
-> O plano gratuito do Supabase pausa o projeto após cerca de uma semana sem uso (reativável no painel).
+> O plano gratuito do Neon suspende o compute após ~5 min sem uso e retoma sozinho na próxima conexão (alguns centenas de ms de atraso).
 
 ### 2. API (Render)
 
@@ -236,7 +237,7 @@ Cole o SQL impresso no **SQL Editor** do Supabase e execute.
 | Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
 | Health Check Path | `/api/health` |
 
-Variáveis de ambiente: `DATABASE_URL` (Session pooler), `AUTH_JWT_SECRET` e `INTERNAL_API_KEY` (valores aleatórios longos), `FRONTEND_ORIGIN` (`https://vaija.vercel.app`), `PYTHON_VERSION=3.12.8`, `APP_ENV=production`, `AUTH_COOKIE_SECURE=true`, `COOKIE_SAME_SITE=none`, `BOOTSTRAP_ADMIN_USERNAME` e `BOOTSTRAP_ADMIN_PASSWORD` (12+ caracteres).
+Variáveis de ambiente: `DATABASE_URL` (connection string do Neon), `AUTH_JWT_SECRET` e `INTERNAL_API_KEY` (valores aleatórios longos), `FRONTEND_ORIGIN` (`https://vaija.vercel.app`), `PYTHON_VERSION=3.12.8`, `APP_ENV=production`, `AUTH_COOKIE_SECURE=true`, `COOKIE_SAME_SITE=none`, `BOOTSTRAP_ADMIN_USERNAME` e `BOOTSTRAP_ADMIN_PASSWORD` (12+ caracteres).
 
 > O serviço **não pode trocar de runtime** depois de criado (Go → Python exige um serviço novo). O plano gratuito hiberna e a primeira requisição pode levar ~50 s.
 
@@ -296,7 +297,7 @@ O backend em Go (`backend/`) foi substituído por Python/FastAPI em `services/ap
 - **Login:** aceita `tenantId`/`X-Tenant-Id`; usuário ou senha ausentes retornam `missing_credentials`.
 - **Erros:** retornam `{ok:false, error}` como no Go.
 - **Senhas:** fixado `bcrypt==4.0.1` por incompatibilidade do `passlib` 1.7.4 com versões novas do `bcrypt`.
-- **Supabase:** conversão de `sslmode`/TLS para o `asyncpg`, aceitação de `postgres://` e RLS automático nas tabelas.
+- **Neon:** conversão de `sslmode`/TLS para o `asyncpg`, aceitação de `postgres://` e RLS automático nas tabelas.
 - **Render:** `render.yaml` passou a usar runtime Python; o Dockerfile respeita a variável `PORT`.
 - **Limpeza:** removidos `backend/` (Go), `server/` (Node legado) e o PDF de mapa técnico.
 
@@ -308,7 +309,7 @@ O backend em Go (`backend/`) foi substituído por Python/FastAPI em `services/ap
 - **Preço calculado no navegador:** o servidor aceita o valor do pedido enviado pelo cliente. Antes de vender de verdade, o servidor deve recalcular o total a partir do cardápio.
 - **Relatórios por sabor:** itens de meio a meio ficam em um texto só. Um formato estruturado de itens permitiria ranking de sabores e controle de estoque.
 - **`SEED_DEMO_DATA`** não tem efeito no FastAPI; `services/api/seed.py` é um script manual com URL fixa de desenvolvimento.
-- **Cold start:** o plano gratuito do Render hiberna a API, e o do Supabase pausa o banco por inatividade.
+- **Cold start:** o plano gratuito do Render hiberna a API, e o do Neon suspende o compute por inatividade (retoma na próxima conexão).
 - **Build do frontend:** há um aviso de TypeScript pendente em `src/components/layout/app-header.tsx` (`description` declarada e não usada) que pode barrar `npm run build`.
 
 ## Segurança

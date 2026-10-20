@@ -8,20 +8,25 @@ from config import get_settings
 
 
 def _engine_config(raw_url: str) -> tuple[URL, dict]:
-    """Converte a DATABASE_URL (Render/Supabase/local) para o formato do asyncpg.
+    """Converte a DATABASE_URL (Render/Neon/local) para o formato do asyncpg.
 
-    asyncpg não aceita ?sslmode=...; traduzimos para connect_args["ssl"]. Hosts do
-    Supabase exigem TLS mesmo sem o parâmetro.
+    asyncpg não aceita ?sslmode=... nem ?channel_binding=...; traduzimos sslmode para
+    connect_args["ssl"] e descartamos o resto. Hosts do Neon exigem TLS mesmo sem o
+    parâmetro. O endpoint "-pooler" do Neon é um PgBouncer em modo transação, que não
+    suporta prepared statements nomeados, então desligamos o cache do asyncpg nele.
     """
     url = make_url(raw_url)
     if url.drivername in ("postgres", "postgresql"):
         url = url.set(drivername="postgresql+asyncpg")
     query = dict(url.query)
     sslmode = query.pop("sslmode", None)
+    query.pop("channel_binding", None)
     connect_args: dict = {}
     host = url.host or ""
-    if sslmode in ("require", "verify-ca", "verify-full") or host.endswith((".supabase.com", ".supabase.co")):
+    if sslmode in ("require", "verify-ca", "verify-full") or host.endswith(".neon.tech"):
         connect_args["ssl"] = "require"
+    if "-pooler" in host:
+        connect_args["statement_cache_size"] = 0
     return url.set(query=query), connect_args
 
 
@@ -58,9 +63,9 @@ async def init_db():
         await conn.execute(text("ALTER TABLE ingredient_stock ADD COLUMN IF NOT EXISTS name TEXT"))
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS courier_name TEXT"))
         await _migrate_users_to_username(conn)
-        # No Supabase, tabelas do schema public ficam expostas pela Data API (anon key).
-        # RLS ligado e sem policies bloqueia esse acesso; a conexão direta do backend
-        # (dono das tabelas) não é afetada.
+        # Defesa em profundidade: se a Data API do Neon for ativada, o schema public fica
+        # exposto. RLS ligado e sem policies bloqueia esse acesso; a conexão direta do
+        # backend (dono das tabelas) não é afetada.
         for table in Base.metadata.tables:
             await conn.execute(text(f'ALTER TABLE "{table}" ENABLE ROW LEVEL SECURITY'))
 

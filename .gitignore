@@ -27,3 +27,6 @@ __pycache__/
 *.sw?
 
 .vercel
+
+# dumps do banco (contêm dados reais)
+backups/

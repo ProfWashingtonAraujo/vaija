@@ -21,7 +21,7 @@ if getpass("Repita a senha: ") != password:
 
 hashed = CryptContext(schemes=["bcrypt"]).hash(password)
 
-print("\n-- Cole no SQL Editor do Supabase e execute (Run):\n")
+print("\n-- Cole no SQL Editor do Neon e execute (Run):\n")
 print(f"""update users
    set password_hash = '{hashed}', updated_at = now()
  where tenant_id = 'admin' and role_key = 'admin';
