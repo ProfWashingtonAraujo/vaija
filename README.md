@@ -3,7 +3,7 @@
 Plataforma SaaS multi-restaurante para pizzarias, buffets e delivery: cardápio online, PDV, kanban de pedidos, impressão de cupom, automação por WhatsApp e um painel de administração da plataforma (clientes, planos, acessos e financeiro).
 
 - **Site (produção):** https://vaija.vercel.app
-- **API (produção):** https://vaija-api-py.onrender.com
+- **API (produção):** https://vaija-api-xom6.onrender.com
 
 ## Sumário
 
@@ -51,7 +51,7 @@ Os módulos do painel do restaurante liberados dependem do **plano** do cliente 
      │
      │  HTTPS + cookies HTTP-only (access + refresh)
      ▼
- Render: vaija-api-py (FastAPI)  ──► Neon (PostgreSQL)
+ Render: vaija-api (FastAPI)  ──► Neon (PostgreSQL)
      │            │
      │            └──► Redis ──► print-worker ──► impressora térmica
      └──► webhook n8n ──► WhatsApp
