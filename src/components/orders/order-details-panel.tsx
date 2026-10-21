@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CheckCircle2, ChefHat, MessageCircle, PackageCheck, Pencil, Printer, QrCode, Truck, Undo2 } from 'lucide-react'
 import type { Order } from '@/data/mock-orders'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -121,6 +122,8 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, on
   const isOnRoute = order.status === 'Saiu para entrega'
   const canAdvance = order.status === 'Pendente' || order.status === 'Em producao' || order.status === 'Pronto para retirada'
   const nextStepLabel = order.status === 'Pendente' ? 'Avançar para Produção' : order.status === 'Em producao' ? 'Marcar como Pronto' : source !== 'Mesa' ? 'Cliente retirou' : 'Finalizar Pedido'
+  // ícone do botão principal acompanha a etapa: preparar, marcar pronto, entregar ao cliente
+  const AdvanceIcon = order.status === 'Pendente' ? ChefHat : order.status === 'Em producao' ? CheckCircle2 : PackageCheck
   const canManageOrder = order.status === 'Pendente' || order.status === 'Em producao'
   const canSendCourier = Boolean(onSendCourier) && source === 'Online' && (order.status === 'Pronto para retirada' || order.status === 'Saiu para entrega')
 
@@ -162,12 +165,17 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, on
           </div>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {canManageOrder ? <Button variant="outline" className="border-orange-200 bg-white/90" onClick={onEdit}>Editar pedido</Button> : null}
-          <Button variant="secondary" onClick={onOpenWhatsapp}>Enviar link do pedido</Button>
-          <Button variant="outline" className="border-orange-200 bg-white/90" onClick={() => setShowPreview(true)}>Imprimir Cupom</Button>
-          {canSendCourier ? <Button variant="secondary" onClick={onSendCourier}>{order.status === 'Saiu para entrega' ? 'Novo link do entregador' : 'Enviar para entregador'}</Button> : null}
-          {onTogglePaid && order.payment === 'Pix' && order.status !== 'Cancelado' ? <Button variant={order.paid ? 'outline' : 'secondary'} onClick={onTogglePaid}>{order.paid ? 'Desfazer confirmação do Pix' : 'Confirmar pagamento Pix'}</Button> : null}
-          {canAdvance ? <Button onClick={onAdvance}>{nextStepLabel}</Button> : null}
+          {canManageOrder ? <Button variant="outline" className="gap-2 border-orange-200 bg-white/90" onClick={onEdit}><Pencil className="h-4 w-4 shrink-0" />Editar pedido</Button> : null}
+          <Button variant="secondary" className="gap-2" onClick={onOpenWhatsapp}><MessageCircle className="h-4 w-4 shrink-0" />Enviar link do pedido</Button>
+          <Button variant="outline" className="gap-2 border-orange-200 bg-white/90" onClick={() => setShowPreview(true)}><Printer className="h-4 w-4 shrink-0" />Imprimir Cupom</Button>
+          {canSendCourier ? <Button variant="secondary" className="gap-2" onClick={onSendCourier}><Truck className="h-4 w-4 shrink-0" />{order.status === 'Saiu para entrega' ? 'Novo link do entregador' : 'Enviar para entregador'}</Button> : null}
+          {onTogglePaid && order.payment === 'Pix' && order.status !== 'Cancelado' ? (
+            <Button variant={order.paid ? 'outline' : 'secondary'} className="gap-2" onClick={onTogglePaid}>
+              {order.paid ? <Undo2 className="h-4 w-4 shrink-0" /> : <QrCode className="h-4 w-4 shrink-0" />}
+              {order.paid ? 'Desfazer confirmação do Pix' : 'Confirmar pagamento Pix'}
+            </Button>
+          ) : null}
+          {canAdvance ? <Button className="gap-2 sm:col-span-2" onClick={onAdvance}><AdvanceIcon className="h-4 w-4 shrink-0" />{nextStepLabel}</Button> : null}
         </div>
         {isOnRoute ? <p className="mt-3 text-xs leading-5 text-slate-500">O pedido será finalizado quando o entregador confirmar a entrega. Se ele perdeu o link, use &quot;Novo link do entregador&quot;.</p> : null}
       </div>
