@@ -93,5 +93,5 @@ export function CourierMap({ courier, destination, destinationLabel = 'Seu ender
     routeLine.current.bringToBack()
   }, [route])
 
-  return <div ref={container} className={`${className} w-full overflow-hidden rounded-[24px] border border-orange-100`} />
+  return <div ref={container} className={`${className} isolate w-full overflow-hidden rounded-[24px] border border-orange-100`} />
 }

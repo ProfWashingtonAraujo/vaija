@@ -64,5 +64,5 @@ export function DeliveriesMap({ couriers }: { couriers: MapCourier[] }) {
     }
   }, [couriers])
 
-  return <div ref={container} className="h-80 w-full overflow-hidden rounded-[24px] border border-orange-100 sm:h-[26rem]" />
+  return <div ref={container} className="isolate h-80 w-full overflow-hidden rounded-[24px] border border-orange-100 sm:h-[26rem]" />
 }
