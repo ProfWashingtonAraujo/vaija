@@ -1,10 +1,14 @@
-import { Bell, ChevronRight } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Bell, ChevronRight, Volume2, VolumeX } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import { Button } from '@/components/ui/button'
+import { checkNewOrders, clearAlerts, markAlertsRead, setAlertSound, useOrderAlerts } from '@/lib/order-alerts'
+import { orderSourceIcons, orderSourceLabel, resolveOrderSource } from '@/lib/order-source'
+import { formatCurrency } from '@/lib/formatters'
+import { usePolling } from '@/lib/use-polling'
 import { cashRegisterUpdatedEvent, fetchCashRegister, readCashRegister, setCashRegisterOpen, type CashRegisterState } from '@/lib/cash-register'
 
 const routeLabels: Record<string, string> = {
@@ -20,10 +24,88 @@ const routeLabels: Record<string, string> = {
   '/operator': 'Área do Operador',
 }
 
+function NotificationBell() {
+  const { items, unread, soundOn } = useOrderAlerts()
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!open) return
+    const close = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
+    document.addEventListener('pointerdown', close)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', close)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const toggle = () => {
+    if (!open) markAlertsRead()
+    setOpen((current) => !current)
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        aria-label={unread > 0 ? `Notificações: ${unread} novas` : 'Notificações'}
+        aria-expanded={open}
+        onClick={toggle}
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-orange-100 bg-white text-slate-500 transition hover:border-orange-300 hover:text-orange-600"
+      >
+        <Bell className="h-4 w-4" />
+        {unread > 0 ? (
+          <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">{unread > 9 ? '9+' : unread}</span>
+        ) : null}
+      </button>
+      {open ? (
+        <div className="fixed inset-x-3 top-[4.25rem] z-50 overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.16)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-96">
+          <div className="flex items-center justify-between gap-2 border-b border-orange-100 px-4 py-3">
+            <p className="text-sm font-semibold text-slate-900">Novos pedidos</p>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => setAlertSound(!soundOn)} aria-pressed={soundOn} aria-label={soundOn ? 'Desligar som' : 'Ligar som'} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-orange-50 hover:text-orange-700">
+                {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                {soundOn ? 'Som ligado' : 'Som desligado'}
+              </button>
+              {items.length > 0 ? <button type="button" onClick={clearAlerts} className="rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-orange-50 hover:text-orange-700">Limpar</button> : null}
+            </div>
+          </div>
+          {items.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-slate-500">Nenhum pedido novo por enquanto. Quando chegar um pedido pelo link, ele aparece aqui.</p>
+          ) : (
+            <ul className="max-h-[60vh] divide-y divide-orange-50 overflow-y-auto">
+              {items.map((alert) => {
+                const Icon = orderSourceIcons[resolveOrderSource(alert.source)]
+                return (
+                  <li key={alert.orderId}>
+                    <button type="button" onClick={() => { setOpen(false); navigate('/orders', { state: { orderId: alert.orderId } }) }} className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-orange-50/60">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600"><Icon className="h-4 w-4" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-slate-900">Pedido #{alert.orderId} · {alert.customer}</span>
+                        <span className="block text-xs text-slate-500">{orderSourceLabel(alert.source, alert.tableNumber)} · {formatCurrency(alert.value)} · {new Date(alert.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function AppHeader({ title }: { title: string; description?: string }) {
   const { user } = useAuth()
   const location = useLocation()
   const [cashRegister, setCashRegister] = useState(() => readCashRegister())
+  const watchOrders = Boolean(user && !user.isPlatformAdmin)
   const canManageCashRegister = user?.roleKey === 'admin' || user?.roleKey === 'manager'
   const pageLabel = routeLabels[location.pathname] ?? title
 
@@ -35,6 +117,12 @@ export function AppHeader({ title }: { title: string; description?: string }) {
     void fetchCashRegister().then(setCashRegister).catch(() => undefined)
     return () => window.removeEventListener(cashRegisterUpdatedEvent, updateCashRegister)
   }, [])
+
+  // a cada tela nova o cabeçalho monta de novo: a primeira checagem também cria a base de pedidos já vistos
+  useEffect(() => {
+    if (watchOrders) void checkNewOrders()
+  }, [watchOrders])
+  usePolling(() => { if (watchOrders) return checkNewOrders() })
 
   const toggleCashRegister = async () => {
     if (!user) return
@@ -78,15 +166,7 @@ export function AppHeader({ title }: { title: string; description?: string }) {
           </div>
         )}
 
-        {/* Notifications */}
-        <button
-          type="button"
-          aria-label="Notificações"
-          className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-orange-100 bg-white text-slate-500 transition hover:border-orange-300 hover:text-orange-600"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-white" />
-        </button>
+        {watchOrders ? <NotificationBell /> : null}
 
         {/* User chip */}
         <div className="flex items-center gap-2 rounded-xl border border-orange-100 bg-[#fffaf5] py-1 pl-1 pr-3 shadow-sm">

@@ -16,6 +16,7 @@ import { MissingIngredientsDialog } from '@/components/menu/missing-ingredients-
 import { fetchCategories, fetchProducts, isSellable } from '@/lib/catalog-api'
 import { usePolling } from '@/lib/use-polling'
 import type { OrderSource } from '@/lib/order-source'
+import { markOrderSeen } from '@/lib/order-alerts'
 import type { Order } from '@/data/mock-orders'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
@@ -152,6 +153,7 @@ export function PosPage() {
       }
       return
     }
+    markOrderSeen(newOrder.id)
     const orderTarget = orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : orderSource
     toast.success(`Pedido ${orderTarget} enviado para a fila.`)
     setCart([])

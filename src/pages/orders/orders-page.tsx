@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { OrderCard } from '@/components/orders/order-card'
@@ -91,6 +92,9 @@ export function OrdersPage() {
   const savingRef = useRef(false)
   const changeVersion = useRef(0)
   const [selected, setSelected] = useState<Order | null>(null)
+  const location = useLocation()
+  const focusOrderId = (location.state as { orderId?: number } | null)?.orderId
+  const focusedKey = useRef<string | null>(null)
   const detailsRef = useRef<HTMLDivElement>(null)
   const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<ColumnTitle | null>(null)
@@ -122,6 +126,15 @@ export function OrdersPage() {
         toast.error('Não foi possível carregar os pedidos do backend.')
       })
   }, [])
+
+  // vindo de uma notificação: abre o pedido indicado (uma vez por clique, para não prender a seleção)
+  useEffect(() => {
+    if (focusOrderId === undefined || focusedKey.current === location.key) return
+    const target = orders.find((order) => order.id === focusOrderId)
+    if (!target) return
+    focusedKey.current = location.key
+    setSelected(target)
+  }, [focusOrderId, location.key, orders])
 
   useEffect(() => {
     void fetchProducts()
