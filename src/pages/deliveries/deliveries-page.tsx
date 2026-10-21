@@ -3,7 +3,8 @@ import { CheckCircle2, Clock, Truck, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { CourierLinkDialog } from '@/components/delivery/courier-link-dialog'
-import { fetchDeliveries, type DeliveryEntry } from '@/lib/delivery-api'
+import { fetchDeliveries, finishDeliveryAsManager, type DeliveryEntry } from '@/lib/delivery-api'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { formatCurrency } from '@/lib/formatters'
 import { usePolling } from '@/lib/use-polling'
 import type { MapCourier } from '@/components/delivery/deliveries-map'
@@ -54,6 +55,16 @@ export function DeliveriesPage() {
 
   usePolling(() => load().catch(() => undefined), 5_000)
 
+  const finishManually = async (orderId: number) => {
+    try {
+      await finishDeliveryAsManager(orderId)
+      toast.success(`Pedido #${orderId} marcado como entregue.`)
+      await load()
+    } catch {
+      toast.error('Não foi possível concluir a entrega. Atualize a tela e tente de novo.')
+    }
+  }
+
   // mantém os "há X s" andando entre uma consulta e outra
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000)
@@ -67,6 +78,7 @@ export function DeliveriesPage() {
   const finished = visible.filter((item) => item.state === 'finished').sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? ''))
 
   const durations = finished
+    .filter((item) => !item.finishedBy)
     .map((item) => (item.startedAt && item.finishedAt ? (new Date(item.finishedAt).getTime() - new Date(item.startedAt).getTime()) / 1000 : null))
     .filter((value): value is number => value !== null && value >= 0)
   const averageSeconds = durations.length > 0 ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length) : null
@@ -146,7 +158,16 @@ export function DeliveriesPage() {
                     </div>
                     <p className="mt-1 text-slate-500">{item.address}</p>
                     <p className="mt-1 text-slate-500">{item.courierName ? `${item.courierName} · ` : ''}saiu às {formatTime(item.startedAt)} · há {formatDuration(secondsSince(item.startedAt, now))}</p>
-                    <button type="button" onClick={() => setLinkTarget(item)} className="mt-2 text-sm font-semibold text-orange-700 hover:text-orange-800">Link do entregador</button>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                      <button type="button" onClick={() => setLinkTarget(item)} className="text-sm font-semibold text-orange-700 hover:text-orange-800">Link do entregador</button>
+                      <ConfirmDialog
+                        trigger={<button type="button" className="text-sm font-semibold text-slate-500 hover:text-slate-800">Concluir manualmente</button>}
+                        title={`Concluir o pedido #${item.orderId}?`}
+                        description="Use só se o entregador não conseguir finalizar (por exemplo, celular sem bateria). O pedido vai para Entregue, o cliente é avisado e a entrega fica registrada como encerrada pelo restaurante."
+                        confirmLabel="Marcar como entregue"
+                        onConfirm={() => void finishManually(item.orderId)}
+                      />
+                    </div>
                   </div>
                 )
               })}
@@ -169,9 +190,10 @@ export function DeliveriesPage() {
                   <div>
                     <p className="font-semibold text-slate-900">#{item.orderId} · {item.customer}</p>
                     <p className="mt-1 text-slate-500">{item.courierName ? `${item.courierName} · ` : ''}{formatTime(item.startedAt)} → {formatTime(item.finishedAt)}</p>
+                    {item.finishedBy ? <p className="mt-1 text-xs font-semibold text-amber-700">Encerrada pelo restaurante · {item.finishedBy}</p> : null}
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-slate-900">{formatDuration(item.startedAt && item.finishedAt ? Math.round((new Date(item.finishedAt).getTime() - new Date(item.startedAt).getTime()) / 1000) : null)}</p>
+                    <p className="font-semibold text-slate-900">{item.finishedBy ? 'manual' : formatDuration(item.startedAt && item.finishedAt ? Math.round((new Date(item.finishedAt).getTime() - new Date(item.startedAt).getTime()) / 1000) : null)}</p>
                     <p className="font-mono text-xs text-slate-500">{formatCurrency(item.value)}</p>
                   </div>
                 </div>

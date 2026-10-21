@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import CurrentAuth
 from database import get_db
 from integrations import notify_order
-from models import Delivery, Order
+from models import Delivery, Order, User
 from .orders import _order_to_dict
 
 delivery_router = APIRouter(tags=["delivery"])
@@ -155,6 +155,7 @@ async def list_deliveries(auth: CurrentAuth, since: str | None = None, db: Async
             "createdAt": _iso(row.created_at),
             "startedAt": _iso(row.started_at),
             "finishedAt": _iso(row.finished_at),
+            "finishedBy": row.finished_by,
             "location": {"latitude": row.latitude, "longitude": row.longitude, "updatedAt": _iso(row.location_at)} if has_location else None,
         })
 
@@ -162,6 +163,30 @@ async def list_deliveries(auth: CurrentAuth, since: str | None = None, db: Async
         select(Delivery.courier_name).where(Delivery.tenant_id == auth.tenant_id, Delivery.courier_name.is_not(None)).distinct()
     )).scalars().all()
     return {"deliveries": items, "couriers": sorted(names, key=str.lower)}
+
+
+@delivery_router.post("/api/deliveries/{order_id}/finish")
+async def finish_delivery_manually(order_id: int, auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
+    """Gerente/administrador encerra uma entrega em rota quando o entregador não consegue (ex.: celular sem bateria)."""
+    if auth.role_key not in MANAGER_ROLES:
+        return _error(403, "forbidden")
+    delivery = await db.get(Delivery, (auth.tenant_id, order_id))
+    order = await db.get(Order, (order_id, auth.tenant_id))
+    if delivery is None or order is None:
+        return _error(404, "delivery_not_found")
+    if delivery.started_at is None:
+        return _error(409, "delivery_not_started")
+    if delivery.finished_at is not None or order.status in ("Entregue", "Cancelado"):
+        return _error(409, "delivery_closed")
+
+    user = await db.get(User, auth.user_id)
+    delivery.finished_at = _now()
+    delivery.finished_by = (user.name or user.username) if user else "Restaurante"
+    delivery.latitude = delivery.longitude = delivery.accuracy = None  # não guarda a última posição
+    order.status = "Entregue"
+    await db.commit()
+    await notify_order(_order_to_dict(order))
+    return {"ok": True}
 
 
 # ── Entregador (por token) ────────────────────────────────────────────────────

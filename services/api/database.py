@@ -62,6 +62,7 @@ async def init_db():
         await conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS ingredients JSONB NOT NULL DEFAULT '[]'::jsonb"))
         await conn.execute(text("ALTER TABLE ingredient_stock ADD COLUMN IF NOT EXISTS name TEXT"))
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS courier_name TEXT"))
+        await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS finished_by TEXT"))
         await _migrate_users_to_username(conn)
         # Defesa em profundidade: se a Data API do Neon for ativada, o schema public fica
         # exposto. RLS ligado e sem policies bloqueia esse acesso; a conexão direta do

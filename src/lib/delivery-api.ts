@@ -33,6 +33,8 @@ export type DeliveryEntry = {
   createdAt: string | null
   startedAt: string | null
   finishedAt: string | null
+  /** Nome de quem encerrou a entrega no lugar do entregador; null quando o próprio entregador finalizou. */
+  finishedBy: string | null
   location: { latitude: number; longitude: number; updatedAt: string | null } | null
 }
 
@@ -41,6 +43,12 @@ export async function fetchDeliveries(since: string): Promise<{ deliveries: Deli
   const response = await apiFetch(`/api/deliveries?since=${encodeURIComponent(since)}`, { headers: { 'X-Tenant-Id': getTenantId() } })
   if (!response.ok) throw new Error(`failed_to_fetch_deliveries:${response.status}`)
   return await response.json() as { deliveries: DeliveryEntry[]; couriers: string[] }
+}
+
+/** Gerente/administrador: encerra uma entrega em rota quando o entregador não consegue finalizar. */
+export async function finishDeliveryAsManager(orderId: number) {
+  const response = await apiFetch(`/api/deliveries/${orderId}/finish`, { method: 'POST', headers: { 'X-Tenant-Id': getTenantId() } })
+  if (!response.ok) throw new Error(`failed_to_finish_delivery_manually:${response.status}`)
 }
 
 /** Restaurante: gera o link do entregador. O token só é devolvido nesta chamada. */
