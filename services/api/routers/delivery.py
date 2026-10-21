@@ -144,6 +144,8 @@ async def list_deliveries(auth: CurrentAuth, since: str | None = None, db: Async
         if order is None:
             continue
         state = "finished" if row.finished_at else "active" if row.started_at else "waiting"
+        if state != "finished" and order.status in ("Entregue", "Cancelado"):
+            continue  # pedido encerrado por outro caminho (ex.: cliente retirou): não é mais uma entrega em andamento
         has_location = state == "active" and row.latitude is not None and row.longitude is not None
         items.append({
             "orderId": row.order_id,

@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { createCourierLink } from '@/lib/delivery-api'
+import { courierLinkErrorMessage, createCourierLink } from '@/lib/delivery-api'
 import { getCourierUrl } from '@/lib/public-order-url'
 
 type CourierLinkDialogProps = {
@@ -26,8 +26,8 @@ export function CourierLinkDialog({ orderId, courierName, started, onClose }: Co
     setBusy(true)
     try {
       setUrl(getCourierUrl(await createCourierLink(orderId)))
-    } catch {
-      toast.error('Não foi possível gerar o link do entregador. Tente de novo.')
+    } catch (error) {
+      toast.error(courierLinkErrorMessage(error))
     } finally {
       setBusy(false)
     }

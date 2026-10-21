@@ -51,6 +51,31 @@ export async function finishDeliveryAsManager(orderId: number) {
   if (!response.ok) throw new Error(`failed_to_finish_delivery_manually:${response.status}`)
 }
 
+export class CourierLinkError extends Error {
+  status: number
+  code: string
+
+  constructor(status: number, code: string) {
+    super(`failed_to_create_courier_link:${status}:${code}`)
+    this.status = status
+    this.code = code
+  }
+}
+
+/** Texto para o restaurante a partir do erro de createCourierLink, com o motivo real quando a API o informa. */
+export function courierLinkErrorMessage(error: unknown) {
+  if (error instanceof CourierLinkError) {
+    if (error.code === 'order_closed') return 'Este pedido já foi finalizado ou cancelado, então não precisa mais de link do entregador.'
+    if (error.code === 'not_a_delivery_order') return 'Só pedidos online têm link de entregador.'
+    if (error.code === 'order_not_found') return 'Pedido não encontrado. Atualize a tela e tente de novo.'
+    if (error.status === 401 || error.status === 403) return 'Sua sessão expirou. Entre de novo e tente outra vez.'
+    if (error.status >= 500) return 'O servidor teve um problema ao gerar o link. Tente de novo em instantes.'
+  }
+  // sem resposta (internet ou servidor reiniciando)
+  if (error instanceof TypeError) return 'Sem resposta do servidor. Se a API acabou de ser atualizada, aguarde alguns minutos e tente de novo.'
+  return 'Não foi possível gerar o link do entregador. Tente de novo.'
+}
+
 /** Restaurante: gera o link do entregador. O token só é devolvido nesta chamada. */
 export async function createCourierLink(orderId: number, courierName?: string): Promise<string> {
   const response = await apiFetch(`/api/orders/${orderId}/courier-link`, {
@@ -58,7 +83,10 @@ export async function createCourierLink(orderId: number, courierName?: string): 
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': getTenantId() },
     body: JSON.stringify({ courierName: courierName?.trim() || undefined }),
   })
-  if (!response.ok) throw new Error(`failed_to_create_courier_link:${response.status}`)
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string }
+    throw new CourierLinkError(response.status, body.error ?? 'unknown')
+  }
   const data = await response.json() as { token: string }
   return data.token
 }

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
+import { OrderCard } from '@/components/orders/order-card'
 import { OrderColumn } from '@/components/orders/order-column'
 import { OrderDetailsPanel } from '@/components/orders/order-details-panel'
+import { OrderSearch } from '@/components/orders/order-search'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -14,7 +16,7 @@ import { fetchOrders, ProductUnavailableError, saveOrdersKeepingNew } from '@/li
 import { usePolling } from '@/lib/use-polling'
 import { getTenantId } from '@/lib/tenant-storage'
 import { getCourierUrl, getPublicOrderTrackingUrl } from '@/lib/public-order-url'
-import { createCourierLink, fetchDeliveries } from '@/lib/delivery-api'
+import { courierLinkErrorMessage, createCourierLink, fetchDeliveries } from '@/lib/delivery-api'
 
 const COLUMN_STATUS = {
   Pendente: 'Pendente',
@@ -38,6 +40,13 @@ type EditableOrderItem = {
   name: string
   price: number
   quantity: number
+}
+
+const isClosed = (order: Order) => order.status === 'Entregue' || order.status === 'Cancelado'
+
+/** Mantém o pedido selecionado; sem ele, abre o primeiro pedido em aberto (nunca um já entregue ou cancelado). */
+function pickSelected(loaded: Order[], current: Order | null) {
+  return loaded.find((order) => order.id === current?.id) ?? loaded.find((order) => !isClosed(order)) ?? null
 }
 
 function getOrderFormValues(order: Order): OrderFormValues {
@@ -81,6 +90,7 @@ export function OrdersPage() {
   const savingRef = useRef(false)
   const changeVersion = useRef(0)
   const [selected, setSelected] = useState<Order | null>(null)
+  const detailsRef = useRef<HTMLDivElement>(null)
   const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null)
   const [dropTarget, setDropTarget] = useState<ColumnTitle | null>(null)
   const [dropTargetOrderId, setDropTargetOrderId] = useState<number | null>(null)
@@ -99,12 +109,13 @@ export function OrdersPage() {
     }),
     [orders],
   )
+  const enRoute = useMemo(() => orders.filter((order) => order.status === 'Saiu para entrega'), [orders])
 
   useEffect(() => {
     void fetchOrders()
       .then((loadedOrders) => {
         setOrders(loadedOrders)
-        setSelected((current) => loadedOrders.find((order) => order.id === current?.id) ?? loadedOrders[0] ?? null)
+        setSelected((current) => pickSelected(loadedOrders, current))
       })
       .catch(() => {
         toast.error('Não foi possível carregar os pedidos do backend.')
@@ -127,7 +138,7 @@ export function OrdersPage() {
         // descarta a resposta se o usuário mexeu em algo enquanto ela estava a caminho
         if (savingRef.current || version !== changeVersion.current) return
         setOrders(loadedOrders)
-        setSelected((current) => loadedOrders.find((order) => order.id === current?.id) ?? loadedOrders[0] ?? null)
+        setSelected((current) => pickSelected(loadedOrders, current))
       })
       .catch(() => undefined)
   })
@@ -154,6 +165,12 @@ export function OrdersPage() {
       .finally(() => {
         savingRef.current = false
       })
+  }
+
+  // escolhe um pedido da busca (pode estar fora das colunas) e leva o painel de detalhes para a vista
+  const handleSelectFromSearch = (order: Order) => {
+    setSelected(order)
+    requestAnimationFrame(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
   }
 
   const handleAdvance = () => {
@@ -295,9 +312,9 @@ export function OrdersPage() {
     try {
       const url = getCourierUrl(await createCourierLink(courierDialog.orderId, courierDialog.name))
       setCourierDialog((current) => current && { ...current, url, busy: false })
-    } catch {
+    } catch (error) {
       setCourierDialog((current) => current && { ...current, busy: false })
-      toast.error('Não foi possível gerar o link do entregador. Tente de novo.')
+      toast.error(courierLinkErrorMessage(error))
     }
   }
 
@@ -368,9 +385,15 @@ export function OrdersPage() {
               <p className="mt-1 font-heading text-2xl font-bold text-slate-900">{list.length}</p>
             </div>
           ))}
+          <div className="rounded-2xl border border-sky-200 bg-white/90 px-4 py-3 shadow-[0_8px_18px_rgba(14,165,233,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Em rota</p>
+            <p className="mt-1 font-heading text-2xl font-bold text-slate-900">{enRoute.length}</p>
+          </div>
         </div>
       </div>
+      <OrderSearch orders={orders} onSelect={handleSelectFromSearch} />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-4">
         <div className="grid gap-4 lg:grid-cols-3">
           <OrderColumn
             title="Pendente"
@@ -418,11 +441,36 @@ export function OrdersPage() {
             onDropOrder={handleMoveOrder}
           />
         </div>
-        <div>
+        {enRoute.length > 0 ? (
+          <section className="rounded-[30px] border border-sky-100 bg-gradient-to-b from-sky-50/50 to-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.05)]">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-heading text-lg font-bold text-slate-900">Em rota</h3>
+              <span className="rounded-full border border-sky-200 bg-white px-3 py-1 text-xs font-semibold text-sky-700">{enRoute.length}</span>
+            </div>
+            <p className="mb-3 text-xs text-slate-500">Saíram para entrega. Quem finaliza é o entregador; pelo painel ao lado você pode gerar um novo link.</p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {enRoute.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  active={selected?.id === order.id}
+                  locked
+                  onClick={() => setSelected(order)}
+                  onDragStart={() => undefined}
+                  onDragEnd={() => undefined}
+                  onDragEnter={() => undefined}
+                  onDrop={() => undefined}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
+        </div>
+        <div ref={detailsRef}>
           {selected ? (
             <OrderDetailsPanel order={selected} onAdvance={handleAdvance} onEdit={openEditOrderForm} onOpenWhatsapp={handleOpenWhatsapp} onSendCourier={handleSendCourier} />
           ) : (
-            <div className="rounded-[30px] border border-orange-100 bg-white p-6 text-center text-sm text-slate-500">Nenhum pedido ainda. Os pedidos aparecem aqui assim que forem feitos.</div>
+            <div className="rounded-[30px] border border-orange-100 bg-white p-6 text-center text-sm text-slate-500">Nenhum pedido em aberto. Os novos pedidos aparecem aqui; para ver os anteriores, use a busca.</div>
           )}
         </div>
       </div>
