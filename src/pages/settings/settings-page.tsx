@@ -418,6 +418,9 @@ function SettingsForm() {
                   <Row label="Valor por km">
                     <Input value={deliverySettings.feePerKm} onChange={(event) => updateDeliverySettings({ feePerKm: event.target.value })} placeholder="Ex: 2,50" inputMode="decimal" className={fieldClass} />
                   </Row>
+                  <Row label="Km sem cobrança" hint="Entrega grátis até essa distância. Acima dela, cobra só o que passar. Ex.: 2 (deixe 0 para cobrar desde o primeiro km).">
+                    <Input value={deliverySettings.freeKm} onChange={(event) => updateDeliverySettings({ freeKm: event.target.value })} placeholder="Ex: 2" inputMode="decimal" className={fieldClass} />
+                  </Row>
                   <Row label="CEP da pizzaria" hint="Ponto de partida para calcular a distância.">
                     <div className="flex gap-2">
                       <Input value={deliverySettings.originCep} onChange={(event) => updateDeliverySettings({ originCep: event.target.value })} placeholder="Ex: 01001-000" inputMode="numeric" className={fieldClass} />

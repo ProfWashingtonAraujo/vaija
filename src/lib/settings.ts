@@ -12,6 +12,8 @@ export type DeliverySettings = {
   mode: 'fixed' | 'perKm'
   fixedFee: string
   feePerKm: string
+  /** Distância (km) que não paga taxa; acima dela cobra só o que passar. */
+  freeKm: string
   originCep: string
 }
 
@@ -67,6 +69,7 @@ export const defaultDeliverySettings: DeliverySettings = {
   mode: 'fixed',
   fixedFee: '8,00',
   feePerKm: '2,50',
+  freeKm: '0',
   originCep: '',
 }
 
@@ -101,6 +104,12 @@ export function tableLabel(name: string) {
 
 export function parseCurrencyInput(value: string) {
   return Number(value.replace(',', '.')) || 0
+}
+
+/** Taxa por km: os primeiros `freeKm` não pagam, e o que passar é cobrado pelo valor do km. */
+export function perKmDeliveryFee(distanceKm: number, delivery: Pick<DeliverySettings, 'feePerKm' | 'freeKm'>) {
+  const chargeableKm = Math.max(0, distanceKm - parseCurrencyInput(delivery.freeKm ?? '0'))
+  return Math.round(chargeableKm * parseCurrencyInput(delivery.feePerKm) * 100) / 100
 }
 
 export function readSettings(): AppSettings {

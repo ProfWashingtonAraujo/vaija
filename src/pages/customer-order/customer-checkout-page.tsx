@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatCurrency } from '@/lib/formatters'
 import { createPublicOrder, ProductUnavailableError } from '@/lib/orders-api'
-import { parseCurrencyInput } from '@/lib/settings'
+import { parseCurrencyInput, perKmDeliveryFee } from '@/lib/settings'
 import { usePublicSettings } from '@/lib/use-public-settings'
 import { fetchPublicCashRegisterOpen } from '@/lib/cash-register'
 import type { Order } from '@/data/mock-orders'
@@ -187,7 +187,7 @@ export function CustomerCheckoutPage() {
         getCepCoordinates(deliveryCep),
       ])
       const nextDistanceKm = getDistanceKm(originCoordinates, destinationCoordinates)
-      const nextDeliveryFee = nextDistanceKm * parseCurrencyInput(deliverySettings.feePerKm)
+      const nextDeliveryFee = perKmDeliveryFee(nextDistanceKm, deliverySettings)
 
       // o cliente pode ter mudado o CEP enquanto a consulta estava a caminho
       if (latestCep.current !== requestedCep) return null
@@ -211,7 +211,7 @@ export function CustomerCheckoutPage() {
       if (deliverySettings.mode === 'perKm') void calculateDeliveryByCep(true)
     }, 500)
     return () => window.clearTimeout(timer)
-  }, [deliveryCep, settingsReady, isPickup, deliverySettings.mode, deliverySettings.originCep, deliverySettings.feePerKm])
+  }, [deliveryCep, settingsReady, isPickup, deliverySettings.mode, deliverySettings.originCep, deliverySettings.feePerKm, deliverySettings.freeKm])
 
   useEffect(() => {
     let active = true
@@ -369,11 +369,11 @@ export function CustomerCheckoutPage() {
             {!registerOpen ? <p className="mt-3 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-800">Pedidos online pausados porque o caixa está fechado.</p> : null}
             <div className="mt-5 space-y-2 rounded-[24px] border border-orange-100 bg-orange-50/50 p-4 text-sm text-slate-600">
               <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
-              {isPickup ? <div className="flex justify-between"><span>Retirada na loja</span><span className="font-mono">Grátis</span></div> : <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{deliverySettings.mode === 'perKm' && calculatedDeliveryFee === null ? (isCalculatingDelivery ? 'Calculando...' : 'Informe o CEP') : formatCurrency(deliveryFee)}</span></div>}
+              {isPickup ? <div className="flex justify-between"><span>Retirada na loja</span><span className="font-mono">Grátis</span></div> : <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{deliverySettings.mode === 'perKm' && calculatedDeliveryFee === null ? (isCalculatingDelivery ? 'Calculando...' : 'Informe o CEP') : deliveryFee === 0 && deliverySettings.mode === 'perKm' ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>}
               {!isPickup && calculatedDistanceKm !== null ? <div className="flex justify-between"><span>Distância</span><span className="font-mono">{calculatedDistanceKm.toFixed(1).replace('.', ',')} km</span></div> : null}
               <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(total)}</span></div>
             </div>
-            {!isPickup && deliverySettings.mode === 'perKm' ? <p className="mt-3 text-center text-xs text-slate-500">Digite o CEP de entrega: a taxa é calculada automaticamente pela distância até a pizzaria.</p> : null}
+            {!isPickup && deliverySettings.mode === 'perKm' ? <p className="mt-3 text-center text-xs text-slate-500">Digite o CEP de entrega: a taxa é calculada automaticamente pela distância até a pizzaria{parseCurrencyInput(deliverySettings.freeKm ?? '0') > 0 ? `, grátis até ${deliverySettings.freeKm.replace('.', ',')} km` : ''}.</p> : null}
             <Button className="mt-5 w-full" onClick={handleSubmitOrder} disabled={cart.length === 0}>Enviar pedido</Button>
             <Link to={orderPath} className="mt-3 block text-center text-sm font-semibold text-orange-700">Adicionar mais itens</Link>
           </div>
