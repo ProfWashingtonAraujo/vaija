@@ -7,9 +7,17 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { courierErrorMessage, createCourier, deleteCourier, fetchCouriers, formatPhone, updateCourier, type Courier } from '@/lib/couriers-api'
 import { cn } from '@/lib/utils'
 
-type FormState = { id: number | null; name: string; phone: string; active: boolean }
+type FormState = { id: number | null; name: string; phone: string; active: boolean; payPercent: string }
 
-const emptyForm: FormState = { id: null, name: '', phone: '', active: true }
+const emptyForm: FormState = { id: null, name: '', phone: '', active: true, payPercent: '' }
+
+/** Campo vazio = usa o padrão da loja; número de 0 a 100 = repasse só deste entregador. */
+function parsePercent(value: string): number | null | undefined {
+  const text = value.trim().replace(',', '.')
+  if (!text) return null
+  const number = Number(text)
+  return Number.isFinite(number) && number >= 0 && number <= 100 ? number : undefined
+}
 const fieldClass = 'h-10 rounded-lg border-slate-200 focus:translate-y-0 focus:ring-2'
 
 /** Cadastro de entregadores: nome e WhatsApp. O acesso do entregador continua sendo o link de cada entrega. */
@@ -34,9 +42,14 @@ export function CouriersPanel({ canEdit }: { canEdit: boolean }) {
       toast.error('Informe o nome do entregador.')
       return
     }
+    const payPercent = parsePercent(form.payPercent)
+    if (payPercent === undefined) {
+      toast.error('O repasse deve ser um número de 0 a 100, ou ficar vazio para usar o padrão da loja.')
+      return
+    }
     setSaving(true)
     try {
-      const input = { name, phone: form.phone, active: form.active }
+      const input = { name, phone: form.phone, active: form.active, payPercent }
       const saved = form.id === null ? await createCourier(input) : await updateCourier(form.id, input)
       setCouriers((current) => (form.id === null ? [...current, saved] : current.map((item) => item.id === saved.id ? saved : item))
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')))
@@ -51,7 +64,7 @@ export function CouriersPanel({ canEdit }: { canEdit: boolean }) {
 
   const toggleActive = async (courier: Courier) => {
     try {
-      const saved = await updateCourier(courier.id, { name: courier.name, phone: courier.phone, active: !courier.active })
+      const saved = await updateCourier(courier.id, { name: courier.name, phone: courier.phone, active: !courier.active, payPercent: courier.payPercent })
       setCouriers((current) => current.map((item) => item.id === saved.id ? saved : item))
     } catch (error) {
       toast.error(courierErrorMessage(error))
@@ -85,6 +98,11 @@ export function CouriersPanel({ canEdit }: { canEdit: boolean }) {
             WhatsApp <span className="font-normal text-slate-400">(opcional)</span>
             <Input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} maxLength={30} placeholder="(88) 99999-9999" inputMode="tel" className={fieldClass} />
           </label>
+          <label className="grid gap-1.5 text-sm font-medium text-slate-700 sm:col-span-2">
+            Repasse próprio (%) <span className="font-normal text-slate-400">(opcional)</span>
+            <Input value={form.payPercent} onChange={(event) => setForm({ ...form, payPercent: event.target.value })} maxLength={6} placeholder="Vazio = usa o padrão da loja" inputMode="decimal" className={cn(fieldClass, 'sm:max-w-xs')} />
+            <span className="text-xs font-normal text-slate-500">Parte da taxa de entrega que este entregador recebe. Vale para as próximas entregas dele.</span>
+          </label>
           <div className="flex gap-2 sm:col-span-2">
             <Button type="submit" disabled={saving} className="rounded-lg shadow-none hover:translate-y-0">{saving ? 'Salvando...' : form.id === null ? 'Cadastrar' : 'Salvar'}</Button>
             <Button type="button" variant="ghost" className="rounded-lg" onClick={() => setForm(null)}>Cancelar</Button>
@@ -100,12 +118,12 @@ export function CouriersPanel({ canEdit }: { canEdit: boolean }) {
             <li key={courier.id} className="flex flex-wrap items-center gap-3 py-3">
               <div className="min-w-0 flex-1">
                 <p className={cn('truncate text-sm font-semibold', courier.active ? 'text-slate-900' : 'text-slate-400')}>{courier.name}</p>
-                <p className="text-xs text-slate-500">{courier.phone ? formatPhone(courier.phone) : 'Sem WhatsApp'}{courier.active ? '' : ' · Inativo'}</p>
+                <p className="text-xs text-slate-500">{courier.phone ? formatPhone(courier.phone) : 'Sem WhatsApp'}{courier.payPercent !== null ? ` · Repasse ${String(courier.payPercent).replace('.', ',')}%` : ''}{courier.active ? '' : ' · Inativo'}</p>
               </div>
               {canEdit ? (
                 <div className="flex items-center gap-1">
                   <button type="button" onClick={() => void toggleActive(courier)} className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">{courier.active ? 'Desativar' : 'Ativar'}</button>
-                  <button type="button" onClick={() => setForm({ id: courier.id, name: courier.name, phone: courier.phone, active: courier.active })} aria-label={`Editar ${courier.name}`} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-orange-600"><Pencil className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => setForm({ id: courier.id, name: courier.name, phone: courier.phone, active: courier.active, payPercent: courier.payPercent === null ? '' : String(courier.payPercent).replace('.', ',') })} aria-label={`Editar ${courier.name}`} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-orange-600"><Pencil className="h-4 w-4" /></button>
                   <ConfirmDialog
                     trigger={<button type="button" aria-label={`Remover ${courier.name}`} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-orange-600"><Trash2 className="h-4 w-4" /></button>}
                     title="Remover entregador"

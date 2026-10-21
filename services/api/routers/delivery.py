@@ -6,13 +6,13 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import CurrentAuth
 from database import get_db
 from integrations import notify_order
-from models import Delivery, Order, RestaurantSettings, User
+from models import Courier, CourierPayout, Delivery, Order, RestaurantSettings, User
 from .orders import _order_to_dict
 
 delivery_router = APIRouter(tags=["delivery"])
@@ -59,8 +59,8 @@ def _iso(value: datetime | None) -> str | None:
     return _aware(value).astimezone(timezone.utc).isoformat().replace("+00:00", "Z") if value else None
 
 
-async def _courier_percent(db: AsyncSession, tenant_id: str) -> float:
-    """% da taxa de entrega que vai para o entregador (Configurações → Entrega). Padrão: 80."""
+async def _store_percent(db: AsyncSession, tenant_id: str) -> float:
+    """% padrão da loja da taxa de entrega que vai para o entregador (Configurações → Entrega). Padrão: 80."""
     row = await db.get(RestaurantSettings, tenant_id)
     delivery = (row.data or {}).get("delivery") if row else None
     raw = delivery.get("courierPercent") if isinstance(delivery, dict) else None
@@ -71,8 +71,32 @@ async def _courier_percent(db: AsyncSession, tenant_id: str) -> float:
     return min(100.0, max(0.0, percent))
 
 
+async def _percent_overrides(db: AsyncSession, tenant_id: str) -> dict[str, float]:
+    """Entregadores com % própria no cadastro (chave: nome em minúsculas)."""
+    rows = (await db.execute(
+        select(Courier.name, Courier.pay_percent).where(Courier.tenant_id == tenant_id, Courier.pay_percent.is_not(None))
+    )).all()
+    return {name.lower(): min(100.0, max(0.0, float(percent))) for name, percent in rows}
+
+
+async def _courier_percent(db: AsyncSession, tenant_id: str, courier_name: str | None = None) -> float:
+    """% do entregador: a do cadastro dele, se houver; senão a padrão da loja."""
+    if courier_name:
+        override = (await _percent_overrides(db, tenant_id)).get(courier_name.lower())
+        if override is not None:
+            return override
+    return await _store_percent(db, tenant_id)
+
+
 def _pay(fee: float | None, percent: float) -> float:
     return round(float(fee or 0) * percent / 100, 2)
+
+
+def _effective_pay(row: Delivery, fee: float, store_percent: float, overrides: dict[str, float]) -> float:
+    """Repasse guardado na entrega; entregas antigas (sem valor guardado) usam a % de hoje."""
+    if row.courier_pay is not None:
+        return float(row.courier_pay)
+    return _pay(fee, overrides.get((row.courier_name or "").lower(), store_percent))
 
 
 async def _delivery_by_token(db: AsyncSession, token: str) -> Delivery | None:
@@ -208,7 +232,8 @@ async def courier_earnings(auth: CurrentAuth, start: str | None = None, end: str
         return _error(403, "forbidden")
 
     start_dt, end_dt = _parse_range(start, end)
-    percent = await _courier_percent(db, auth.tenant_id)
+    percent = await _store_percent(db, auth.tenant_id)
+    overrides = await _percent_overrides(db, auth.tenant_id)
     rows = (await db.execute(
         select(Delivery).where(
             Delivery.tenant_id == auth.tenant_id,
@@ -228,36 +253,149 @@ async def courier_earnings(auth: CurrentAuth, start: str | None = None, end: str
         order = orders.get(row.order_id)
         fee = float(order.delivery_fee or 0) if order else 0.0
         # entregas anteriores ao recurso não têm o valor guardado: usa a % de hoje
-        pay = float(row.courier_pay) if row.courier_pay is not None else _pay(fee, percent)
+        pay = _effective_pay(row, fee, percent, overrides)
+        paid = row.payout_id is not None
         name = row.courier_name or ""
-        group = groups.setdefault(name, {"name": name, "count": 0, "fees": 0.0, "pay": 0.0, "deliveries": []})
+        group = groups.setdefault(name, {
+            "name": name, "count": 0, "fees": 0.0, "pay": 0.0, "paid": 0.0,
+            "payPercent": overrides.get(name.lower()), "deliveries": [],
+        })
         group["count"] += 1
         group["fees"] += fee
         group["pay"] += pay
+        if paid:
+            group["paid"] += pay
         group["deliveries"].append({
             "orderId": row.order_id,
             "customer": order.customer if order else "",
             "finishedAt": _iso(row.finished_at),
             "fee": fee,
             "pay": pay,
+            "paid": paid,
         })
 
     couriers = []
     for group in sorted(groups.values(), key=lambda g: (g["name"] == "", g["name"].lower())):
         group["fees"] = round(group["fees"], 2)
         group["pay"] = round(group["pay"], 2)
+        group["paid"] = round(group["paid"], 2)
+        group["pending"] = round(group["pay"] - group["paid"], 2)
         group["store"] = round(group["fees"] - group["pay"], 2)
         couriers.append(group)
 
     fees = round(sum(g["fees"] for g in couriers), 2)
     pay = round(sum(g["pay"] for g in couriers), 2)
+    paid_total = round(sum(g["paid"] for g in couriers), 2)
     return {
         "percent": percent,
         "start": _iso(start_dt),
         "end": _iso(end_dt),
         "couriers": couriers,
-        "totals": {"count": sum(g["count"] for g in couriers), "fees": fees, "pay": pay, "store": round(fees - pay, 2)},
+        "totals": {
+            "count": sum(g["count"] for g in couriers), "fees": fees, "pay": pay,
+            "paid": paid_total, "pending": round(pay - paid_total, 2), "store": round(fees - pay, 2),
+        },
     }
+
+
+class PayoutIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    courierName: str = Field(default="", max_length=60)
+    start: str
+    end: str
+
+
+def _payout_dict(payout: CourierPayout) -> dict:
+    return {
+        "id": payout.id,
+        "courierName": payout.courier_name or "",
+        "amount": float(payout.amount),
+        "count": payout.deliveries_count,
+        "paidBy": payout.paid_by,
+        "paidAt": _iso(payout.paid_at),
+    }
+
+
+@delivery_router.get("/api/deliveries/payouts")
+async def list_payouts(auth: CurrentAuth, start: str | None = None, end: str | None = None, db: AsyncSession = Depends(get_db)):
+    """Pagamentos registrados que cobrem o período consultado."""
+    if auth.role_key not in MANAGER_ROLES:
+        return _error(403, "forbidden")
+    start_dt, end_dt = _parse_range(start, end)
+    rows = (await db.execute(
+        select(CourierPayout).where(
+            CourierPayout.tenant_id == auth.tenant_id,
+            CourierPayout.period_start < end_dt,
+            CourierPayout.period_end > start_dt,
+        ).order_by(CourierPayout.paid_at.desc())
+    )).scalars().all()
+    return {"payouts": [_payout_dict(row) for row in rows]}
+
+
+@delivery_router.post("/api/deliveries/payouts")
+async def create_payout(body: PayoutIn, auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
+    """Marca como pagas as entregas finalizadas, ainda não quitadas, de um entregador no período."""
+    if auth.role_key not in MANAGER_ROLES:
+        return _error(403, "forbidden")
+    start_dt, end_dt = _parse_range(body.start, body.end)
+    name = body.courierName.strip()
+
+    query = select(Delivery).where(
+        Delivery.tenant_id == auth.tenant_id,
+        Delivery.finished_at.is_not(None),
+        Delivery.finished_at >= start_dt,
+        Delivery.finished_at < end_dt,
+        Delivery.payout_id.is_(None),
+    )
+    query = query.where(Delivery.courier_name == name) if name else query.where(or_(Delivery.courier_name.is_(None), Delivery.courier_name == ""))
+    rows = (await db.execute(query)).scalars().all()
+    if not rows:
+        return _error(409, "nothing_to_pay")
+
+    found = await db.execute(select(Order).where(Order.tenant_id == auth.tenant_id, Order.id.in_([row.order_id for row in rows])))
+    orders = {order.id: order for order in found.scalars().all()}
+    store_percent = await _store_percent(db, auth.tenant_id)
+    overrides = await _percent_overrides(db, auth.tenant_id)
+
+    total = 0.0
+    for row in rows:
+        order = orders.get(row.order_id)
+        pay = _effective_pay(row, float(order.delivery_fee or 0) if order else 0.0, store_percent, overrides)
+        row.courier_pay = pay  # congela o valor pago, mesmo que a % mude depois
+        total += pay
+
+    user = await db.get(User, auth.user_id)
+    payout = CourierPayout(
+        tenant_id=auth.tenant_id,
+        courier_name=name,
+        amount=round(total, 2),
+        deliveries_count=len(rows),
+        period_start=start_dt,
+        period_end=end_dt,
+        paid_by=(user.name or user.username) if user else None,
+    )
+    db.add(payout)
+    await db.flush()
+    for row in rows:
+        row.payout_id = payout.id
+    await db.flush()
+    await db.refresh(payout)
+    return {"ok": True, "payout": _payout_dict(payout)}
+
+
+@delivery_router.delete("/api/deliveries/payouts/{payout_id}")
+async def undo_payout(payout_id: int, auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
+    """Desfaz um pagamento registrado por engano: as entregas voltam a aparecer como a pagar."""
+    if auth.role_key not in MANAGER_ROLES:
+        return _error(403, "forbidden")
+    payout = await db.get(CourierPayout, payout_id)
+    if payout is None or payout.tenant_id != auth.tenant_id:
+        return _error(404, "payout_not_found")
+    await db.execute(update(Delivery).where(Delivery.tenant_id == auth.tenant_id, Delivery.payout_id == payout_id).values(payout_id=None))
+    await db.execute(delete(CourierPayout).where(CourierPayout.id == payout_id))
+    await db.flush()
+    return {"ok": True}
 
 
 @delivery_router.post("/api/deliveries/{order_id}/finish")
@@ -278,7 +416,7 @@ async def finish_delivery_manually(order_id: int, auth: CurrentAuth, db: AsyncSe
     delivery.finished_at = _now()
     delivery.finished_by = (user.name or user.username) if user else "Restaurante"
     delivery.latitude = delivery.longitude = delivery.accuracy = None  # não guarda a última posição
-    delivery.courier_pay = _pay(order.delivery_fee, await _courier_percent(db, auth.tenant_id))
+    delivery.courier_pay = _pay(order.delivery_fee, await _courier_percent(db, auth.tenant_id, delivery.courier_name))
     order.status = "Entregue"
     await db.commit()
     await notify_order(_order_to_dict(order))
@@ -344,7 +482,7 @@ async def finish_delivery(token: str, db: AsyncSession = Depends(get_db)):
     if delivery.finished_at is None:
         delivery.finished_at = _now()
         delivery.latitude = delivery.longitude = delivery.accuracy = None  # não guarda a última posição
-        delivery.courier_pay = _pay(order.delivery_fee, await _courier_percent(db, delivery.tenant_id))
+        delivery.courier_pay = _pay(order.delivery_fee, await _courier_percent(db, delivery.tenant_id, delivery.courier_name))
     changed = order.status not in ("Entregue", "Cancelado")
     if changed:
         order.status = "Entregue"

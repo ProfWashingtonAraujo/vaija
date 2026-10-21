@@ -54,10 +54,47 @@ export type CourierEarnings = {
     count: number
     fees: number
     pay: number
+    paid: number
+    pending: number
     store: number
-    deliveries: Array<{ orderId: number; customer: string; finishedAt: string | null; fee: number; pay: number }>
+    /** % própria do entregador no cadastro; null = padrão da loja. */
+    payPercent: number | null
+    deliveries: Array<{ orderId: number; customer: string; finishedAt: string | null; fee: number; pay: number; paid: boolean }>
   }>
-  totals: { count: number; fees: number; pay: number; store: number }
+  totals: { count: number; fees: number; pay: number; paid: number; pending: number; store: number }
+}
+
+export type CourierPayout = {
+  id: number
+  courierName: string
+  amount: number
+  count: number
+  paidBy: string | null
+  paidAt: string | null
+}
+
+/** Pagamentos registrados que cobrem o período. */
+export async function fetchCourierPayouts(start: string, end: string): Promise<CourierPayout[]> {
+  const response = await apiFetch(`/api/deliveries/payouts?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`, { headers: { 'X-Tenant-Id': getTenantId() } })
+  if (!response.ok) throw new Error(`failed_to_fetch_courier_payouts:${response.status}`)
+  return (await response.json() as { payouts: CourierPayout[] }).payouts
+}
+
+/** Marca como pagas as entregas ainda a pagar de um entregador no período. */
+export async function createCourierPayout(courierName: string, start: string, end: string): Promise<CourierPayout> {
+  const response = await apiFetch('/api/deliveries/payouts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': getTenantId() },
+    body: JSON.stringify({ courierName, start, end }),
+  })
+  if (!response.ok) throw new Error(`failed_to_create_courier_payout:${response.status}`)
+  return (await response.json() as { payout: CourierPayout }).payout
+}
+
+/** Desfaz um pagamento registrado por engano. */
+export async function undoCourierPayout(id: number) {
+  const response = await apiFetch(`/api/deliveries/payouts/${id}`, { method: 'DELETE', headers: { 'X-Tenant-Id': getTenantId() } })
+  if (!response.ok) throw new Error(`failed_to_undo_courier_payout:${response.status}`)
 }
 
 /** Gerente/administrador: quanto pagar a cada entregador entre `start` e `end` (ISO, fim exclusivo). */

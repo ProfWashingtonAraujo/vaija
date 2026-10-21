@@ -6,16 +6,20 @@ export type Courier = {
   name: string
   phone: string
   active: boolean
+  /** % da taxa de entrega só deste entregador; null = usa o padrão da loja. */
+  payPercent: number | null
 }
 
-export type CourierInput = { name: string; phone: string; active: boolean }
+export type CourierInput = { name: string; phone: string; active: boolean; payPercent: number | null }
 
 export class CourierApiError extends Error {
   code: string
+  status: number
 
   constructor(status: number, code: string) {
     super(`courier_request_failed:${status}:${code}`)
     this.code = code
+    this.status = status
   }
 }
 
@@ -31,6 +35,7 @@ export function courierErrorMessage(error: unknown) {
     if (error.code === 'name_taken') return 'Já existe um entregador com esse nome.'
     if (error.code === 'invalid_name') return 'Informe o nome do entregador.'
     if (error.code === 'forbidden') return 'Só administrador ou gerente pode alterar entregadores.'
+    if (error.status === 422) return 'Confira os dados. O repasse deve ser um número de 0 a 100.'
   }
   return 'Não foi possível salvar o entregador. Tente de novo.'
 }

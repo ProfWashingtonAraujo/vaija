@@ -27,6 +27,8 @@ class CourierIn(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     phone: str | None = Field(default=None, max_length=30)
     active: bool = True
+    # vazio = usa o repasse padrão da loja
+    payPercent: float | None = Field(default=None, ge=0, le=100)
 
 
 def _error(status: int, code: str) -> JSONResponse:
@@ -34,7 +36,13 @@ def _error(status: int, code: str) -> JSONResponse:
 
 
 def _to_dict(courier: Courier) -> dict:
-    return {"id": courier.id, "name": courier.name, "phone": courier.phone or "", "active": courier.active}
+    return {
+        "id": courier.id,
+        "name": courier.name,
+        "phone": courier.phone or "",
+        "active": courier.active,
+        "payPercent": float(courier.pay_percent) if courier.pay_percent is not None else None,
+    }
 
 
 def _clean_phone(phone: str | None) -> str | None:
@@ -67,7 +75,7 @@ async def create_courier(body: CourierIn, auth: CurrentAuth, db: AsyncSession = 
         return _error(400, "invalid_name")
     if await _name_taken(db, auth.tenant_id, name):
         return _error(409, "name_taken")
-    courier = Courier(tenant_id=auth.tenant_id, name=name, phone=_clean_phone(body.phone), active=body.active)
+    courier = Courier(tenant_id=auth.tenant_id, name=name, phone=_clean_phone(body.phone), active=body.active, pay_percent=body.payPercent)
     db.add(courier)
     await db.flush()
     return {"ok": True, "courier": _to_dict(courier)}
@@ -88,6 +96,7 @@ async def update_courier(courier_id: int, body: CourierIn, auth: CurrentAuth, db
     courier.name = name
     courier.phone = _clean_phone(body.phone)
     courier.active = body.active
+    courier.pay_percent = body.payPercent
     await db.flush()
     return {"ok": True, "courier": _to_dict(courier)}
 

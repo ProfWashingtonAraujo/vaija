@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ChevronDown, Download } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { fetchCourierEarnings, type CourierEarnings } from '@/lib/delivery-api'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { createCourierPayout, fetchCourierEarnings, fetchCourierPayouts, undoCourierPayout, type CourierEarnings, type CourierPayout } from '@/lib/delivery-api'
 import { formatCurrency } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
 
@@ -43,38 +45,114 @@ function rangeFor(key: PeriodKey, customStart: string, customEnd: string): [Date
   }
 }
 
+const NO_COURIER = 'Sem entregador informado'
+
 function formatDateTime(iso: string | null) {
   return iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'
 }
 
-/** Fechamento do repasse: quanto pagar a cada entregador no período (% da taxa de entrega das entregas finalizadas). */
+function formatDateLong(iso: string | null) {
+  return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—'
+}
+
+/** Número no formato do Excel em português: vírgula decimal, sem símbolo de moeda. */
+const csvNumber = (value: number) => value.toFixed(2).replace('.', ',')
+const csvText = (value: string) => `"${value.replace(/"/g, '""')}"`
+
+/** Planilha do fechamento (CSV com ; e BOM, que o Excel brasileiro abre direto). */
+function downloadCsv(data: CourierEarnings, range: [Date, Date]) {
+  const header = ['Entregador', 'Pedido', 'Cliente', 'Finalizada em', 'Taxa de entrega', 'Repasse', 'Situação']
+  const lines = [header.map(csvText).join(';')]
+  for (const courier of data.couriers) {
+    for (const delivery of courier.deliveries) {
+      lines.push([
+        csvText(courier.name || NO_COURIER),
+        String(delivery.orderId),
+        csvText(delivery.customer),
+        csvText(formatDateTime(delivery.finishedAt)),
+        csvNumber(delivery.fee),
+        csvNumber(delivery.pay),
+        csvText(delivery.paid ? 'Pago' : 'A pagar'),
+      ].join(';'))
+    }
+  }
+  lines.push('')
+  lines.push(['Entregador', 'Entregas', 'Taxas', 'Repasse total', 'Pago', 'A pagar', 'Fica com a loja'].map(csvText).join(';'))
+  for (const courier of data.couriers) {
+    lines.push([csvText(courier.name || NO_COURIER), String(courier.count), csvNumber(courier.fees), csvNumber(courier.pay), csvNumber(courier.paid), csvNumber(courier.pending), csvNumber(courier.store)].join(';'))
+  }
+  const totals = data.totals
+  lines.push([csvText('TOTAL'), String(totals.count), csvNumber(totals.fees), csvNumber(totals.pay), csvNumber(totals.paid), csvNumber(totals.pending), csvNumber(totals.store)].join(';'))
+
+  const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `repasse-entregadores_${toInputDate(range[0])}_a_${toInputDate(addDays(range[1], -1))}.csv`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+/** Fechamento do repasse: quanto pagar a cada entregador no período, com registro de pagamentos e planilha. */
 export function CourierEarningsPanel() {
   const [period, setPeriod] = useState<PeriodKey>('today')
   const [customStart, setCustomStart] = useState(() => toInputDate(addDays(new Date(), -6)))
   const [customEnd, setCustomEnd] = useState(() => toInputDate(new Date()))
   const [data, setData] = useState<CourierEarnings | null>(null)
+  const [payouts, setPayouts] = useState<CourierPayout[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<string | null>(null)
 
   const range = useMemo(() => rangeFor(period, customStart, customEnd), [period, customStart, customEnd])
 
+  const load = useCallback(async (target: [Date, Date]) => {
+    const [start, end] = [target[0].toISOString(), target[1].toISOString()]
+    const [earnings, paid] = await Promise.all([fetchCourierEarnings(start, end), fetchCourierPayouts(start, end)])
+    setData(earnings)
+    setPayouts(paid)
+  }, [])
+
   useEffect(() => {
     if (!range) return
     let active = true
     setLoading(true)
-    void fetchCourierEarnings(range[0].toISOString(), range[1].toISOString())
-      .then((result) => { if (active) setData(result) })
+    void load(range)
       .catch(() => { if (active) toast.error('Não foi possível carregar o repasse dos entregadores.') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [range])
+  }, [range, load])
+
+  const markAsPaid = async (courierName: string) => {
+    if (!range) return
+    try {
+      const payout = await createCourierPayout(courierName, range[0].toISOString(), range[1].toISOString())
+      toast.success(`Pagamento de ${formatCurrency(payout.amount)} registrado.`)
+      await load(range)
+    } catch {
+      toast.error('Não foi possível registrar o pagamento. Atualize a tela e tente de novo.')
+    }
+  }
+
+  const undoPayout = async (payout: CourierPayout) => {
+    if (!range) return
+    try {
+      await undoCourierPayout(payout.id)
+      toast.success('Pagamento desfeito. As entregas voltaram para "a pagar".')
+      await load(range)
+    } catch {
+      toast.error('Não foi possível desfazer o pagamento.')
+    }
+  }
 
   const percent = data ? String(data.percent).replace('.', ',') : '80'
+  const totals = data?.totals
   const cards = [
-    { label: 'Entregas finalizadas', value: String(data?.totals.count ?? 0) },
-    { label: 'Taxas cobradas', value: formatCurrency(data?.totals.fees ?? 0) },
-    { label: `A pagar aos entregadores (${percent}%)`, value: formatCurrency(data?.totals.pay ?? 0), highlight: true },
-    { label: 'Fica com a loja', value: formatCurrency(data?.totals.store ?? 0) },
+    { label: 'Entregas finalizadas', value: String(totals?.count ?? 0) },
+    { label: `Repasse total (padrão ${percent}%)`, value: formatCurrency(totals?.pay ?? 0) },
+    { label: 'Já pago', value: formatCurrency(totals?.paid ?? 0) },
+    { label: 'A pagar', value: formatCurrency(totals?.pending ?? 0), highlight: true },
   ]
 
   return (
@@ -90,6 +168,9 @@ export function CourierEarningsPanel() {
             <Input type="date" value={customEnd} min={customStart} onChange={(event) => setCustomEnd(event.target.value)} aria-label="Até" className="h-9 w-40" />
           </div>
         ) : null}
+        <Button type="button" variant="outline" className="ml-auto h-9 rounded-full border-orange-200 px-4 text-sm" disabled={!data || !range || data.couriers.length === 0} onClick={() => data && range && downloadCsv(data, range)}>
+          <Download className="mr-1.5 h-4 w-4" />Exportar planilha
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -100,6 +181,7 @@ export function CourierEarningsPanel() {
           </div>
         ))}
       </div>
+      {totals ? <p className="-mt-3 text-sm text-slate-500">Taxas cobradas no período: {formatCurrency(totals.fees)} · fica com a loja: {formatCurrency(totals.store)}</p> : null}
 
       <section className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
         <h3 className="font-heading text-xl font-bold text-slate-900">Por entregador</h3>
@@ -110,30 +192,43 @@ export function CourierEarningsPanel() {
           {data?.couriers.map((courier) => {
             const key = courier.name || '__none__'
             const expanded = open === key
+            const settled = courier.pending <= 0
             return (
               <div key={key} className="rounded-2xl border border-orange-100">
-                <button type="button" onClick={() => setOpen(expanded ? null : key)} aria-expanded={expanded} className="flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left">
-                  <div>
-                    <p className="font-semibold text-slate-900">{courier.name || 'Sem entregador informado'}</p>
-                    <p className="text-sm text-slate-500">{courier.count} {courier.count === 1 ? 'entrega' : 'entregas'} · taxas {formatCurrency(courier.fees)} · loja {formatCurrency(courier.store)}</p>
-                  </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <button type="button" onClick={() => setOpen(expanded ? null : key)} aria-expanded={expanded} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                    <ChevronDown className={cn('h-5 w-5 shrink-0 text-slate-400 transition', expanded && 'rotate-180')} />
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-slate-900">{courier.name || NO_COURIER}{courier.payPercent !== null ? <span className="ml-2 rounded-full bg-orange-50 px-2 py-0.5 text-xs font-semibold text-orange-700">{String(courier.payPercent).replace('.', ',')}%</span> : null}</span>
+                      <span className="block text-sm text-slate-500">{courier.count} {courier.count === 1 ? 'entrega' : 'entregas'} · taxas {formatCurrency(courier.fees)} · repasse {formatCurrency(courier.pay)} · loja {formatCurrency(courier.store)}</span>
+                    </span>
+                  </button>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">A pagar</p>
-                      <p className="font-mono text-lg font-bold text-orange-600">{formatCurrency(courier.pay)}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{settled ? 'Pago' : 'A pagar'}</p>
+                      <p className={cn('font-mono text-lg font-bold', settled ? 'text-emerald-600' : 'text-orange-600')}>{formatCurrency(settled ? courier.paid : courier.pending)}</p>
                     </div>
-                    <ChevronDown className={cn('h-5 w-5 text-slate-400 transition', expanded && 'rotate-180')} />
+                    {!settled ? (
+                      <ConfirmDialog
+                        trigger={<Button type="button" className="h-9 rounded-full px-4 text-sm">Marcar como pago</Button>}
+                        title="Registrar pagamento"
+                        description={`Registrar que ${courier.name || 'o entregador'} recebeu ${formatCurrency(courier.pending)} por ${courier.deliveries.filter((delivery) => !delivery.paid).length} ${courier.deliveries.filter((delivery) => !delivery.paid).length === 1 ? 'entrega' : 'entregas'} deste período? Você pode desfazer depois, se registrar por engano.`}
+                        confirmLabel="Registrar pagamento"
+                        onConfirm={() => void markAsPaid(courier.name)}
+                      />
+                    ) : null}
                   </div>
-                </button>
+                </div>
                 {expanded ? (
                   <div className="overflow-x-auto border-t border-orange-100">
-                    <table className="w-full min-w-[420px] text-sm">
+                    <table className="w-full min-w-[480px] text-sm">
                       <thead>
                         <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
                           <th className="px-4 py-2 font-semibold">Pedido</th>
                           <th className="px-4 py-2 font-semibold">Finalizada</th>
                           <th className="px-4 py-2 text-right font-semibold">Taxa</th>
                           <th className="px-4 py-2 text-right font-semibold">Repasse</th>
+                          <th className="px-4 py-2 font-semibold">Situação</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -143,6 +238,7 @@ export function CourierEarningsPanel() {
                             <td className="px-4 py-2 text-slate-500">{formatDateTime(delivery.finishedAt)}</td>
                             <td className="px-4 py-2 text-right font-mono text-slate-600">{formatCurrency(delivery.fee)}</td>
                             <td className="px-4 py-2 text-right font-mono font-semibold text-slate-900">{formatCurrency(delivery.pay)}</td>
+                            <td className="px-4 py-2"><span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', delivery.paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>{delivery.paid ? 'Pago' : 'A pagar'}</span></td>
                           </tr>
                         ))}
                       </tbody>
@@ -152,6 +248,29 @@ export function CourierEarningsPanel() {
               </div>
             )
           })}
+        </div>
+      </section>
+
+      <section className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+        <h3 className="font-heading text-xl font-bold text-slate-900">Pagamentos registrados</h3>
+        <p className="mt-1 text-sm text-slate-500">Pagamentos que cobrem o período escolhido.</p>
+        <div className="mt-4 space-y-3">
+          {payouts.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/50 p-4 text-center text-sm text-slate-500">Nenhum pagamento registrado para este período.</p> : null}
+          {payouts.map((payout) => (
+            <div key={payout.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-100 p-3 text-sm">
+              <div>
+                <p className="font-semibold text-slate-900">{payout.courierName || NO_COURIER} · {formatCurrency(payout.amount)}</p>
+                <p className="text-slate-500">{payout.count} {payout.count === 1 ? 'entrega' : 'entregas'} · pago em {formatDateLong(payout.paidAt)}{payout.paidBy ? ` por ${payout.paidBy}` : ''}</p>
+              </div>
+              <ConfirmDialog
+                trigger={<button type="button" className="text-sm font-semibold text-slate-500 hover:text-slate-800">Desfazer</button>}
+                title="Desfazer pagamento"
+                description={`Desfazer o pagamento de ${formatCurrency(payout.amount)} a ${payout.courierName || 'o entregador'}? As ${payout.count} ${payout.count === 1 ? 'entrega volta' : 'entregas voltam'} para "a pagar".`}
+                confirmLabel="Desfazer pagamento"
+                onConfirm={() => void undoPayout(payout)}
+              />
+            </div>
+          ))}
         </div>
       </section>
     </div>

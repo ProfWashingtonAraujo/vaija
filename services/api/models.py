@@ -155,6 +155,8 @@ class Courier(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # % da taxa de entrega que este entregador recebe; vazio = usa o padrão da loja
+    pay_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -181,4 +183,22 @@ class Delivery(Base):
     finished_by: Mapped[str | None] = mapped_column(String, nullable=True)
     # repasse ao entregador no momento em que a entrega foi finalizada (a % pode mudar depois; o histórico não)
     courier_pay: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # pagamento em que esta entrega foi quitada; vazio = ainda a pagar
+    payout_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CourierPayout(Base):
+    """Pagamento registrado a um entregador: reúne as entregas quitadas de uma vez."""
+    __tablename__ = "courier_payouts"
+    __table_args__ = (Index("courier_payouts_tenant_idx", "tenant_id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String, nullable=False)
+    courier_name: Mapped[str] = mapped_column(String, nullable=False, default="")
+    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    deliveries_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    paid_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
