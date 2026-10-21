@@ -24,8 +24,16 @@ function normalizePhone(value: string) {
   return value.replace(/\D/g, '')
 }
 
-function getStepIndex(status: OrderStatus) {
-  const index = trackingSteps.findIndex((step) => step.status === status)
+/** Retirada na loja não passa pela etapa de entrega. */
+function stepsFor(order: Order | null | undefined) {
+  if (order?.source !== 'Retirada') return trackingSteps
+  return trackingSteps
+    .filter((step) => step.status !== 'Saiu para entrega')
+    .map((step) => step.status === 'Pronto para retirada' ? { ...step, description: 'Seu pedido está pronto. Pode retirar no restaurante.' } : step)
+}
+
+function getStepIndex(steps: typeof trackingSteps, status: OrderStatus) {
+  const index = steps.findIndex((step) => step.status === status)
   return index >= 0 ? index : 0
 }
 
@@ -68,7 +76,8 @@ export function CustomerTrackingPage() {
   }, [orders, query])
 
   const selectedOrder = orders.find((order) => order.id === selectedOrderId) ?? foundOrders[0]
-  const activeStep = selectedOrder ? getStepIndex(selectedOrder.status) : 0
+  const steps = stepsFor(selectedOrder)
+  const activeStep = selectedOrder ? getStepIndex(steps, selectedOrder.status) : 0
 
   const handleSearch = async () => {
     if (!query.trim()) {
@@ -155,14 +164,14 @@ export function CustomerTrackingPage() {
               </div>
 
               <div className="mt-6 space-y-4">
-                {trackingSteps.map((step, index) => {
+                {steps.map((step, index) => {
                   const Icon = step.icon
                   const completed = index <= activeStep
                   return (
                     <div key={step.status} className="flex gap-4">
                       <div className="flex flex-col items-center">
                         <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${completed ? 'border-orange-500 bg-orange-500 text-white' : 'border-orange-100 bg-orange-50 text-orange-300'}`}><Icon className="h-5 w-5" /></div>
-                        {index < trackingSteps.length - 1 ? <div className={`mt-2 h-10 w-px ${index < activeStep ? 'bg-orange-400' : 'bg-orange-100'}`} /> : null}
+                        {index < steps.length - 1 ? <div className={`mt-2 h-10 w-px ${index < activeStep ? 'bg-orange-400' : 'bg-orange-100'}`} /> : null}
                       </div>
                       <div className="pb-4">
                         <p className={`font-semibold ${completed ? 'text-slate-900' : 'text-slate-400'}`}>{step.label}</p>

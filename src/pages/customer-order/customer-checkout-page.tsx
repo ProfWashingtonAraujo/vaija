@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ShieldCheck, Trash2 } from 'lucide-react'
+import { ArrowLeft, Bike, ShieldCheck, ShoppingBag, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import { parseCurrencyInput } from '@/lib/settings'
 import { usePublicSettings } from '@/lib/use-public-settings'
 import { fetchPublicCashRegisterOpen } from '@/lib/cash-register'
 import type { Order } from '@/data/mock-orders'
+import { cn } from '@/lib/utils'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
 type CustomerProfile = { name: string; email: string; phone: string; provider: 'simple' | 'google' }
@@ -107,6 +108,7 @@ export function CustomerCheckoutPage() {
   const [profile] = useState<CustomerProfile | null>(readStoredProfile)
   const [cart, setCart] = useState<CartItem[]>(() => readStoredCart(tenantId))
   const [registerOpen, setRegisterOpen] = useState(false)
+  const [fulfillment, setFulfillment] = useState<'delivery' | 'pickup'>('delivery')
   const [customer, setCustomer] = useState(profile?.name ?? '')
   const [phone, setPhone] = useState(profile?.phone ?? '')
   const [address, setAddress] = useState('')
@@ -124,7 +126,8 @@ export function CustomerCheckoutPage() {
   const [isLoadingCep, setIsLoadingCep] = useState(false)
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart])
-  const deliveryFee = cart.length === 0
+  const isPickup = fulfillment === 'pickup'
+  const deliveryFee = cart.length === 0 || isPickup
     ? 0
     : deliverySettings.mode === 'perKm'
       ? calculatedDeliveryFee ?? 0
@@ -202,13 +205,13 @@ export function CustomerCheckoutPage() {
 
   // CEP completo: preenche o endereço e, na cobrança por km, calcula a entrega sozinho
   useEffect(() => {
-    if (!settingsReady || normalizeCep(deliveryCep).length !== 8) return
+    if (!settingsReady || isPickup || normalizeCep(deliveryCep).length !== 8) return
     const timer = window.setTimeout(() => {
       void fillAddressFromCep()
       if (deliverySettings.mode === 'perKm') void calculateDeliveryByCep(true)
     }, 500)
     return () => window.clearTimeout(timer)
-  }, [deliveryCep, settingsReady, deliverySettings.mode, deliverySettings.originCep, deliverySettings.feePerKm])
+  }, [deliveryCep, settingsReady, isPickup, deliverySettings.mode, deliverySettings.originCep, deliverySettings.feePerKm])
 
   useEffect(() => {
     let active = true
@@ -243,12 +246,14 @@ export function CustomerCheckoutPage() {
       return
     }
 
-    if (!trimmedCustomer || !trimmedPhone || !trimmedAddress) {
-      toast.error('Informe nome, WhatsApp e endereço de entrega.')
+    if (!trimmedCustomer || !trimmedPhone || (!isPickup && !trimmedAddress)) {
+      toast.error(isPickup ? 'Informe seu nome e WhatsApp.' : 'Informe nome, WhatsApp e endereço de entrega.')
       return
     }
 
-    const currentDeliveryFee = deliverySettings.mode === 'perKm'
+    const currentDeliveryFee = isPickup
+      ? 0
+      : deliverySettings.mode === 'perKm'
       ? calculatedDeliveryFee ?? await calculateDeliveryByCep()
       : deliveryFee
 
@@ -260,8 +265,8 @@ export function CustomerCheckoutPage() {
     const newOrder: Omit<Order, 'id'> = {
       customer: trimmedCustomer,
       phone: trimmedPhone,
-      address: trimmedReference ? `${trimmedAddress} - Ref: ${trimmedReference}` : trimmedAddress,
-      source: 'Online',
+      address: isPickup ? '' : trimmedReference ? `${trimmedAddress} - Ref: ${trimmedReference}` : trimmedAddress,
+      source: isPickup ? 'Retirada' : 'Online',
       deliveryFee: currentDeliveryFee,
       items: cart.map((item) => item.quantity > 1 ? `${item.quantity}x ${item.name}` : item.name),
       elapsed: 'agora',
@@ -308,19 +313,33 @@ export function CustomerCheckoutPage() {
       <section className="mx-auto grid max-w-5xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8">
         <div className="space-y-6">
           <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold">Dados para entrega</h2></div>
+            <div className="grid grid-cols-2 gap-2 rounded-[24px] border border-orange-100 bg-[#fffaf5] p-2" role="radiogroup" aria-label="Como você quer receber o pedido">
+              {([['delivery', 'Entrega', Bike, 'Receba em casa'], ['pickup', 'Retirar na loja', ShoppingBag, 'Sem taxa de entrega']] as const).map(([value, label, Icon, hint]) => (
+                <button key={value} type="button" role="radio" aria-checked={fulfillment === value} onClick={() => setFulfillment(value)} className={cn('flex flex-col items-center gap-1 rounded-2xl border px-3 py-3 text-sm font-semibold transition-all duration-200', fulfillment === value ? 'border-orange-300 bg-orange-50 text-orange-700 shadow-[0_8px_18px_rgba(255,107,0,0.08)]' : 'border-transparent bg-white text-slate-600 hover:border-orange-200')}>
+                  <Icon className="h-5 w-5" />
+                  {label}
+                  <span className="text-xs font-normal text-slate-500">{hint}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-6 flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold">{isPickup ? 'Seus dados' : 'Dados para entrega'}</h2></div>
+            {isPickup ? <p className="mt-3 rounded-2xl border border-orange-100 bg-orange-50/60 p-3 text-sm text-slate-600">Você retira o pedido no restaurante quando ele estiver pronto. Acompanhe o andamento depois de enviar.</p> : null}
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               <Input value={customer} onChange={(event) => setCustomer(event.target.value)} placeholder="Seu nome" />
               <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="WhatsApp" inputMode="tel" />
-              <Input value={deliveryCep} onChange={(event) => {
-                latestCep.current = normalizeCep(event.target.value)
-                setDeliveryCep(event.target.value)
-                setCalculatedDistanceKm(null)
-                setCalculatedDeliveryFee(null)
-              }} placeholder="CEP de entrega" inputMode="numeric" />
-              <Input className="md:col-span-2" value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Endereço completo" />
-              <Input className="md:col-span-2" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Ponto de referência ou complemento" />
-              {deliverySettings.mode === 'perKm' ? <Button type="button" variant="outline" onClick={() => void calculateDeliveryByCep()} disabled={isCalculatingDelivery || isLoadingCep}>{isCalculatingDelivery ? 'Calculando...' : 'Recalcular entrega'}</Button> : null}
+              {isPickup ? null : (
+                <>
+                  <Input value={deliveryCep} onChange={(event) => {
+                    latestCep.current = normalizeCep(event.target.value)
+                    setDeliveryCep(event.target.value)
+                    setCalculatedDistanceKm(null)
+                    setCalculatedDeliveryFee(null)
+                  }} placeholder="CEP de entrega" inputMode="numeric" />
+                  <Input className="md:col-span-2" value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Endereço completo" />
+                  <Input className="md:col-span-2" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Ponto de referência ou complemento" />
+                </>
+              )}
+              {!isPickup && deliverySettings.mode === 'perKm' ? <Button type="button" variant="outline" onClick={() => void calculateDeliveryByCep()} disabled={isCalculatingDelivery || isLoadingCep}>{isCalculatingDelivery ? 'Calculando...' : 'Recalcular entrega'}</Button> : null}
               <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Observações do pedido. Ex: sem cebola, sem molho, sem salada" className="min-h-24 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100 md:col-span-2" />
               <select value={payment} onChange={(event) => setPayment(event.target.value as Order['payment'])} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
                 <option value="Pix">Pix</option>
@@ -350,11 +369,11 @@ export function CustomerCheckoutPage() {
             {!registerOpen ? <p className="mt-3 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-800">Pedidos online pausados porque o caixa está fechado.</p> : null}
             <div className="mt-5 space-y-2 rounded-[24px] border border-orange-100 bg-orange-50/50 p-4 text-sm text-slate-600">
               <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
-              <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{deliverySettings.mode === 'perKm' && calculatedDeliveryFee === null ? (isCalculatingDelivery ? 'Calculando...' : 'Informe o CEP') : formatCurrency(deliveryFee)}</span></div>
-              {calculatedDistanceKm !== null ? <div className="flex justify-between"><span>Distância</span><span className="font-mono">{calculatedDistanceKm.toFixed(1).replace('.', ',')} km</span></div> : null}
+              {isPickup ? <div className="flex justify-between"><span>Retirada na loja</span><span className="font-mono">Grátis</span></div> : <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{deliverySettings.mode === 'perKm' && calculatedDeliveryFee === null ? (isCalculatingDelivery ? 'Calculando...' : 'Informe o CEP') : formatCurrency(deliveryFee)}</span></div>}
+              {!isPickup && calculatedDistanceKm !== null ? <div className="flex justify-between"><span>Distância</span><span className="font-mono">{calculatedDistanceKm.toFixed(1).replace('.', ',')} km</span></div> : null}
               <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(total)}</span></div>
             </div>
-            {deliverySettings.mode === 'perKm' ? <p className="mt-3 text-center text-xs text-slate-500">Digite o CEP de entrega: a taxa é calculada automaticamente pela distância até a pizzaria.</p> : null}
+            {!isPickup && deliverySettings.mode === 'perKm' ? <p className="mt-3 text-center text-xs text-slate-500">Digite o CEP de entrega: a taxa é calculada automaticamente pela distância até a pizzaria.</p> : null}
             <Button className="mt-5 w-full" onClick={handleSubmitOrder} disabled={cart.length === 0}>Enviar pedido</Button>
             <Link to={orderPath} className="mt-3 block text-center text-sm font-semibold text-orange-700">Adicionar mais itens</Link>
           </div>
