@@ -46,9 +46,10 @@ export function CourierLinkDialog({ orderId, courierName, started, onClose }: Co
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="max-w-md">
-        <h3 className="font-heading text-2xl font-bold text-slate-900">Link do pedido #{orderId}</h3>
+        <div className="grid gap-5">
+        <h3 className="pr-8 font-heading text-2xl font-bold text-slate-900">Link do pedido #{orderId}</h3>
         {url === null ? (
-          <div className="mt-3 grid gap-4">
+          <div className="grid gap-4">
             <p className="text-sm text-slate-500">
               Por segurança o link antigo não pode ser exibido de novo. Vamos gerar um novo{courierName ? ` para ${courierName}` : ''}; o anterior deixa de funcionar.
             </p>
@@ -60,7 +61,7 @@ export function CourierLinkDialog({ orderId, courierName, started, onClose }: Co
             <Button onClick={() => void generate()} disabled={busy}>{busy ? 'Gerando...' : 'Gerar novo link'}</Button>
           </div>
         ) : (
-          <div className="mt-3 grid gap-4">
+          <div className="grid gap-4">
             <p className="text-sm text-slate-500">Envie ao entregador. Ele abre no celular{started ? ' e a entrega continua de onde parou' : ' e toca em "Iniciar entrega"'}.</p>
             <Input readOnly value={url} onFocus={(event) => event.currentTarget.select()} />
             <div className="grid gap-3 sm:grid-cols-2">
@@ -69,6 +70,7 @@ export function CourierLinkDialog({ orderId, courierName, started, onClose }: Co
             </div>
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   )

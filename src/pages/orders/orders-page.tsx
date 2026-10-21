@@ -490,17 +490,18 @@ export function OrdersPage() {
       </div>
       <Dialog open={courierDialog !== null} onOpenChange={(open) => { if (!open) setCourierDialog(null) }}>
         <DialogContent className="max-w-md">
-          <h3 className="font-heading text-2xl font-bold text-slate-900">Entregador do pedido #{courierDialog?.orderId}</h3>
+          <div className="grid gap-5">
+          <h3 className="pr-8 font-heading text-2xl font-bold text-slate-900">Entregador do pedido #{courierDialog?.orderId}</h3>
           {courierDialog?.url === null ? (
             <>
-              <p className="text-sm text-slate-500">Informe quem vai entregar (opcional) para acompanhar na tela de Entregas.</p>
+              <p className="text-sm leading-6 text-slate-500">Informe quem vai entregar (opcional) para acompanhar na tela de Entregas.</p>
               <Input list="known-couriers" value={courierDialog.name} maxLength={60} onChange={(event) => setCourierDialog({ ...courierDialog, name: event.target.value })} placeholder="Nome do entregador" />
               <datalist id="known-couriers">{knownCouriers.map((name) => <option key={name} value={name} />)}</datalist>
               <Button onClick={() => void generateCourierLink()} disabled={courierDialog.busy}>{courierDialog.busy ? 'Gerando...' : 'Gerar link'}</Button>
             </>
           ) : (
             <>
-              <p className="text-sm text-slate-500">Envie ao entregador: ele abre o link no celular e toca em &quot;Iniciar entrega&quot;. Um novo link invalida o anterior.</p>
+              <p className="text-sm leading-6 text-slate-500">Envie ao entregador: ele abre o link no celular e toca em &quot;Iniciar entrega&quot;. Um novo link invalida o anterior.</p>
               <Input readOnly value={courierDialog?.url ?? ''} onFocus={(event) => event.currentTarget.select()} />
               <div className="grid gap-3 sm:grid-cols-2">
                 <Button variant="outline" onClick={() => void copyCourierLink()}>Copiar link</Button>
@@ -508,6 +509,7 @@ export function OrdersPage() {
               </div>
             </>
           )}
+          </div>
         </DialogContent>
       </Dialog>
       {selected && <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
