@@ -36,7 +36,7 @@ export function MobileTabBar() {
           </NavLink>
         ))}
         <MobileDrawer
-          trigger={<button type="button" className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-semibold text-slate-500"><Menu className="h-5 w-5" />Menu</button>}
+          trigger={<button type="button" className="flex flex-1 flex-col items-center gap-1 py-2.5 !text-[11px] font-semibold leading-normal text-slate-500"><Menu className="h-5 w-5" />Menu</button>}
         >
           <SidebarProvider><div className="h-full"><AppSidebar /></div></SidebarProvider>
         </MobileDrawer>

@@ -1,13 +1,10 @@
-import { Bell, Menu, ChevronRight } from 'lucide-react'
+import { Bell, ChevronRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import { Button } from '@/components/ui/button'
-import { MobileDrawer } from '@/components/shared/mobile-drawer'
-import { AppSidebar } from '@/components/layout/app-sidebar'
-import { SidebarProvider } from '@/components/layout/sidebar-context'
 import { cashRegisterUpdatedEvent, fetchCashRegister, readCashRegister, setCashRegisterOpen, type CashRegisterState } from '@/lib/cash-register'
 
 const routeLabels: Record<string, string> = {
@@ -52,34 +49,13 @@ export function AppHeader({ title }: { title: string; description?: string }) {
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-orange-100/60 bg-white/80 px-4 backdrop-blur-sm sm:px-6">
-      {/* Left: mobile menu + breadcrumb */}
+      {/* Left: breadcrumb (o menu no celular fica na barra inferior) */}
       <div className="flex items-center gap-3">
-        {/* Mobile menu trigger */}
-        <div className="lg:hidden">
-          <MobileDrawer
-            trigger={
-              <button
-                type="button"
-                aria-label="Abrir menu"
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-orange-200 bg-white text-slate-600 shadow-sm transition hover:border-orange-300 hover:text-orange-600"
-              >
-                <Menu className="h-4 w-4" />
-              </button>
-            }
-          >
-            <SidebarProvider>
-              <div className="h-full">
-                <AppSidebar />
-              </div>
-            </SidebarProvider>
-          </MobileDrawer>
-        </div>
-
         {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
-          <span className="font-medium text-slate-400">Vaija</span>
-          <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
-          <span className="font-semibold text-slate-800">{pageLabel}</span>
+          <span className="hidden font-medium text-slate-400 sm:inline">Vaija</span>
+          <ChevronRight className="hidden h-3.5 w-3.5 text-slate-300 sm:block" />
+          <span className="whitespace-nowrap font-semibold text-slate-800">{pageLabel}</span>
         </nav>
       </div>
 
@@ -95,7 +71,7 @@ export function AppHeader({ title }: { title: string; description?: string }) {
               type="button"
               variant={cashRegister.isOpen ? 'outline' : 'default'}
               onClick={toggleCashRegister}
-              className="h-8 rounded-lg px-3 text-xs shadow-none"
+              className="h-8 whitespace-nowrap rounded-lg px-3 !text-xs leading-none shadow-none"
             >
               {cashRegister.isOpen ? 'Fechar caixa' : 'Abrir caixa'}
             </Button>
