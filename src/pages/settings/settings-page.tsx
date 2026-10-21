@@ -13,6 +13,7 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { Plus, X } from 'lucide-react'
 import { pushSettingsToServer, readSettings, saveSettings, syncSettingsFromServer, type BusinessHour, type DeliverySettings } from '@/lib/settings'
 import { planLabels } from '@/lib/plan-access'
+import { CouriersPanel } from '@/components/delivery/couriers-panel'
 import { getTenantForUser } from '@/lib/tenants-api'
 import { getPublicOrderUrl } from '@/lib/public-order-url'
 import { userErrorMessage, usernameHint, usernamePattern } from '@/lib/username'
@@ -54,6 +55,7 @@ const sections = [
   ['horarios', 'Horários'],
   ['entrega', 'Entrega e pagamento'],
   ['mesas', 'Mesas'],
+  ['entregadores', 'Entregadores'],
   ['equipe', 'Equipe'],
   ['conta', 'Minha conta'],
   ['aparencia', 'Aparência'],
@@ -481,6 +483,10 @@ function SettingsForm() {
               </Row>
             </div>
           </form>
+
+          <div hidden={section !== 'entregadores'} className={panelClass}>
+            <CouriersPanel canEdit={user?.roleKey === 'admin' || user?.roleKey === 'manager'} />
+          </div>
 
           <div hidden={section !== 'equipe'} className={panelClass}>
             <div className="divide-y divide-slate-100">

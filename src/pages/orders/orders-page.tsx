@@ -19,6 +19,7 @@ import { getTenantId } from '@/lib/tenant-storage'
 import { defaultDeliveryFee, resolveOrderSource } from '@/lib/order-source'
 import { getCourierUrl, getPublicOrderTrackingUrl } from '@/lib/public-order-url'
 import { courierLinkErrorMessage, createCourierLink, fetchDeliveries } from '@/lib/delivery-api'
+import { fetchCouriers, whatsappNumber, type Courier } from '@/lib/couriers-api'
 
 const COLUMN_STATUS = {
   Pendente: 'Pendente',
@@ -100,8 +101,9 @@ export function OrdersPage() {
   const [dropTarget, setDropTarget] = useState<ColumnTitle | null>(null)
   const [dropTargetOrderId, setDropTargetOrderId] = useState<number | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
-  const [courierDialog, setCourierDialog] = useState<{ orderId: number; name: string; url: string | null; busy: boolean } | null>(null)
+  const [courierDialog, setCourierDialog] = useState<{ orderId: number; name: string; phone: string; choice: string; url: string | null; busy: boolean } | null>(null)
   const [knownCouriers, setKnownCouriers] = useState<string[]>([])
+  const [registeredCouriers, setRegisteredCouriers] = useState<Courier[]>([])
   const [orderForm, setOrderForm] = useState<OrderFormValues>({ customer: '', phone: '', address: '', tableNumber: '', payment: 'Pix', notes: '' })
   const [products, setProducts] = useState<Product[]>([])
   const [orderItems, setOrderItems] = useState<EditableOrderItem[]>([])
@@ -315,9 +317,20 @@ export function OrdersPage() {
 
   const handleSendCourier = () => {
     if (!selected) return
-    setCourierDialog({ orderId: selected.id, name: '', url: null, busy: false })
+    setCourierDialog({ orderId: selected.id, name: '', phone: '', choice: '', url: null, busy: false })
+    void fetchCouriers().then((list) => setRegisteredCouriers(list.filter((courier) => courier.active))).catch(() => setRegisteredCouriers([]))
     // lista de entregadores já usados (só gerente/administrador consegue ler; para os outros fica vazia)
     void fetchDeliveries(new Date().toISOString()).then((result) => setKnownCouriers(result.couriers)).catch(() => undefined)
+  }
+
+  const chooseCourier = (choice: string) => {
+    setCourierDialog((current) => {
+      if (!current) return current
+      const courier = registeredCouriers.find((item) => String(item.id) === choice)
+      return courier
+        ? { ...current, choice, name: courier.name, phone: courier.phone }
+        : { ...current, choice, name: '', phone: '' }
+    })
   }
 
   const generateCourierLink = async () => {
@@ -495,8 +508,20 @@ export function OrdersPage() {
           {courierDialog?.url === null ? (
             <>
               <p className="text-sm leading-6 text-slate-500">Informe quem vai entregar (opcional) para acompanhar na tela de Entregas.</p>
-              <Input list="known-couriers" value={courierDialog.name} maxLength={60} onChange={(event) => setCourierDialog({ ...courierDialog, name: event.target.value })} placeholder="Nome do entregador" />
-              <datalist id="known-couriers">{knownCouriers.map((name) => <option key={name} value={name} />)}</datalist>
+              {registeredCouriers.length > 0 ? (
+                <select value={courierDialog.choice} onChange={(event) => chooseCourier(event.target.value)} aria-label="Entregador" className="h-11 w-full rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+                  <option value="">Escolha o entregador</option>
+                  {registeredCouriers.map((courier) => <option key={courier.id} value={courier.id}>{courier.name}</option>)}
+                  <option value="other">Outro (digitar o nome)</option>
+                </select>
+              ) : null}
+              {registeredCouriers.length === 0 || courierDialog.choice === 'other' ? (
+                <>
+                  <Input list="known-couriers" value={courierDialog.name} maxLength={60} onChange={(event) => setCourierDialog({ ...courierDialog, name: event.target.value })} placeholder="Nome do entregador" />
+                  <datalist id="known-couriers">{knownCouriers.map((name) => <option key={name} value={name} />)}</datalist>
+                </>
+              ) : null}
+              {registeredCouriers.length === 0 ? <p className="-mt-2 text-xs text-slate-500">Dica: cadastre seus entregadores em Configurações → Entregadores para escolher da lista e enviar direto pelo WhatsApp.</p> : null}
               <Button onClick={() => void generateCourierLink()} disabled={courierDialog.busy}>{courierDialog.busy ? 'Gerando...' : 'Gerar link'}</Button>
             </>
           ) : (
@@ -505,7 +530,7 @@ export function OrdersPage() {
               <Input readOnly value={courierDialog?.url ?? ''} onFocus={(event) => event.currentTarget.select()} />
               <div className="grid gap-3 sm:grid-cols-2">
                 <Button variant="outline" onClick={() => void copyCourierLink()}>Copiar link</Button>
-                <Button onClick={() => { if (courierDialog?.url) window.open(`https://wa.me/?text=${encodeURIComponent(`Entrega do pedido #${courierDialog.orderId}: ${courierDialog.url}`)}`, '_blank', 'noopener,noreferrer') }}>Enviar pelo WhatsApp</Button>
+                <Button onClick={() => { if (courierDialog?.url) window.open(`https://wa.me/${whatsappNumber(courierDialog.phone)}?text=${encodeURIComponent(`Entrega do pedido #${courierDialog.orderId}: ${courierDialog.url}`)}`, '_blank', 'noopener,noreferrer') }}>{courierDialog.phone ? `Enviar para ${courierDialog.name}` : 'Enviar pelo WhatsApp'}</Button>
               </div>
             </>
           )}

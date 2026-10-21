@@ -145,6 +145,19 @@ class RestaurantSettings(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class Courier(Base):
+    """Entregador cadastrado pela loja (nome e WhatsApp). Não tem login: o acesso é o link por entrega."""
+    __tablename__ = "couriers"
+    __table_args__ = (Index("couriers_tenant_idx", "tenant_id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Delivery(Base):
     """Entrega de um pedido com rastreamento do entregador.
 

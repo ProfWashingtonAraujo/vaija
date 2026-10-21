@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { courierLinkErrorMessage, createCourierLink } from '@/lib/delivery-api'
 import { getCourierUrl } from '@/lib/public-order-url'
+import { fetchCouriers, whatsappNumber } from '@/lib/couriers-api'
 
 type CourierLinkDialogProps = {
   orderId: number
@@ -21,6 +22,14 @@ type CourierLinkDialogProps = {
 export function CourierLinkDialog({ orderId, courierName, started, onClose }: CourierLinkDialogProps) {
   const [url, setUrl] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [phone, setPhone] = useState('')
+
+  useEffect(() => {
+    if (!courierName) return
+    void fetchCouriers()
+      .then((list) => setPhone(list.find((courier) => courier.name.toLowerCase() === courierName.toLowerCase())?.phone ?? ''))
+      .catch(() => undefined)
+  }, [courierName])
 
   const generate = async () => {
     setBusy(true)
@@ -66,7 +75,7 @@ export function CourierLinkDialog({ orderId, courierName, started, onClose }: Co
             <Input readOnly value={url} onFocus={(event) => event.currentTarget.select()} />
             <div className="grid gap-3 sm:grid-cols-2">
               <Button variant="outline" onClick={() => void copy()}>Copiar link</Button>
-              <Button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Entrega do pedido #${orderId}: ${url}`)}`, '_blank', 'noopener,noreferrer')}>Enviar pelo WhatsApp</Button>
+              <Button onClick={() => window.open(`https://wa.me/${whatsappNumber(phone)}?text=${encodeURIComponent(`Entrega do pedido #${orderId}: ${url}`)}`, '_blank', 'noopener,noreferrer')}>{phone && courierName ? `Enviar para ${courierName}` : 'Enviar pelo WhatsApp'}</Button>
             </div>
           </div>
         )}
