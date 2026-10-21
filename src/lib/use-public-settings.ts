@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useBrandTheme } from '@/lib/brand'
+import { useTenantManifest } from '@/lib/pwa'
 import { defaultDeliverySettings, defaultRestaurantSettings, fetchPublicSettings, type PublicSettings } from '@/lib/settings'
 
 const defaults: PublicSettings = { restaurant: defaultRestaurantSettings, delivery: defaultDeliverySettings }
@@ -16,5 +18,8 @@ export function usePublicSettings(tenantId: string) {
   }, [tenantId])
 
   const ready = state?.tenantId === tenantId
-  return { settings: ready ? state.settings : defaults, ready }
+  const settings = ready ? state.settings : defaults
+  useBrandTheme(ready ? settings.restaurant.brandColor : undefined)
+  useTenantManifest(tenantId, ready ? settings.restaurant.name : 'Pedidos', ready ? settings.restaurant.brandColor : undefined, ready ? settings.restaurant.logo : undefined)
+  return { settings, ready }
 }

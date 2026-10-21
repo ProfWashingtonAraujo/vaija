@@ -19,6 +19,7 @@ export type RestaurantSettings = {
   name: string
   phone: string
   logo?: string
+  brandColor?: string
 }
 
 export type PaymentSettings = {

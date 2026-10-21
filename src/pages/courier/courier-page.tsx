@@ -160,54 +160,70 @@ export function CourierPage() {
   }
 
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address.split(' - Ref:')[0])}`
+  const stage = job.finished ? 'Entregue' : job.started ? 'Em rota' : 'Aguardando início'
 
   return (
-    <main className="min-h-screen bg-[#fff8f1] px-4 py-6 text-slate-900">
-      <div className="mx-auto max-w-md space-y-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Entrega</p>
-          <h1 className="font-heading text-3xl font-black">Pedido #{job.orderId}</h1>
-        </div>
-
-        <div className="space-y-3 rounded-[24px] border border-orange-100 bg-white p-5 text-sm shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-          <p className="text-lg font-semibold">{job.customer}</p>
-          <p className="flex gap-2 text-slate-600"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />{job.address}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-orange-200 px-4 py-2.5 font-semibold text-orange-700"><Navigation className="h-4 w-4" />Abrir rota</a>
-            <a href={`tel:${job.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-orange-200 px-4 py-2.5 font-semibold text-orange-700"><Phone className="h-4 w-4" />Ligar</a>
+    <main className="min-h-screen bg-[#fff8f1] pb-40 text-slate-900">
+      <header className="rounded-b-[36px] bg-gradient-to-br from-orange-400 via-orange-500 to-orange-700 px-5 pb-16 pt-[max(1.5rem,env(safe-area-inset-top))] text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)]">
+        <div className="mx-auto flex max-w-md items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/80">Entrega</p>
+            <h1 className="font-heading text-4xl font-black">Pedido #{job.orderId}</h1>
           </div>
-          <ul className="space-y-1 text-slate-600">{job.items.map((item) => <li key={item}>• {item}</li>)}</ul>
-          {job.notes ? <p className="rounded-2xl bg-amber-50 p-3 text-amber-800">{job.notes}</p> : null}
-          <p className="font-semibold">{job.payment}: {formatCurrency(job.value)}</p>
+          <span className="mt-1 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold backdrop-blur"><span className={`h-2 w-2 rounded-full ${job.finished ? 'bg-emerald-300' : job.started ? 'animate-pulse bg-white' : 'bg-white/60'}`} />{stage}</span>
+        </div>
+      </header>
+
+      <div className="mx-auto -mt-10 max-w-md space-y-4 px-4">
+        <div className="space-y-3 rounded-[28px] border border-orange-100 bg-white p-5 text-sm shadow-[0_14px_36px_rgba(15,23,42,0.08)]">
+          <p className="font-heading text-xl font-bold">{job.customer}</p>
+          <p className="flex gap-2 text-slate-600"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />{job.address}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full border border-orange-200 px-4 py-2.5 font-semibold text-orange-700"><Navigation className="h-4 w-4" />Abrir rota</a>
+            <a href={`tel:${job.phone.replace(/[^\d+]/g, '')}`} className="inline-flex items-center justify-center gap-2 rounded-full border border-orange-200 px-4 py-2.5 font-semibold text-orange-700"><Phone className="h-4 w-4" />Ligar</a>
+          </div>
         </div>
 
         {!job.finished && (destination || position) ? (
           <div className="space-y-2">
-            <Suspense fallback={<div className="h-64 animate-pulse rounded-[24px] bg-orange-50" />}>
-              <CourierMap courier={position} destination={destination} destinationLabel="Destino" route={route?.coordinates ?? null} className="h-64" />
+            <Suspense fallback={<div className="h-64 animate-pulse rounded-[28px] bg-orange-50" />}>
+              <CourierMap courier={position} destination={destination} destinationLabel="Destino" route={route?.coordinates ?? null} className="h-64 overflow-hidden rounded-[28px]" />
             </Suspense>
             {route ? <p className="text-center text-sm font-semibold text-slate-700">{formatRouteSummary(route)}</p> : null}
             <p className="text-center text-xs text-slate-400">O ponto do destino é aproximado. Para navegar curva a curva, use Abrir rota.</p>
           </div>
         ) : null}
 
-        {job.finished ? (
-          <p className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-4 text-center font-semibold text-emerald-800">Entrega finalizada. Obrigado!</p>
-        ) : !job.started ? (
-          <>
-            <Button className="h-14 w-full text-base" onClick={handleStart} disabled={busy}>Iniciar entrega</Button>
-            <p className="text-center text-xs text-slate-500">Ao iniciar, o cliente passa a ver sua localização no mapa até a entrega ser finalizada. O navegador vai pedir permissão de localização.</p>
-          </>
-        ) : (
-          <>
-            <p className={`rounded-[24px] border p-4 text-center text-sm font-semibold ${locationError ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-sky-200 bg-sky-50 text-sky-800'}`}>
-              {locationError ?? (lastSentAt ? `Localização enviada às ${lastSentAt.toLocaleTimeString('pt-BR')}` : 'Obtendo sua localização...')}
-            </p>
-            <p className="text-center text-xs text-slate-500">Mantenha esta tela aberta e o aparelho com a tela ligada para o cliente acompanhar.</p>
-            {locationError && !tracking ? <Button variant="outline" className="w-full" onClick={startWatching}>Tentar novamente</Button> : null}
-            <Button className="h-14 w-full text-base" onClick={handleFinish} disabled={busy}>Entreguei o pedido</Button>
-          </>
-        )}
+        <div className="space-y-2 rounded-[28px] border border-orange-100 bg-white p-5 text-sm shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Itens</p>
+          <ul className="space-y-1 text-slate-700">{job.items.map((item) => <li key={item}>• {item}</li>)}</ul>
+          {job.notes ? <p className="rounded-2xl bg-amber-50 p-3 text-amber-800">{job.notes}</p> : null}
+          <p className="flex items-center justify-between border-t border-orange-100 pt-3 font-semibold"><span>{job.payment}</span><span className="font-mono text-lg">{formatCurrency(job.value)}</span></p>
+        </div>
+
+        {!job.finished && job.started ? (
+          <p className={`rounded-[24px] border p-4 text-center text-sm font-semibold ${locationError ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-sky-200 bg-sky-50 text-sky-800'}`}>
+            {locationError ?? (lastSentAt ? `Localização enviada às ${lastSentAt.toLocaleTimeString('pt-BR')}` : 'Obtendo sua localização...')}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-orange-100 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+        <div className="mx-auto max-w-md space-y-2">
+          {job.finished ? (
+            <p className="rounded-full border border-emerald-200 bg-emerald-50 p-4 text-center font-semibold text-emerald-800">Entrega finalizada. Obrigado!</p>
+          ) : !job.started ? (
+            <>
+              <Button className="h-14 w-full rounded-full text-base" onClick={handleStart} disabled={busy}>Iniciar entrega</Button>
+              <p className="text-center text-xs text-slate-500">Ao iniciar, o cliente vê sua localização até você finalizar. O navegador vai pedir permissão de localização.</p>
+            </>
+          ) : (
+            <>
+              {locationError && !tracking ? <Button variant="outline" className="w-full rounded-full" onClick={startWatching}>Tentar novamente</Button> : <p className="text-center text-xs text-slate-500">Mantenha esta tela aberta e com a tela ligada para o cliente acompanhar.</p>}
+              <Button className="h-14 w-full rounded-full text-base" onClick={handleFinish} disabled={busy}>Entreguei o pedido</Button>
+            </>
+          )}
+        </div>
       </div>
     </main>
   )

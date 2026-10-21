@@ -87,8 +87,8 @@ export function AppHeader({ title }: { title: string; description?: string }) {
       <div className="flex items-center gap-2">
         {/* Cash register */}
         {canManageCashRegister && (
-          <div className="hidden items-center gap-2 sm:flex">
-            <span className="rounded-lg border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
+          <div className="flex items-center gap-2">
+            <span className="hidden rounded-lg border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 sm:inline">
               Caixa {cashRegister.isOpen ? 'aberto' : 'fechado'}
             </span>
             <Button
@@ -97,7 +97,7 @@ export function AppHeader({ title }: { title: string; description?: string }) {
               onClick={toggleCashRegister}
               className="h-8 rounded-lg px-3 text-xs shadow-none"
             >
-              {cashRegister.isOpen ? 'Fechar' : 'Abrir caixa'}
+              {cashRegister.isOpen ? 'Fechar caixa' : 'Abrir caixa'}
             </Button>
           </div>
         )}

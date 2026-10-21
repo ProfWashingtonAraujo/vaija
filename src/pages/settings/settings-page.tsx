@@ -1,3 +1,4 @@
+import { defaultBrandColor, normalizeHex } from '@/lib/brand'
 import { useEffect, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -154,12 +155,13 @@ function SettingsForm() {
   const [businessHours, setBusinessHours] = useState<BusinessHour[]>(storedSettings.businessHours)
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(storedSettings.delivery)
   const [restaurantLogo, setRestaurantLogo] = useState(storedSettings.restaurant.logo ?? '')
+  const [brandColor, setBrandColor] = useState(normalizeHex(storedSettings.restaurant.brandColor))
   const [cepStatus, setCepStatus] = useState<string | null>(null)
   const tenant = getTenantForUser(user)
   const publicOrderUrl = user ? getPublicOrderUrl(user.tenantId) : ''
 
   // campos fora do react-hook-form (horários, entrega e logo) são comparados com o último estado salvo
-  const localSnapshot = JSON.stringify({ businessHours, delivery: deliverySettings, logo: restaurantLogo })
+  const localSnapshot = JSON.stringify({ businessHours, delivery: deliverySettings, logo: restaurantLogo, brandColor })
   const [savedSnapshot, setSavedSnapshot] = useState(localSnapshot)
   const dirty = isDirty || localSnapshot !== savedSnapshot
 
@@ -276,6 +278,7 @@ function SettingsForm() {
                   name: values.restaurantName,
                   phone: values.phone,
                   logo: restaurantLogo || undefined,
+                  brandColor,
                 },
                 subscription: storedSettings.subscription,
                 businessHours,
@@ -320,6 +323,13 @@ function SettingsForm() {
                     }} />
                   </label>
                   {restaurantLogo ? <button type="button" className="text-sm font-medium text-rose-600 hover:text-rose-700" onClick={() => setRestaurantLogo('')}>Remover</button> : null}
+                </div>
+              </Row>
+              <Row label="Cor da marca" hint="Colore o app do cliente (botões, destaques e tela inicial).">
+                <div className="flex items-center gap-3">
+                  <input type="color" value={brandColor} onChange={(event) => setBrandColor(event.target.value)} className="h-10 w-14 cursor-pointer rounded-lg border border-slate-200 bg-white p-1" aria-label="Cor da marca" />
+                  <span className="font-mono text-sm text-slate-600">{brandColor.toUpperCase()}</span>
+                  {brandColor !== defaultBrandColor ? <button type="button" className="text-sm font-medium text-slate-600 hover:text-slate-900" onClick={() => setBrandColor(defaultBrandColor)}>Restaurar padrão</button> : null}
                 </div>
               </Row>
               <Row label="Nome do restaurante">

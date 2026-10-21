@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowRight, Check, ShoppingBag, Sparkles } from 'lucide-react'
+import { Download, History, Home, LogOut, ShoppingBag, Sparkles, Truck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/shared/search-input'
-import { CategoryTabs } from '@/components/pos/category-tabs'
+import { CategoryCircles } from '@/components/menu/category-circles'
+import { rebuildCartItems } from '@/lib/reorder'
+import { findPublicOrders } from '@/lib/orders-api'
+import type { Order } from '@/data/mock-orders'
 import { formatCurrency } from '@/lib/formatters'
 import { fetchPublicCategories, fetchPublicProducts } from '@/lib/catalog-api'
 import type { Product } from '@/data/mock-products'
 import { HalfAndHalfDialog } from '@/components/shared/half-and-half-dialog'
 import { isHalfEligible } from '@/lib/half-and-half'
+import { useInstallApp } from '@/lib/pwa'
+import { SplashScreen } from '@/components/shared/splash-screen'
 import { usePublicSettings } from '@/lib/use-public-settings'
 import { cashRegisterUpdatedEvent, fetchPublicCashRegisterOpen, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
 
@@ -70,8 +75,10 @@ export function CustomerOrderPage() {
   const [signupEmail, setSignupEmail] = useState(profile?.email ?? '')
   const [signupPhone, setSignupPhone] = useState(profile?.phone ?? '')
   const [cashRegister, setCashRegister] = useState<CashRegisterState>({ isOpen: false })
+  const [pastOrders, setPastOrders] = useState<Order[]>([])
   const googleButtonRef = useRef<HTMLDivElement>(null)
-  const { settings } = usePublicSettings(tenantId)
+  const { settings, ready } = usePublicSettings(tenantId)
+  const { canInstall, isIos, install } = useInstallApp()
 
   useEffect(() => {
     setProducts([])
@@ -149,7 +156,20 @@ export function CustomerOrderPage() {
     document.body.appendChild(script)
   }, [profile])
 
-  const categories = useMemo(() => ['Todos', ...Array.from(new Set(products.map((product) => product.category)))], [products])
+  const profilePhone = profile?.phone
+  useEffect(() => {
+    if (!profilePhone) return
+    let active = true
+    void findPublicOrders(profilePhone, tenantId)
+      .then((found) => { if (active) setPastOrders([...found].sort((a, b) => b.id - a.id).slice(0, 6)) })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [profilePhone, tenantId])
+
+  const categories = useMemo(() => [
+    { name: 'Todos', image: products[0]?.image },
+    ...Array.from(new Set(products.map((product) => product.category))).map((name) => ({ name, image: products.find((product) => product.category === name)?.image })),
+  ], [products])
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const cartQuantity = cart.reduce((sum, item) => sum + item.quantity, 0)
   const filteredProducts = useMemo(
@@ -218,6 +238,28 @@ export function CustomerOrderPage() {
     toast.success(`${item.name} adicionado ao pedido.`)
   }
 
+  const reorder = (order: Order) => {
+    if (!cashRegister.isOpen) {
+      toast.error('No momento não estamos recebendo pedidos online.')
+      return
+    }
+    const { items, missing } = rebuildCartItems(order.items, products)
+    if (items.length === 0) {
+      toast.error('Esses itens não estão mais disponíveis no cardápio.')
+      return
+    }
+    setCart((current) => {
+      const next = [...current]
+      for (const item of items) {
+        const index = next.findIndex((cartItem) => cartItem.id === item.id)
+        if (index >= 0) next[index] = { ...next[index], quantity: next[index].quantity + item.quantity }
+        else next.push(item)
+      }
+      return next
+    })
+    toast.success(missing.length ? `Pedido #${order.id} adicionado. ${missing.length} item(ns) não disponível(is) ficaram de fora.` : `Pedido #${order.id} adicionado ao carrinho.`)
+  }
+
   const goToCheckout = () => {
     if (!cashRegister.isOpen) {
       toast.error('No momento não estamos recebendo pedidos online.')
@@ -234,29 +276,27 @@ export function CustomerOrderPage() {
 
   return (
     <main className="min-h-screen bg-[#fff8f1] pb-28 text-slate-900">
-      <section className="relative overflow-hidden bg-slate-950 px-4 py-10 text-white sm:px-6 lg:px-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,107,0,0.38),transparent_32%),linear-gradient(135deg,#111827,#431407_55%,#ff6b00)]" />
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-orange-50 backdrop-blur">
-                {settings.restaurant.logo ? <img src={settings.restaurant.logo} alt={settings.restaurant.name} className="h-6 w-6 rounded-full object-cover" /> : <Sparkles className="h-4 w-4" />} Cardápio premium online
-              </div>
-              <h1 className="mt-5 max-w-3xl font-heading text-4xl font-black tracking-tight sm:text-6xl">Peça agora no {settings.restaurant.name}</h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-orange-50">{cashRegister.isOpen ? 'Escolha com calma, monte seu pedido e finalize em uma etapa segura de checkout.' : 'O caixa está fechado no momento. O cardápio segue disponível para consulta, mas pedidos online estão pausados.'}</p>
+      <SplashScreen name={settings.restaurant.name} logo={settings.restaurant.logo} ready={ready} storageKey={`vaija.splash.${tenantId}`} />
+      <header className="relative overflow-hidden rounded-b-[36px] bg-gradient-to-br from-orange-400 via-orange-500 to-orange-700 px-5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white/20 backdrop-blur">
+              {settings.restaurant.logo ? <img src={settings.restaurant.logo} alt={settings.restaurant.name} className="h-full w-full object-cover" /> : <Sparkles className="h-5 w-5" />}
             </div>
-          {profile ? (
-            <div className="rounded-[32px] border border-white/20 bg-white/10 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.28)] backdrop-blur">
-              <p className="text-sm text-orange-50">Resumo atual</p>
-              <p className="mt-2 font-heading text-4xl font-bold">{formatCurrency(subtotal)}</p>
-              <p className="mt-2 text-sm text-orange-50">{cartQuantity} item(ns) no carrinho</p>
-              <Button className="mt-5 w-full" onClick={goToCheckout} disabled={!cashRegister.isOpen}>Ir para checkout <ArrowRight className="ml-2 h-4 w-4" /></Button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-heading text-xl font-extrabold leading-tight">{settings.restaurant.name}</p>
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-white/85"><span className={`h-2 w-2 rounded-full ${cashRegister.isOpen ? 'bg-emerald-300' : 'bg-rose-300'}`} />{cashRegister.isOpen ? 'Aberto, recebendo pedidos' : 'Fechado no momento'}</p>
             </div>
-          ) : null}
+            {canInstall ? <button type="button" onClick={() => isIos ? toast.info('No Safari, toque em Compartilhar e depois em "Adicionar à Tela de Início".') : void install()} className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-2 text-xs font-bold backdrop-blur transition hover:bg-white/30"><Download className="h-3.5 w-3.5" />Instalar</button> : null}
+            {profile ? <button type="button" onClick={handleLogoutProfile} aria-label="Sair" className="rounded-full bg-white/15 p-2.5 backdrop-blur transition hover:bg-white/25"><LogOut className="h-4 w-4" /></button> : null}
+          </div>
+          <h1 className="mt-6 max-w-xl font-heading text-3xl font-extrabold leading-tight sm:text-5xl">{profile ? `Olá, ${profile.name.split(' ')[0]}!` : 'Pedidos quentinhos,'}<br /><span className="text-white/85">{profile ? 'O que vamos pedir hoje?' : 'direto na sua porta.'}</span></h1>
+          {profile ? <div className="mt-5 max-w-xl"><SearchInput placeholder="Buscar no cardápio" value={query} onChange={(event) => setQuery(event.target.value)} /></div> : null}
         </div>
-      </section>
+      </header>
 
       {!profile ? (
-        <section className="mx-auto max-w-xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="rounded-[34px] border border-orange-100 bg-white p-6 shadow-[0_18px_42px_rgba(15,23,42,0.08)]">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Identificação</p>
             <h2 className="mt-2 font-heading text-3xl font-bold text-slate-900">Entre para ver o cardápio</h2>
@@ -280,15 +320,27 @@ export function CustomerOrderPage() {
               Pedidos online pausados. Tente novamente quando o caixa estiver aberto.
             </div>
           ) : null}
-          <div className="mb-6 flex flex-col gap-3 rounded-[28px] border border-orange-100 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)] sm:flex-row sm:items-center sm:justify-between">
-            <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Cliente conectado</p><p className="mt-1 font-semibold text-slate-900">{profile.name} · {profile.email}</p></div>
-            <Button variant="outline" onClick={handleLogoutProfile}>Sair</Button>
-          </div>
-
-          <div className="rounded-[34px] border border-orange-100 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <SearchInput placeholder="Buscar no cardápio" value={query} onChange={(event) => setQuery(event.target.value)} />
-            <div className="mt-4"><CategoryTabs categories={categories} value={category} onChange={setCategory} /></div>
-          </div>
+          {pastOrders.length > 0 ? (
+            <div className="mb-6">
+              <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-bold"><History className="h-4 w-4 text-orange-500" />Pedir de novo</h2>
+              <div className="scrollbar-thin -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+                {pastOrders.map((order) => (
+                  <div key={order.id} className="flex w-64 shrink-0 snap-start flex-col justify-between gap-3 rounded-[24px] border border-orange-100 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400">Pedido #{order.id} · {order.time}</p>
+                      <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-800">{order.items.join(', ')}</p>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-sm text-slate-500">{formatCurrency(order.value - (order.deliveryFee ?? 0))}</span>
+                      <button type="button" onClick={() => reorder(order)} disabled={!cashRegister.isOpen} className="rounded-full bg-orange-500 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 disabled:opacity-50">Repetir</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <h2 className="mb-3 font-heading text-lg font-bold">Categorias</h2>
+          <CategoryCircles categories={categories} value={category} onChange={setCategory} />
 
           <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredProducts.map((product) => (
@@ -317,14 +369,16 @@ export function CustomerOrderPage() {
         </section>
       ) : null}
 
-      {profile ? (
-        <div className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2 rounded-[28px] border border-orange-200 bg-white/95 p-3 shadow-[0_24px_70px_rgba(15,23,42,0.22)] backdrop-blur">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3"><div className="rounded-2xl bg-orange-500 p-3 text-white"><ShoppingBag className="h-5 w-5" /></div><div><p className="font-semibold text-slate-900">{cartQuantity} item(ns) selecionado(s)</p><p className="font-mono text-sm text-slate-500">Subtotal {formatCurrency(subtotal)}</p></div></div>
-            <Button onClick={goToCheckout} disabled={cart.length === 0 || !cashRegister.isOpen}>Finalizar pedido <Check className="ml-2 h-4 w-4" /></Button>
-          </div>
+      <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-40 border-t border-orange-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+        <div className="mx-auto grid max-w-md grid-cols-3">
+          <button type="button" aria-current="page" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-orange-600"><Home className="h-5 w-5" />Cardápio</button>
+          <button type="button" onClick={goToCheckout} disabled={!profile} className="relative flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-slate-500 disabled:opacity-40">
+            <span className="relative"><ShoppingBag className="h-5 w-5" />{cartQuantity > 0 ? <span className="absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">{cartQuantity}</span> : null}</span>
+            {cartQuantity > 0 ? formatCurrency(subtotal) : 'Carrinho'}
+          </button>
+          <Link to={`${orderPath}/acompanhar`} className="flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-slate-500"><Truck className="h-5 w-5" />Acompanhar</Link>
         </div>
-      ) : null}
+      </nav>
 
       <div className="mx-auto hidden max-w-6xl px-4 pb-10 text-sm text-slate-500 sm:px-6 lg:block lg:px-8"><Link to="/">Voltar para o site</Link></div>
       <HalfAndHalfDialog open={halfOpen} onOpenChange={setHalfOpen} products={products} initialProduct={halfProduct} onConfirm={addCustomItem} />

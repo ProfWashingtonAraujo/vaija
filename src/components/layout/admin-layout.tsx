@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from 'react'
 import { motion } from 'framer-motion'
+import { MobileTabBar } from '@/components/layout/mobile-tab-bar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppHeader, PageTitle } from '@/components/layout/app-header'
 import { SidebarProvider, useSidebar } from '@/components/layout/sidebar-context'
@@ -9,7 +10,7 @@ function LayoutInner({ title, description, children }: PropsWithChildren<{ title
   const { collapsed } = useSidebar()
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#fafaf9]">
+    <div className="flex h-dvh overflow-hidden bg-[#fafaf9]">
       {/* Sidebar — desktop only */}
       <div className={cn('hidden flex-shrink-0 transition-all duration-300 lg:flex', collapsed ? 'w-[72px]' : 'w-72')}>
         <AppSidebar />
@@ -27,8 +28,9 @@ function LayoutInner({ title, description, children }: PropsWithChildren<{ title
           className="flex-1 overflow-y-auto scrollbar-thin"
         >
           <PageTitle title={title} description={description} />
-          <div className="px-4 pb-8 sm:px-6">{children}</div>
+          <div className="px-4 pb-28 sm:px-6 lg:pb-8">{children}</div>
         </motion.main>
+        <MobileTabBar />
       </div>
     </div>
   )

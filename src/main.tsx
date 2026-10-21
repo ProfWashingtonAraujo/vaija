@@ -5,6 +5,9 @@ import App from './App.tsx'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/auth-context'
+import { registerServiceWorker } from '@/lib/pwa'
+
+registerServiceWorker()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
