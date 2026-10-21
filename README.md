@@ -150,6 +150,7 @@ Copie `.env.example` para `.env` e ajuste. Principais variáveis:
 |---|---|
 | `VITE_API_BASE_URL` | Não é mais usada: em produção o `vercel.json` repassa `/api` para a API do Render (cookie first-party, necessário no iPhone/Brave) |
 | `VITE_OFFLINE_MODE` | `true` só para demonstração sem backend (dados no `localStorage`) |
+| `VITE_GOOGLE_CLIENT_ID` | ID do cliente OAuth do Google (termina em `.apps.googleusercontent.com`). Ativa o botão "Continuar com Google" na identificação do cliente; sem ele aparece só um aviso. É lido no **build**: ao alterar na Vercel, faça um novo deploy. Em *Origens JavaScript autorizadas* do Google, inclua `https://vaija.vercel.app` e `http://localhost:5173` |
 
 > `SEED_DEMO_DATA` existe no compose e no `.env.example`, mas **não tem efeito** no backend FastAPI atual.
 
