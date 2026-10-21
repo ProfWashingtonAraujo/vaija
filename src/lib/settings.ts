@@ -14,6 +14,8 @@ export type DeliverySettings = {
   feePerKm: string
   /** Distância (km) que não paga taxa; acima dela cobra só o que passar. */
   freeKm: string
+  /** % da taxa de entrega repassada ao entregador. */
+  courierPercent: string
   originCep: string
 }
 
@@ -70,6 +72,7 @@ export const defaultDeliverySettings: DeliverySettings = {
   fixedFee: '8,00',
   feePerKm: '2,50',
   freeKm: '0',
+  courierPercent: '80',
   originCep: '',
 }
 

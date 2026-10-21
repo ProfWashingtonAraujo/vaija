@@ -430,6 +430,10 @@ function SettingsForm() {
                   </Row>
                 </>
               )}
+              <GroupTitle>Entregadores</GroupTitle>
+              <Row label="Repasse ao entregador (%)" hint="Parte da taxa de entrega que vai para o entregador. O restante fica com a loja. Vale para as próximas entregas.">
+                <Input value={deliverySettings.courierPercent} onChange={(event) => updateDeliverySettings({ courierPercent: event.target.value })} placeholder="Ex: 80" inputMode="decimal" className={fieldClass} />
+              </Row>
               <GroupTitle>Pagamento</GroupTitle>
               {([['pix', 'Pix'], ['card', 'Cartão'], ['cash', 'Dinheiro']] as const).map(([field, label]) => (
                 <Row key={field} label={label}>

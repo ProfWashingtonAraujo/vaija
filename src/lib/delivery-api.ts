@@ -45,6 +45,28 @@ export async function fetchDeliveries(since: string): Promise<{ deliveries: Deli
   return await response.json() as { deliveries: DeliveryEntry[]; couriers: string[] }
 }
 
+export type CourierEarnings = {
+  percent: number
+  start: string | null
+  end: string | null
+  couriers: Array<{
+    name: string
+    count: number
+    fees: number
+    pay: number
+    store: number
+    deliveries: Array<{ orderId: number; customer: string; finishedAt: string | null; fee: number; pay: number }>
+  }>
+  totals: { count: number; fees: number; pay: number; store: number }
+}
+
+/** Gerente/administrador: quanto pagar a cada entregador entre `start` e `end` (ISO, fim exclusivo). */
+export async function fetchCourierEarnings(start: string, end: string): Promise<CourierEarnings> {
+  const response = await apiFetch(`/api/deliveries/earnings?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`, { headers: { 'X-Tenant-Id': getTenantId() } })
+  if (!response.ok) throw new Error(`failed_to_fetch_courier_earnings:${response.status}`)
+  return await response.json() as CourierEarnings
+}
+
 /** Gerente/administrador: encerra uma entrega em rota quando o entregador não consegue finalizar. */
 export async function finishDeliveryAsManager(orderId: number) {
   const response = await apiFetch(`/api/deliveries/${orderId}/finish`, { method: 'POST', headers: { 'X-Tenant-Id': getTenantId() } })

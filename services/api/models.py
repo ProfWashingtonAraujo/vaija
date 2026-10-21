@@ -179,4 +179,6 @@ class Delivery(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # preenchido só quando o restaurante encerrou a entrega no lugar do entregador (nome de quem encerrou)
     finished_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    # repasse ao entregador no momento em que a entrega foi finalizada (a % pode mudar depois; o histórico não)
+    courier_pay: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

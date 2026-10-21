@@ -3,6 +3,7 @@ import { CheckCircle2, Clock, Truck, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { CourierLinkDialog } from '@/components/delivery/courier-link-dialog'
+import { CourierEarningsPanel } from '@/components/delivery/courier-earnings'
 import { fetchDeliveries, finishDeliveryAsManager, type DeliveryEntry } from '@/lib/delivery-api'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { formatCurrency } from '@/lib/formatters'
@@ -39,6 +40,7 @@ export function DeliveriesPage() {
   const [loaded, setLoaded] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [courierFilter, setCourierFilter] = useState('')
+  const [view, setView] = useState<'live' | 'earnings'>('live')
   const [linkTarget, setLinkTarget] = useState<DeliveryEntry | null>(null)
 
   const load = () => fetchDeliveries(startOfTodayIso()).then((result) => {
@@ -102,6 +104,13 @@ export function DeliveriesPage() {
 
   return (
     <AdminLayout title="Entregas" description="Acompanhe os entregadores em rota e o histórico de hoje.">
+      <div className="mb-6 inline-flex rounded-full border border-orange-100 bg-white p-1" role="tablist" aria-label="Visão das entregas">
+        {([['live', 'Ao vivo'], ['earnings', 'Repasse aos entregadores']] as const).map(([key, label]) => (
+          <button key={key} type="button" role="tab" aria-selected={view === key} onClick={() => setView(key)} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${view === key ? 'bg-orange-500 text-white' : 'text-slate-600 hover:text-orange-700'}`}>{label}</button>
+        ))}
+      </div>
+
+      {view === 'earnings' ? <CourierEarningsPanel /> : (<>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ label, value, icon: Icon }) => (
           <div key={label} className="rounded-[28px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
@@ -202,6 +211,7 @@ export function DeliveriesPage() {
           </div>
         </section>
       </div>
+      </>)}
       {linkTarget ? <CourierLinkDialog key={linkTarget.orderId} orderId={linkTarget.orderId} courierName={linkTarget.courierName} started={linkTarget.state === 'active'} onClose={() => setLinkTarget(null)} /> : null}
     </AdminLayout>
   )
