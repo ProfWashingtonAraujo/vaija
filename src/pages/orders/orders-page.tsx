@@ -530,7 +530,7 @@ export function OrdersPage() {
               <Input readOnly value={courierDialog?.url ?? ''} onFocus={(event) => event.currentTarget.select()} />
               <div className="grid gap-3 sm:grid-cols-2">
                 <Button variant="outline" onClick={() => void copyCourierLink()}>Copiar link</Button>
-                <Button onClick={() => { if (courierDialog?.url) window.open(`https://wa.me/${whatsappNumber(courierDialog.phone)}?text=${encodeURIComponent(`Entrega do pedido #${courierDialog.orderId}: ${courierDialog.url}`)}`, '_blank', 'noopener,noreferrer') }}>{courierDialog.phone ? `Enviar para ${courierDialog.name}` : 'Enviar pelo WhatsApp'}</Button>
+                <Button onClick={() => { if (courierDialog?.url) window.open(`https://wa.me/${whatsappNumber(courierDialog.phone)}?text=${encodeURIComponent(`Entrega do pedido #${courierDialog.orderId}: ${courierDialog.url}`)}`, '_blank', 'noopener,noreferrer') }}>{courierDialog?.phone ? `Enviar para ${courierDialog.name}` : 'Enviar pelo WhatsApp'}</Button>
               </div>
             </>
           )}
