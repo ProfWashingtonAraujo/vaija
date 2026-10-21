@@ -15,6 +15,7 @@ import type { Product } from '@/data/mock-products'
 import { fetchOrders, ProductUnavailableError, saveOrdersKeepingNew } from '@/lib/orders-api'
 import { usePolling } from '@/lib/use-polling'
 import { getTenantId } from '@/lib/tenant-storage'
+import { defaultDeliveryFee, resolveOrderSource } from '@/lib/order-source'
 import { getCourierUrl, getPublicOrderTrackingUrl } from '@/lib/public-order-url'
 import { courierLinkErrorMessage, createCourierLink, fetchDeliveries } from '@/lib/delivery-api'
 
@@ -144,7 +145,7 @@ export function OrdersPage() {
   })
 
   const orderItemsSubtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const editDeliveryFee = selected?.deliveryFee ?? ((selected?.source ?? 'Online') === 'Online' ? 8 : 0)
+  const editDeliveryFee = selected?.deliveryFee ?? defaultDeliveryFee(selected?.source)
   const editTotal = orderItemsSubtotal + editDeliveryFee
 
   const persistOrders = (nextOrders: Order[], nextSelected: Order) => {
@@ -348,7 +349,7 @@ export function OrdersPage() {
       return
     }
 
-    if ((selected.source ?? 'Online') === 'Online' && !address) {
+    if (resolveOrderSource(selected.source) === 'Online' && !address) {
       toast.error('Informe o endereço do pedido online.')
       return
     }
@@ -512,17 +513,17 @@ export function OrdersPage() {
                 Telefone
                 <Input value={orderForm.phone} onChange={(event) => setOrderForm((current) => ({ ...current, phone: event.target.value }))} placeholder="(11) 99999-9999" inputMode="tel" />
               </label>
-              {(selected.source ?? 'Online') === 'Mesa' ? (
+              {resolveOrderSource(selected.source) === 'Mesa' ? (
                 <label className="grid gap-2 text-sm font-semibold text-slate-700">
                   Mesa
                   <Input value={orderForm.tableNumber} onChange={(event) => setOrderForm((current) => ({ ...current, tableNumber: event.target.value }))} placeholder="Ex: 12" />
                 </label>
-              ) : (
+              ) : resolveOrderSource(selected.source) === 'Online' ? (
                 <label className="grid gap-2 text-sm font-semibold text-slate-700 md:col-span-2">
                   Endereço
                   <Input value={orderForm.address} onChange={(event) => setOrderForm((current) => ({ ...current, address: event.target.value }))} placeholder="Rua, número e complemento" />
                 </label>
-              )}
+              ) : null}
               <label className="grid gap-2 text-sm font-semibold text-slate-700">
                 Pagamento
                 <select value={orderForm.payment} onChange={(event) => setOrderForm((current) => ({ ...current, payment: event.target.value as Order['payment'] }))} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
@@ -556,7 +557,7 @@ export function OrdersPage() {
                 </div>
                 <div className="mt-3 space-y-2 rounded-[24px] border border-orange-100 bg-orange-50/40 p-4 text-sm text-slate-600">
                   <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(orderItemsSubtotal)}</span></div>
-                  <div className="flex justify-between"><span>{(selected.source ?? 'Online') === 'Mesa' ? 'Taxa de mesa' : 'Taxa de entrega'}</span><span className="font-mono">{formatCurrency(editDeliveryFee)}</span></div>
+                  <div className="flex justify-between"><span>{resolveOrderSource(selected.source) === 'Online' ? 'Taxa de entrega' : 'Taxa'}</span><span className="font-mono">{formatCurrency(editDeliveryFee)}</span></div>
                   <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(editTotal)}</span></div>
                 </div>
               </div>

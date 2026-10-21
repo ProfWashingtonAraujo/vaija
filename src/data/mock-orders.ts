@@ -12,7 +12,7 @@ export type Order = {
   customer: string
   phone: string
   address: string
-  source?: 'Mesa' | 'Online'
+  source?: 'Mesa' | 'Online' | 'Retirada'
   tableNumber?: string
   deliveryFee?: number
   items: string[]

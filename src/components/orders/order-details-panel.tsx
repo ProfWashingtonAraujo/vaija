@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { formatCurrency } from '@/lib/formatters'
 import { readSettings } from '@/lib/settings'
+import { defaultDeliveryFee, orderSourceIcons, resolveOrderSource } from '@/lib/order-source'
 
 function buildCupomHtml(order: Order, includeLogo = false) {
   const settings = readSettings().restaurant
-  const source = order.source ?? 'Online'
-  const deliveryFee = order.deliveryFee ?? (source === 'Online' ? 8 : 0)
+  const source = resolveOrderSource(order.source)
+  const deliveryFee = order.deliveryFee ?? defaultDeliveryFee(source)
   const subtotal = order.value - deliveryFee
   const now = new Date()
   const dateStr = now.toLocaleDateString('pt-BR')
@@ -36,7 +37,7 @@ function buildCupomHtml(order: Order, includeLogo = false) {
     <div style="border-top:1px dashed #ccc;margin:10px 0"></div>
     <div style="font-size:11px">
       <div style="display:flex;justify-content:space-between;padding:2px 0"><span>Subtotal</span><span>${formatCurrency(subtotal)}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:2px 0"><span>${source === 'Mesa' ? 'Taxa mesa' : 'Taxa entrega'}</span><span>${formatCurrency(deliveryFee)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0"><span>${source === 'Online' ? 'Taxa entrega' : 'Taxa'}</span><span>${formatCurrency(deliveryFee)}</span></div>
     </div>
     <div style="border-top:2px solid #333;margin:8px 0"></div>
     <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;padding:4px 0">
@@ -113,13 +114,13 @@ function printCupom(order: Order) {
 
 export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, onSendCourier }: { order: Order; onAdvance: () => void; onEdit: () => void; onOpenWhatsapp: () => void; onSendCourier?: () => void }) {
   const [showPreview, setShowPreview] = useState(false)
-  const source = order.source ?? 'Online'
-  const deliveryFee = order.deliveryFee ?? (source === 'Online' ? 8 : 0)
+  const source = resolveOrderSource(order.source)
+  const deliveryFee = order.deliveryFee ?? defaultDeliveryFee(source)
   const subtotal = order.value - deliveryFee
   // pedido online que saiu para entrega só é finalizado pelo entregador; em Pronto, o restaurante finaliza quando o cliente retira
   const isOnRoute = order.status === 'Saiu para entrega'
   const canAdvance = order.status === 'Pendente' || order.status === 'Em producao' || order.status === 'Pronto para retirada'
-  const nextStepLabel = order.status === 'Pendente' ? 'Avançar para Produção' : order.status === 'Em producao' ? 'Marcar como Pronto' : source === 'Online' ? 'Cliente retirou' : 'Finalizar Pedido'
+  const nextStepLabel = order.status === 'Pendente' ? 'Avançar para Produção' : order.status === 'Em producao' ? 'Marcar como Pronto' : source !== 'Mesa' ? 'Cliente retirou' : 'Finalizar Pedido'
   const canManageOrder = order.status === 'Pendente' || order.status === 'Em producao'
   const canSendCourier = Boolean(onSendCourier) && source === 'Online' && (order.status === 'Pronto para retirada' || order.status === 'Saiu para entrega')
 
@@ -135,12 +136,12 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, on
         </div>
         <div className="mt-6 space-y-4 text-sm text-slate-600">
           <p><span className="font-semibold text-slate-900">Telefone:</span> {order.phone}</p>
-          <p><span className="font-semibold text-slate-900">Tipo:</span> {source}</p>
+          <p className="flex items-center gap-1.5"><span className="font-semibold text-slate-900">Tipo:</span> {(() => { const Icon = orderSourceIcons[source]; return <Icon className="h-4 w-4 text-orange-600" /> })()}{source}</p>
           {source === 'Mesa' ? (
             <p><span className="font-semibold text-slate-900">Mesa:</span> {order.tableNumber ?? 'Não informada'}</p>
-          ) : (
+          ) : source === 'Online' ? (
             <p><span className="font-semibold text-slate-900">Endereço:</span> {order.address}</p>
-          )}
+          ) : null}
           <div>
             <p className="font-semibold text-slate-900">Itens</p>
             <ul className="mt-2 space-y-2">
@@ -155,7 +156,7 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, on
           ) : null}
           <div className="space-y-2 rounded-[24px] border border-orange-100 bg-white/80 p-4 shadow-[0_10px_24px_rgba(255,107,0,0.05)]">
             <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
-            <div className="flex justify-between"><span>{source === 'Mesa' ? 'Taxa de mesa' : 'Taxa de entrega'}</span><span className="font-mono">{formatCurrency(deliveryFee)}</span></div>
+            <div className="flex justify-between"><span>{source === 'Online' ? 'Taxa de entrega' : 'Taxa'}</span><span className="font-mono">{formatCurrency(deliveryFee)}</span></div>
             <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(order.value)}</span></div>
             <div className="flex justify-between"><span>Pagamento</span><span>{order.payment}</span></div>
           </div>

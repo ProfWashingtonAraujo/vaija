@@ -6,9 +6,9 @@ import { PaymentMethodSelector } from '@/components/pos/payment-method-selector'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { cn } from '@/lib/utils'
+import { orderSources, orderSourceIcons, type OrderSource } from '@/lib/order-source'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
-type OrderSource = 'Mesa' | 'Online'
 
 export function CartPanel({ items, paymentMethod, orderSource, tableNumber, customerName, customerPhone, notes, onPaymentChange, onOrderSourceChange, onTableNumberChange, onCustomerNameChange, onCustomerPhoneChange, onNotesChange, onUpdateQuantity, onRemove, onClear, onCheckout }: { items: CartItem[]; paymentMethod: string; orderSource: OrderSource; tableNumber: string; customerName: string; customerPhone: string; notes: string; onPaymentChange: (value: 'Pix' | 'Cartão' | 'Dinheiro') => void; onOrderSourceChange: (value: OrderSource) => void; onTableNumberChange: (value: string) => void; onCustomerNameChange: (value: string) => void; onCustomerPhoneChange: (value: string) => void; onNotesChange: (value: string) => void; onUpdateQuantity: (id: string, amount: number) => void; onRemove: (id: string) => void; onClear: () => void; onCheckout: () => void }) {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -57,12 +57,16 @@ export function CartPanel({ items, paymentMethod, orderSource, tableNumber, cust
       </div>
       <div className="mt-6">
         <p className="mb-3 text-sm font-semibold text-slate-900">Tipo do pedido</p>
-        <div className="grid grid-cols-2 gap-2 rounded-[24px] border border-orange-100 bg-white/80 p-2">
-          {(['Mesa', 'Online'] as const).map((source) => (
-            <button key={source} onClick={() => onOrderSourceChange(source)} className={cn('rounded-2xl border px-3 py-2 text-sm font-semibold transition-all duration-200', orderSource === source ? 'border-orange-300 bg-orange-50 text-orange-700 shadow-[0_8px_18px_rgba(255,107,0,0.08)]' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-200')}>
+        <div className="grid grid-cols-3 gap-2 rounded-[24px] border border-orange-100 bg-white/80 p-2">
+          {orderSources.map((source) => {
+            const Icon = orderSourceIcons[source]
+            return (
+            <button key={source} onClick={() => onOrderSourceChange(source)} className={cn('flex flex-col items-center gap-1 rounded-2xl border px-2 py-2.5 text-sm font-semibold transition-all duration-200', orderSource === source ? 'border-orange-300 bg-orange-50 text-orange-700 shadow-[0_8px_18px_rgba(255,107,0,0.08)]' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-200')}>
+              <Icon className="h-5 w-5" />
               {source}
             </button>
-          ))}
+            )
+          })}
         </div>
         {orderSource === 'Mesa' ? (
           <div className="mt-3 space-y-3">

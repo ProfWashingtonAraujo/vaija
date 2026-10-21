@@ -15,10 +15,10 @@ import { fetchOrders, ProductUnavailableError, saveOrders } from '@/lib/orders-a
 import { MissingIngredientsDialog } from '@/components/menu/missing-ingredients-dialog'
 import { fetchCategories, fetchProducts, isSellable } from '@/lib/catalog-api'
 import { usePolling } from '@/lib/use-polling'
+import type { OrderSource } from '@/lib/order-source'
 import type { Order } from '@/data/mock-orders'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
-type OrderSource = 'Mesa' | 'Online'
 const productsPerPage = 9
 
 export function PosPage() {
@@ -116,7 +116,7 @@ export function PosPage() {
       return
     }
 
-    if (orderSource === 'Online' && customerName.trim().length === 0) {
+    if (orderSource !== 'Mesa' && customerName.trim().length === 0) {
       toast.error('Informe o nome do cliente.')
       return
     }
@@ -128,7 +128,7 @@ export function PosPage() {
       id: Math.max(0, ...currentOrders.map((order) => order.id)) + 1,
       customer: orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : customerName.trim(),
       phone: orderSource === 'Mesa' ? '-' : customerPhone.trim() || 'Não informado',
-      address: orderSource === 'Mesa' ? '' : 'Pedido online',
+      address: orderSource === 'Online' ? 'Pedido online' : '',
       source: orderSource,
       tableNumber: orderSource === 'Mesa' ? tableNumber.trim() : undefined,
       deliveryFee,
@@ -152,7 +152,7 @@ export function PosPage() {
       }
       return
     }
-    const orderTarget = orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : 'Online'
+    const orderTarget = orderSource === 'Mesa' ? `Mesa ${tableNumber.trim()}` : orderSource
     toast.success(`Pedido ${orderTarget} enviado para a fila.`)
     setCart([])
     setTableNumber('')
