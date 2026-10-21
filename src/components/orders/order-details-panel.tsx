@@ -116,7 +116,10 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, on
   const source = order.source ?? 'Online'
   const deliveryFee = order.deliveryFee ?? (source === 'Online' ? 8 : 0)
   const subtotal = order.value - deliveryFee
-  const nextStepLabel = order.status === 'Pendente' ? 'Avançar para Produção' : order.status === 'Em producao' ? 'Marcar como Pronto' : 'Finalizar Pedido'
+  // pedido online que saiu para entrega só é finalizado pelo entregador; em Pronto, o restaurante finaliza quando o cliente retira
+  const isOnRoute = order.status === 'Saiu para entrega'
+  const canAdvance = order.status === 'Pendente' || order.status === 'Em producao' || order.status === 'Pronto para retirada'
+  const nextStepLabel = order.status === 'Pendente' ? 'Avançar para Produção' : order.status === 'Em producao' ? 'Marcar como Pronto' : source === 'Online' ? 'Cliente retirou' : 'Finalizar Pedido'
   const canManageOrder = order.status === 'Pendente' || order.status === 'Em producao'
   const canSendCourier = Boolean(onSendCourier) && source === 'Online' && (order.status === 'Pronto para retirada' || order.status === 'Saiu para entrega')
 
@@ -162,8 +165,9 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, on
           <Button variant="secondary" onClick={onOpenWhatsapp}>Enviar link do pedido</Button>
           <Button variant="outline" className="border-orange-200 bg-white/90" onClick={() => setShowPreview(true)}>Imprimir Cupom</Button>
           {canSendCourier ? <Button variant="secondary" onClick={onSendCourier}>{order.status === 'Saiu para entrega' ? 'Novo link do entregador' : 'Enviar para entregador'}</Button> : null}
-          <Button onClick={onAdvance}>{nextStepLabel}</Button>
+          {canAdvance ? <Button onClick={onAdvance}>{nextStepLabel}</Button> : null}
         </div>
+        {isOnRoute ? <p className="mt-3 text-xs leading-5 text-slate-500">O pedido será finalizado quando o entregador confirmar a entrega. Se ele perdeu o link, use &quot;Novo link do entregador&quot;.</p> : null}
       </div>
 
       {showPreview && (

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Clock, Truck, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
+import { CourierLinkDialog } from '@/components/delivery/courier-link-dialog'
 import { fetchDeliveries, type DeliveryEntry } from '@/lib/delivery-api'
 import { formatCurrency } from '@/lib/formatters'
 import { usePolling } from '@/lib/use-polling'
@@ -37,6 +38,7 @@ export function DeliveriesPage() {
   const [loaded, setLoaded] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [courierFilter, setCourierFilter] = useState('')
+  const [linkTarget, setLinkTarget] = useState<DeliveryEntry | null>(null)
 
   const load = () => fetchDeliveries(startOfTodayIso()).then((result) => {
     setDeliveries(result.deliveries)
@@ -144,6 +146,7 @@ export function DeliveriesPage() {
                     </div>
                     <p className="mt-1 text-slate-500">{item.address}</p>
                     <p className="mt-1 text-slate-500">{item.courierName ? `${item.courierName} · ` : ''}saiu às {formatTime(item.startedAt)} · há {formatDuration(secondsSince(item.startedAt, now))}</p>
+                    <button type="button" onClick={() => setLinkTarget(item)} className="mt-2 text-sm font-semibold text-orange-700 hover:text-orange-800">Link do entregador</button>
                   </div>
                 )
               })}
@@ -151,6 +154,7 @@ export function DeliveriesPage() {
                 <div key={item.orderId} className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/40 p-3 text-sm">
                   <p className="font-semibold text-slate-900">#{item.orderId} · {item.customer}</p>
                   <p className="mt-1 text-slate-500">{item.courierName ? `${item.courierName} ` : 'Entregador '}ainda não iniciou · link gerado às {formatTime(item.createdAt)}</p>
+                  <button type="button" onClick={() => setLinkTarget(item)} className="mt-2 text-sm font-semibold text-orange-700 hover:text-orange-800">Link do entregador</button>
                 </div>
               ))}
             </div>
@@ -176,6 +180,7 @@ export function DeliveriesPage() {
           </div>
         </section>
       </div>
+      {linkTarget ? <CourierLinkDialog key={linkTarget.orderId} orderId={linkTarget.orderId} courierName={linkTarget.courierName} started={linkTarget.state === 'active'} onClose={() => setLinkTarget(null)} /> : null}
     </AdminLayout>
   )
 }

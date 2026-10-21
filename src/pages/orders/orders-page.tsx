@@ -158,6 +158,8 @@ export function OrdersPage() {
 
   const handleAdvance = () => {
     if (!selected) return
+    // em rota, só o entregador finaliza (pelo link dele); pedidos já entregues não avançam
+    if (selected.status === 'Saiu para entrega' || selected.status === 'Entregue') return
     const nextStatus: OrderStatus =
       selected.status === 'Pendente'
         ? 'Em producao'
