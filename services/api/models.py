@@ -116,6 +116,8 @@ class Order(Base):
     table_number: Mapped[Any] = mapped_column(JSONB, nullable=True)
     delivery_fee: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str] = mapped_column(String, nullable=False, default="")
+    # pagamento confirmado pelo restaurante (ex.: Pix conferido no app do banco); só muda pelo endpoint próprio
+    paid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     sort_index: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

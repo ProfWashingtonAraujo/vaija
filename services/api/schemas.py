@@ -197,6 +197,7 @@ class OrderOut(BaseModel):
     table_number: Any = None
     delivery_fee: float | None = None
     notes: str = ""
+    paid: bool = False
 
 
 class OrderIn(BaseModel):
@@ -217,6 +218,7 @@ class OrderIn(BaseModel):
     table_number: Any = None
     delivery_fee: float | None = None
     notes: str | None = None
+    paid: bool = False  # só vale na leitura: quem altera é POST /api/orders/{id}/paid
 
     def is_valid(self) -> bool:
         return (
@@ -229,6 +231,12 @@ class OrderIn(BaseModel):
 
 class OrdersPayload(BaseModel):
     orders: list[OrderIn] | None = None
+
+
+class OrderPaidUpdate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    paid: bool
 
 
 class OrderStatusUpdate(BaseModel):

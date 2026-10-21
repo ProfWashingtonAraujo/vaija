@@ -75,4 +75,7 @@ async def get_public_settings(tenant_id: str, db: AsyncSession = Depends(get_db)
         public["restaurant"] = {key: restaurant[key] for key in ("name", "phone", "logo", "brandColor") if restaurant.get(key)}
     if delivery:
         public["delivery"] = {key: delivery[key] for key in ("mode", "fixedFee", "feePerKm", "freeKm", "originCep") if key in delivery}
+    payments = data.get("payments") or {}
+    if payments:
+        public["payments"] = {key: payments[key] for key in ("pix", "card", "cash", "pixKeyType", "pixKey", "pixName", "pixCity") if key in payments}
     return public

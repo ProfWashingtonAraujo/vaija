@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api-client'
 import { getTenantId, readTenantStorage, writeTenantStorage } from '@/lib/tenant-storage'
+import type { PixKeyType } from '@/lib/pix'
 
 export type BusinessHour = {
   day: string
@@ -30,6 +31,11 @@ export type PaymentSettings = {
   pix: boolean
   card: boolean
   cash: boolean
+  /** Pix da loja: o app gera o QR Code e o copia-e-cola do pedido com esses dados. */
+  pixKeyType: PixKeyType
+  pixKey: string
+  pixName: string
+  pixCity: string
 }
 
 export type PreferenceSettings = {
@@ -89,6 +95,10 @@ export const defaultPaymentSettings: PaymentSettings = {
   pix: true,
   card: true,
   cash: true,
+  pixKeyType: 'cpf_cnpj',
+  pixKey: '',
+  pixName: '',
+  pixCity: '',
 }
 
 export const defaultPreferenceSettings: PreferenceSettings = {
@@ -151,13 +161,14 @@ const offlineMode = import.meta.env.VITE_OFFLINE_MODE === 'true'
 export type PublicSettings = {
   restaurant: RestaurantSettings
   delivery: DeliverySettings
+  payments: PaymentSettings
 }
 
 /** Configurações que o cliente (sem login) enxerga no link público: nome, logo e regras de entrega. */
 export async function fetchPublicSettings(tenantId: string): Promise<PublicSettings> {
   if (offlineMode) {
     const local = readSettings()
-    return { restaurant: local.restaurant, delivery: local.delivery }
+    return { restaurant: local.restaurant, delivery: local.delivery, payments: local.payments }
   }
   const response = await apiFetch(`/api/public/${encodeURIComponent(tenantId)}/settings`, undefined, false)
   if (!response.ok) throw new Error(`failed_to_fetch_public_settings:${response.status}`)
@@ -165,6 +176,7 @@ export async function fetchPublicSettings(tenantId: string): Promise<PublicSetti
   return {
     restaurant: { ...defaultRestaurantSettings, ...data.restaurant },
     delivery: { ...defaultDeliverySettings, ...data.delivery },
+    payments: { ...defaultPaymentSettings, ...data.payments },
   }
 }
 

@@ -49,6 +49,21 @@ export async function saveOrdersKeepingNew(orders: Order[]): Promise<Order[]> {
   return merged
 }
 
+/** Restaurante confirma (ou desfaz) o pagamento de um pedido. */
+export async function setOrderPaid(orderId: number, paid: boolean): Promise<void> {
+  if (import.meta.env.VITE_OFFLINE_MODE === 'true') {
+    const orders = readTenantStorage<Order[]>(localOrdersKey, [])
+    writeTenantStorage(localOrdersKey, orders.map((order) => order.id === orderId ? { ...order, paid } : order))
+    return
+  }
+  const response = await apiFetch(`/api/orders/${orderId}/paid`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getTenantHeaders() },
+    body: JSON.stringify({ paid }),
+  })
+  if (!response.ok) throw new Error(`failed_to_set_order_paid:${response.status}`)
+}
+
 export class ProductUnavailableError extends Error {
   products: string[]
   constructor(products: string[]) {

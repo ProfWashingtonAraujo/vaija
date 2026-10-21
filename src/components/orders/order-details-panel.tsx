@@ -112,7 +112,7 @@ function printCupom(order: Order) {
   }
 }
 
-export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, onSendCourier }: { order: Order; onAdvance: () => void; onEdit: () => void; onOpenWhatsapp: () => void; onSendCourier?: () => void }) {
+export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, onSendCourier, onTogglePaid }: { order: Order; onAdvance: () => void; onEdit: () => void; onOpenWhatsapp: () => void; onSendCourier?: () => void; onTogglePaid?: () => void }) {
   const [showPreview, setShowPreview] = useState(false)
   const source = resolveOrderSource(order.source)
   const deliveryFee = order.deliveryFee ?? defaultDeliveryFee(source)
@@ -158,7 +158,7 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, on
             <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
             <div className="flex justify-between"><span>{source === 'Online' ? 'Taxa de entrega' : 'Taxa'}</span><span className="font-mono">{formatCurrency(deliveryFee)}</span></div>
             <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(order.value)}</span></div>
-            <div className="flex justify-between"><span>Pagamento</span><span>{order.payment}</span></div>
+            <div className="flex justify-between"><span>Pagamento</span><span>{order.payment}{order.payment === 'Pix' ? (order.paid ? ' · Pago' : ' · Aguardando') : ''}</span></div>
           </div>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -166,6 +166,7 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, on
           <Button variant="secondary" onClick={onOpenWhatsapp}>Enviar link do pedido</Button>
           <Button variant="outline" className="border-orange-200 bg-white/90" onClick={() => setShowPreview(true)}>Imprimir Cupom</Button>
           {canSendCourier ? <Button variant="secondary" onClick={onSendCourier}>{order.status === 'Saiu para entrega' ? 'Novo link do entregador' : 'Enviar para entregador'}</Button> : null}
+          {onTogglePaid && order.payment === 'Pix' && order.status !== 'Cancelado' ? <Button variant={order.paid ? 'outline' : 'secondary'} onClick={onTogglePaid}>{order.paid ? 'Desfazer confirmação do Pix' : 'Confirmar pagamento Pix'}</Button> : null}
           {canAdvance ? <Button onClick={onAdvance}>{nextStepLabel}</Button> : null}
         </div>
         {isOnRoute ? <p className="mt-3 text-xs leading-5 text-slate-500">O pedido será finalizado quando o entregador confirmar a entrega. Se ele perdeu o link, use &quot;Novo link do entregador&quot;.</p> : null}

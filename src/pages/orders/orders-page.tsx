@@ -13,7 +13,7 @@ import { formatCurrency } from '@/lib/formatters'
 import type { Order, OrderStatus } from '@/data/mock-orders'
 import { fetchProducts } from '@/lib/catalog-api'
 import type { Product } from '@/data/mock-products'
-import { fetchOrders, ProductUnavailableError, saveOrdersKeepingNew } from '@/lib/orders-api'
+import { fetchOrders, ProductUnavailableError, saveOrdersKeepingNew, setOrderPaid } from '@/lib/orders-api'
 import { usePolling } from '@/lib/use-polling'
 import { getTenantId } from '@/lib/tenant-storage'
 import { defaultDeliveryFee, resolveOrderSource } from '@/lib/order-source'
@@ -187,6 +187,24 @@ export function OrdersPage() {
   const handleSelectFromSearch = (order: Order) => {
     setSelected(order)
     requestAnimationFrame(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
+  }
+
+  const handleTogglePaid = () => {
+    if (!selected) return
+    const { id, paid: wasPaid } = selected
+    const paid = !wasPaid
+    const apply = (value: boolean) => {
+      setOrders((current) => current.map((order) => order.id === id ? { ...order, paid: value } : order))
+      setSelected((current) => current && current.id === id ? { ...current, paid: value } : current)
+    }
+    changeVersion.current += 1 // descarta a resposta de uma consulta que estava a caminho
+    apply(paid)
+    void setOrderPaid(id, paid)
+      .then(() => toast.success(paid ? `Pagamento do pedido #${id} confirmado.` : `Confirmação do pedido #${id} desfeita.`))
+      .catch(() => {
+        apply(Boolean(wasPaid))
+        toast.error('Não foi possível salvar a confirmação do pagamento. Tente de novo.')
+      })
   }
 
   const handleAdvance = () => {
@@ -495,7 +513,7 @@ export function OrdersPage() {
         </div>
         <div ref={detailsRef}>
           {selected ? (
-            <OrderDetailsPanel order={selected} onAdvance={handleAdvance} onEdit={openEditOrderForm} onOpenWhatsapp={handleOpenWhatsapp} onSendCourier={handleSendCourier} />
+            <OrderDetailsPanel order={selected} onAdvance={handleAdvance} onEdit={openEditOrderForm} onOpenWhatsapp={handleOpenWhatsapp} onSendCourier={handleSendCourier} onTogglePaid={handleTogglePaid} />
           ) : (
             <div className="rounded-[30px] border border-orange-100 bg-white p-6 text-center text-sm text-slate-500">Nenhum pedido em aberto. Os novos pedidos aparecem aqui; para ver os anteriores, use a busca.</div>
           )}

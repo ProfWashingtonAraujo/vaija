@@ -22,6 +22,8 @@ export type Order = {
   payment: 'Pix' | 'Cartão' | 'Dinheiro'
   time: string
   notes?: string
+  /** Pagamento confirmado pelo restaurante (ex.: Pix conferido no app do banco). */
+  paid?: boolean
   createdAt?: string
 }
 

@@ -13,6 +13,7 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { Plus, X } from 'lucide-react'
 import { pushSettingsToServer, readSettings, saveSettings, syncSettingsFromServer, type BusinessHour, type DeliverySettings } from '@/lib/settings'
 import { planLabels } from '@/lib/plan-access'
+import { isPixConfigured, pixKeyTypeLabels, type PixKeyType } from '@/lib/pix'
 import { CouriersPanel } from '@/components/delivery/couriers-panel'
 import { getTenantForUser } from '@/lib/tenants-api'
 import { getPublicOrderUrl } from '@/lib/public-order-url'
@@ -25,6 +26,10 @@ const schema = z.object({
   pix: z.boolean(),
   card: z.boolean(),
   cash: z.boolean(),
+  pixKeyType: z.enum(['cpf_cnpj', 'phone', 'email', 'random']),
+  pixKey: z.string().max(120),
+  pixName: z.string().max(60),
+  pixCity: z.string().max(40),
   compactPos: z.boolean(),
   theme: z.string(),
   density: z.enum(['comfortable', 'compact']),
@@ -129,6 +134,10 @@ function SettingsForm() {
       pix: storedSettings.payments.pix,
       card: storedSettings.payments.card,
       cash: storedSettings.payments.cash,
+      pixKeyType: storedSettings.payments.pixKeyType,
+      pixKey: storedSettings.payments.pixKey,
+      pixName: storedSettings.payments.pixName,
+      pixCity: storedSettings.payments.pixCity,
       compactPos: storedSettings.preferences.compactPos,
       theme: storedSettings.preferences.theme,
       density: storedSettings.preferences.density,
@@ -265,6 +274,7 @@ function SettingsForm() {
   }
 
   const selectedTheme = watch('theme')
+  const pixEnabled = watch('pix')
 
   return (
     <AdminLayout title="Configurações" description="Restaurante, operação, equipe e preferências.">
@@ -290,6 +300,11 @@ function SettingsForm() {
           <form
             id="settings-form"
             onSubmit={handleSubmit(async (values) => {
+              if (values.pix && values.pixKey.trim() && !isPixConfigured({ pixKey: values.pixKey, pixName: values.pixName, pixCity: values.pixCity })) {
+                toast.error('Para gerar o QR Code do Pix, informe também o nome do recebedor e a cidade.')
+                setSection('entrega')
+                return
+              }
               const cleanTables = tables.map((name) => name.trim()).filter(Boolean)
               if (new Set(cleanTables.map((name) => name.toLowerCase())).size !== cleanTables.length) {
                 toast.error('Há mesas com o mesmo nome. Cada mesa precisa de um nome diferente.')
@@ -311,6 +326,10 @@ function SettingsForm() {
                   pix: values.pix,
                   card: values.card,
                   cash: values.cash,
+                  pixKeyType: values.pixKeyType as PixKeyType,
+                  pixKey: values.pixKey.trim(),
+                  pixName: values.pixName.trim(),
+                  pixCity: values.pixCity.trim(),
                 },
                 preferences: {
                   compactPos: values.compactPos,
@@ -440,6 +459,24 @@ function SettingsForm() {
                   <Toggle {...register(field)} aria-label={label} />
                 </Row>
               ))}
+              {pixEnabled ? (
+                <>
+                  <Row label="Tipo da chave Pix" hint="O cliente paga com QR Code ou copia-e-cola direto na sua conta.">
+                    <select {...register('pixKeyType')} className={selectClass}>
+                      {(Object.keys(pixKeyTypeLabels) as PixKeyType[]).map((type) => <option key={type} value={type}>{pixKeyTypeLabels[type]}</option>)}
+                    </select>
+                  </Row>
+                  <Row label="Chave Pix" hint="Deixe vazio para não mostrar QR Code ao cliente.">
+                    <Input {...register('pixKey')} placeholder="Sua chave Pix" autoComplete="off" className={fieldClass} />
+                  </Row>
+                  <Row label="Nome do recebedor" hint="Como aparece no banco do cliente (até 25 letras, sem acento).">
+                    <Input {...register('pixName')} maxLength={25} placeholder="Ex: Taperas Pizzaria" className={fieldClass} />
+                  </Row>
+                  <Row label="Cidade" hint="Cidade da loja (até 15 letras).">
+                    <Input {...register('pixCity')} maxLength={15} placeholder="Ex: Juazeiro do Norte" className={fieldClass} />
+                  </Row>
+                </>
+              ) : null}
               <GroupTitle>PDV</GroupTitle>
               <Row label="Interface compacta">
                 <Toggle {...register('compactPos')} aria-label="Interface compacta" />

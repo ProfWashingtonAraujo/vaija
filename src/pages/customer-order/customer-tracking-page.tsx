@@ -11,6 +11,7 @@ import { usePolling } from '@/lib/use-polling'
 import { CourierTracking } from '@/components/delivery/courier-tracking'
 import type { Order, OrderStatus } from '@/data/mock-orders'
 import { usePublicSettings } from '@/lib/use-public-settings'
+import { PixPaymentCard } from '@/components/shared/pix-payment-card'
 
 const trackingSteps: Array<{ status: OrderStatus; label: string; description: string; icon: typeof Clock }> = [
   { status: 'Pendente', label: 'Pedido recebido', description: 'Seu pedido entrou na fila do restaurante.', icon: Clock },
@@ -162,6 +163,8 @@ export function CustomerTrackingPage() {
                 </div>
                 <StatusBadge status={selectedOrder.status} />
               </div>
+
+              {selectedOrder.payment === 'Pix' && selectedOrder.status !== 'Cancelado' ? <PixPaymentCard config={publicSettings.payments} orderId={selectedOrder.id} amount={selectedOrder.value} paid={Boolean(selectedOrder.paid)} /> : null}
 
               <div className="mt-6 space-y-4">
                 {steps.map((step, index) => {

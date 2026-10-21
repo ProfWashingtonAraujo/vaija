@@ -22,6 +22,7 @@
     "framer-motion": "^12.42.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.23.0",
+    "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.81.0",
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@types/leaflet": "^1.9.12",
     "@types/node": "^24.13.2",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "5.1.1",

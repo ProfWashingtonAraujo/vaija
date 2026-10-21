@@ -51,6 +51,7 @@ export function OrderCard({ order, active, dragging, dropTarget, locked, onClick
       <p className="mt-3 font-semibold text-slate-900">{order.customer}</p>
       <p className="mt-2 text-sm text-slate-500">{order.items.join(' • ')}</p>
       <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-orange-700">{(() => { const Icon = orderSourceIcons[resolveOrderSource(order.source)]; return <Icon className="h-3.5 w-3.5" /> })()}{orderSourceLabel(order.source, order.tableNumber)}</p>
+      {order.payment === 'Pix' && order.source !== 'Mesa' ? <p className={cn('mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold', order.paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>{order.paid ? 'Pix pago' : 'Pix aguardando'}</p> : null}
       <div className="mt-4 flex items-center justify-between text-sm">
         <span className="text-slate-500">{order.elapsed}</span>
         <span className="font-mono font-semibold text-slate-900">{formatCurrency(order.value)}</span>

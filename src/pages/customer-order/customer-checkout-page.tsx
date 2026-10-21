@@ -11,6 +11,7 @@ import { usePublicSettings } from '@/lib/use-public-settings'
 import { fetchPublicCashRegisterOpen } from '@/lib/cash-register'
 import type { Order } from '@/data/mock-orders'
 import { cn } from '@/lib/utils'
+import { isPixConfigured } from '@/lib/pix'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
 type CustomerProfile = { name: string; email: string; phone: string; provider: 'simple' | 'google' }
@@ -117,8 +118,16 @@ export function CustomerCheckoutPage() {
   const [payment, setPayment] = useState<Order['payment']>('Pix')
   const { settings: publicSettings, ready: settingsReady } = usePublicSettings(tenantId)
   const deliverySettings = publicSettings.delivery
+  const paymentOptions = useMemo(() => {
+    const all: Array<[Order['payment'], boolean]> = [['Pix', publicSettings.payments.pix], ['Cartão', publicSettings.payments.card], ['Dinheiro', publicSettings.payments.cash]]
+    const enabled = all.filter(([, on]) => on).map(([name]) => name)
+    return enabled.length > 0 ? enabled : all.map(([name]) => name)
+  }, [publicSettings.payments])
   const restaurantSettings = publicSettings.restaurant
   const latestCep = useRef('')
+  useEffect(() => {
+    if (!paymentOptions.includes(payment)) setPayment(paymentOptions[0])
+  }, [paymentOptions, payment])
   const [deliveryCep, setDeliveryCep] = useState('')
   const [calculatedDistanceKm, setCalculatedDistanceKm] = useState<number | null>(null)
   const [calculatedDeliveryFee, setCalculatedDeliveryFee] = useState<number | null>(null)
@@ -342,10 +351,9 @@ export function CustomerCheckoutPage() {
               {!isPickup && deliverySettings.mode === 'perKm' ? <Button type="button" variant="outline" onClick={() => void calculateDeliveryByCep()} disabled={isCalculatingDelivery || isLoadingCep}>{isCalculatingDelivery ? 'Calculando...' : 'Recalcular entrega'}</Button> : null}
               <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Observações do pedido. Ex: sem cebola, sem molho, sem salada" className="min-h-24 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100 md:col-span-2" />
               <select value={payment} onChange={(event) => setPayment(event.target.value as Order['payment'])} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-                <option value="Pix">Pix</option>
-                <option value="Cartão">Cartão</option>
-                <option value="Dinheiro">Dinheiro</option>
+                {paymentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
+              {payment === 'Pix' && isPixConfigured(publicSettings.payments) ? <p className="text-xs leading-5 text-slate-500 md:col-span-2">O QR Code do Pix aparece na próxima tela, logo depois de enviar o pedido.</p> : null}
             </div>
           </div>
 

@@ -14,7 +14,7 @@ from database import get_db
 from integrations import notify_order, try_enqueue_print
 from models import Order
 from .catalog import blocked_items
-from schemas import ALLOWED_STATUSES, OrderIn, OrderStatusUpdate, OrdersPayload
+from schemas import ALLOWED_STATUSES, OrderIn, OrderPaidUpdate, OrderStatusUpdate, OrdersPayload
 
 orders_router = APIRouter(tags=["orders"])
 public_orders_router = APIRouter(tags=["public"])
@@ -41,6 +41,7 @@ def _order_to_dict(o: Order) -> dict:
         "tableNumber": o.table_number,
         "deliveryFee": float(o.delivery_fee) if o.delivery_fee is not None else None,
         "notes": o.notes,
+        "paid": bool(o.paid),
         "createdAt": o.created_at.isoformat() if o.created_at else None,
     }
 
@@ -62,6 +63,7 @@ def _order_values(order: OrderIn, tenant_id: str, sort_index: int) -> dict:
         "table_number": order.table_number,
         "delivery_fee": order.delivery_fee,
         "notes": order.notes or "",
+        "paid": False,  # pedido novo nunca nasce pago; a confirmação vem do restaurante
         "sort_index": sort_index,
     }
 
@@ -115,7 +117,8 @@ async def put_orders(payload: OrdersPayload, auth: CurrentAuth, db: AsyncSession
         await db.execute(
             insert(Order).values(**values).on_conflict_do_update(
                 index_elements=[Order.id, Order.tenant_id],
-                set_={key: value for key, value in values.items() if key not in ("id", "tenant_id")},
+                # "paid" fica de fora: uma tela desatualizada não pode apagar a confirmação de pagamento
+                set_={key: value for key, value in values.items() if key not in ("id", "tenant_id", "paid")},
             )
         )
 
@@ -134,6 +137,17 @@ async def put_orders(payload: OrdersPayload, auth: CurrentAuth, db: AsyncSession
         "orders": [o.model_dump(by_alias=True) for o in orders],
         "notifications": {"changed": len(changed), "failed": failed},
     }
+
+
+@orders_router.post("/api/orders/{order_id}/paid")
+async def set_order_paid(order_id: int, body: OrderPaidUpdate, auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
+    """Restaurante confirma (ou desfaz) o pagamento de um pedido, por exemplo um Pix conferido no app do banco."""
+    order = await db.get(Order, (order_id, auth.tenant_id))
+    if order is None:
+        return _error(404, "order_not_found")
+    order.paid = body.paid
+    await db.commit()
+    return {"ok": True, "order": _order_to_dict(order)}
 
 
 @orders_router.put("/api/orders/{order_id}/status")
@@ -189,6 +203,7 @@ async def create_public_order(tenant_id: str, body: OrderIn, db: AsyncSession = 
     """Pedido feito pelo cliente no cardápio online. O id é gerado aqui e o status nasce Pendente."""
     body.id = 1  # só para passar na validação; o id real vem abaixo
     body.status = "Pendente"
+    body.paid = False  # o cliente não confirma o próprio pagamento
     if not body.is_valid():
         return _error(400, "invalid_order_payload")
 

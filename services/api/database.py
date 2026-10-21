@@ -64,6 +64,7 @@ async def init_db():
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS courier_name TEXT"))
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS finished_by TEXT"))
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS courier_pay NUMERIC(10,2)"))
+        await conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid BOOLEAN NOT NULL DEFAULT FALSE"))
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS payout_id BIGINT"))
         await conn.execute(text("ALTER TABLE couriers ADD COLUMN IF NOT EXISTS pay_percent NUMERIC(5,2)"))
         await _migrate_users_to_username(conn)
