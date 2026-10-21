@@ -46,6 +46,8 @@ export type AppSettings = {
   delivery: DeliverySettings
   payments: PaymentSettings
   preferences: PreferenceSettings
+  /** Nomes das mesas oferecidas no PDV (número ou apelido, como "Varanda"). */
+  tables: string[]
 }
 
 export const settingsKey = 'vaija.settings'
@@ -90,6 +92,13 @@ export const defaultPreferenceSettings: PreferenceSettings = {
   cardStyle: 'soft',
 }
 
+export const defaultTables = ['1', '2', '3', '4']
+
+/** "1" vira "Mesa 1"; nomes livres ("Varanda") ficam como estão. */
+export function tableLabel(name: string) {
+  return /^\d+$/.test(name) ? `Mesa ${name}` : name
+}
+
 export function parseCurrencyInput(value: string) {
   return Number(value.replace(',', '.')) || 0
 }
@@ -102,6 +111,7 @@ export function readSettings(): AppSettings {
     delivery: defaultDeliverySettings,
     payments: defaultPaymentSettings,
     preferences: defaultPreferenceSettings,
+    tables: defaultTables,
   }
 
   return mergeSettings(readTenantStorage(settingsKey, defaultSettings) as Partial<AppSettings>)
@@ -115,6 +125,7 @@ function mergeSettings(parsedSettings: Partial<AppSettings>): AppSettings {
     delivery: { ...defaultDeliverySettings, ...parsedSettings.delivery },
     payments: { ...defaultPaymentSettings, ...parsedSettings.payments },
     preferences: { ...defaultPreferenceSettings, ...parsedSettings.preferences },
+    tables: Array.isArray(parsedSettings.tables) ? parsedSettings.tables : defaultTables,
   }
 }
 

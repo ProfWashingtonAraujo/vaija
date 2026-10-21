@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { formatCurrency } from '@/lib/formatters'
 import { Button } from '@/components/ui/button'
@@ -6,11 +7,18 @@ import { PaymentMethodSelector } from '@/components/pos/payment-method-selector'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { EmptyState } from '@/components/shared/empty-state'
 import { cn } from '@/lib/utils'
+import { readSettings, settingsUpdatedEvent, tableLabel } from '@/lib/settings'
 import { orderSources, orderSourceIcons, type OrderSource } from '@/lib/order-source'
 
 type CartItem = { id: string; name: string; price: number; quantity: number }
 
 export function CartPanel({ items, paymentMethod, orderSource, tableNumber, customerName, customerPhone, notes, onPaymentChange, onOrderSourceChange, onTableNumberChange, onCustomerNameChange, onCustomerPhoneChange, onNotesChange, onUpdateQuantity, onRemove, onClear, onCheckout }: { items: CartItem[]; paymentMethod: string; orderSource: OrderSource; tableNumber: string; customerName: string; customerPhone: string; notes: string; onPaymentChange: (value: 'Pix' | 'Cartão' | 'Dinheiro') => void; onOrderSourceChange: (value: OrderSource) => void; onTableNumberChange: (value: string) => void; onCustomerNameChange: (value: string) => void; onCustomerPhoneChange: (value: string) => void; onNotesChange: (value: string) => void; onUpdateQuantity: (id: string, amount: number) => void; onRemove: (id: string) => void; onClear: () => void; onCheckout: () => void }) {
+  const [tables, setTables] = useState(() => readSettings().tables)
+  useEffect(() => {
+    const update = () => setTables(readSettings().tables)
+    window.addEventListener(settingsUpdatedEvent, update)
+    return () => window.removeEventListener(settingsUpdatedEvent, update)
+  }, [])
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const delivery = items.length && orderSource === 'Online' ? 8 : 0
   const total = subtotal + delivery
@@ -71,9 +79,11 @@ export function CartPanel({ items, paymentMethod, orderSource, tableNumber, cust
         {orderSource === 'Mesa' ? (
           <div className="mt-3 space-y-3">
             <Input value={tableNumber} onChange={(event) => onTableNumberChange(event.target.value)} placeholder="Número da mesa" />
-            <div className="grid grid-cols-4 gap-2">
-              {['1', '2', '3', '4'].map((number) => <button key={number} type="button" onClick={() => onTableNumberChange(number)} className="rounded-2xl border border-orange-100 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-orange-300 hover:bg-orange-50">Mesa {number}</button>)}
-            </div>
+            {tables.length > 0 ? (
+              <div className="grid grid-cols-4 gap-2">
+                {tables.map((name) => <button key={name} type="button" onClick={() => onTableNumberChange(name)} className={cn('rounded-2xl border px-2 py-2 text-sm font-semibold transition hover:border-orange-300 hover:bg-orange-50', tableNumber === name ? 'border-orange-300 bg-orange-50 text-orange-700' : 'border-orange-100 bg-white text-slate-600')}>{tableLabel(name)}</button>)}
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="mt-3 grid gap-3">

@@ -10,6 +10,7 @@ import { changeOwnPassword, createUser, fetchUsers, type AppUser } from '@/lib/u
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { PasswordInput } from '@/components/ui/password-input'
+import { Plus, X } from 'lucide-react'
 import { pushSettingsToServer, readSettings, saveSettings, syncSettingsFromServer, type BusinessHour, type DeliverySettings } from '@/lib/settings'
 import { planLabels } from '@/lib/plan-access'
 import { getTenantForUser } from '@/lib/tenants-api'
@@ -52,6 +53,7 @@ const sections = [
   ['restaurante', 'Restaurante'],
   ['horarios', 'Horários'],
   ['entrega', 'Entrega e pagamento'],
+  ['mesas', 'Mesas'],
   ['equipe', 'Equipe'],
   ['conta', 'Minha conta'],
   ['aparencia', 'Aparência'],
@@ -154,6 +156,7 @@ function SettingsForm() {
   const [showUserForm, setShowUserForm] = useState(false)
   const [businessHours, setBusinessHours] = useState<BusinessHour[]>(storedSettings.businessHours)
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(storedSettings.delivery)
+  const [tables, setTables] = useState<string[]>(storedSettings.tables)
   const [restaurantLogo, setRestaurantLogo] = useState(storedSettings.restaurant.logo ?? '')
   const [brandColor, setBrandColor] = useState(normalizeHex(storedSettings.restaurant.brandColor))
   const [cepStatus, setCepStatus] = useState<string | null>(null)
@@ -161,7 +164,7 @@ function SettingsForm() {
   const publicOrderUrl = user ? getPublicOrderUrl(user.tenantId) : ''
 
   // campos fora do react-hook-form (horários, entrega e logo) são comparados com o último estado salvo
-  const localSnapshot = JSON.stringify({ businessHours, delivery: deliverySettings, logo: restaurantLogo, brandColor })
+  const localSnapshot = JSON.stringify({ businessHours, delivery: deliverySettings, tables, logo: restaurantLogo, brandColor })
   const [savedSnapshot, setSavedSnapshot] = useState(localSnapshot)
   const dirty = isDirty || localSnapshot !== savedSnapshot
 
@@ -196,6 +199,18 @@ function SettingsForm() {
       return
     }
     setBusinessHours((current) => current.map((item) => ({ ...item, openTime: reference.openTime, closeTime: reference.closeTime })))
+  }
+  const nextTableNumber = (current: string[]) => Math.max(0, ...current.map(Number).filter(Number.isFinite)) + 1
+  const addTable = () => setTables((current) => [...current, String(nextTableNumber(current))])
+  const updateTable = (index: number, name: string) => setTables((current) => current.map((item, itemIndex) => itemIndex === index ? name : item))
+  const removeTable = (index: number) => setTables((current) => current.filter((_, itemIndex) => itemIndex !== index))
+  const setTableCount = (count: number) => {
+    const total = Math.min(100, Math.max(0, Math.floor(count) || 0))
+    setTables((current) => {
+      const next = current.slice(0, total)
+      while (next.length < total) next.push(String(nextTableNumber(next)))
+      return next
+    })
   }
   const updateDeliverySettings = (values: Partial<DeliverySettings>) => {
     setDeliverySettings((current) => ({ ...current, ...values }))
@@ -273,6 +288,12 @@ function SettingsForm() {
           <form
             id="settings-form"
             onSubmit={handleSubmit(async (values) => {
+              const cleanTables = tables.map((name) => name.trim()).filter(Boolean)
+              if (new Set(cleanTables.map((name) => name.toLowerCase())).size !== cleanTables.length) {
+                toast.error('Há mesas com o mesmo nome. Cada mesa precisa de um nome diferente.')
+                setSection('mesas')
+                return
+              }
               const nextSettings = {
                 restaurant: {
                   name: values.restaurantName,
@@ -283,6 +304,7 @@ function SettingsForm() {
                 subscription: storedSettings.subscription,
                 businessHours,
                 delivery: deliverySettings,
+                tables: cleanTables,
                 payments: {
                   pix: values.pix,
                   card: values.card,
@@ -413,6 +435,29 @@ function SettingsForm() {
               <Row label="Interface compacta">
                 <Toggle {...register('compactPos')} aria-label="Interface compacta" />
               </Row>
+            </div>
+
+            <div hidden={section !== 'mesas'} className={panelClass}>
+              <Row label="Quantidade de mesas" hint="Ao aumentar, as novas mesas seguem a numeração. Ao diminuir, saem as últimas.">
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" className={cn(outlineButtonClass, 'h-10 w-10 px-0')} onClick={() => setTableCount(tables.length - 1)} aria-label="Remover uma mesa">-</Button>
+                  <Input value={tables.length} onChange={(event) => setTableCount(Number(event.target.value))} inputMode="numeric" aria-label="Quantidade de mesas" className={cn(fieldClass, 'w-20 text-center')} />
+                  <Button type="button" variant="outline" className={cn(outlineButtonClass, 'h-10 w-10 px-0')} onClick={addTable} aria-label="Adicionar uma mesa">+</Button>
+                </div>
+              </Row>
+              <GroupTitle>Nome de cada mesa</GroupTitle>
+              <p className="pb-3 text-xs text-slate-500">Use número ou apelido, como "Varanda" ou "Balcão". É isso que aparece no PDV.</p>
+              <div className="grid gap-2 pb-5 sm:grid-cols-2">
+                {tables.map((name, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input value={name} onChange={(event) => updateTable(index, event.target.value)} maxLength={20} aria-label={`Nome da mesa ${index + 1}`} className={fieldClass} />
+                    <button type="button" onClick={() => removeTable(index)} aria-label={`Remover mesa ${name}`} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-orange-600"><X className="h-4 w-4" /></button>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-slate-100 py-4">
+                <Button type="button" variant="outline" className={outlineButtonClass} onClick={addTable}><Plus className="mr-1.5 h-4 w-4" />Adicionar mesa</Button>
+              </div>
             </div>
 
             <div hidden={section !== 'aparencia'} className={panelClass}>
