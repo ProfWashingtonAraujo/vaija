@@ -24,6 +24,11 @@ function isToday(order: Order) {
   return new Date(order.createdAt).toDateString() === new Date().toDateString()
 }
 
+/** Mais recente primeiro. A API devolve na ordem do quadro de pedidos, não na ordem de criação. */
+function byNewest(a: Order, b: Order) {
+  return (b.createdAt ?? '').localeCompare(a.createdAt ?? '') || b.id - a.id
+}
+
 function getRevenuePeriod(order: Order) {
   const hour = order.createdAt ? new Date(order.createdAt).getHours() : Number(order.time.split(':')[0])
   if (Number.isNaN(hour)) return 'Agora'
@@ -70,7 +75,7 @@ function getDashboardData(allOrders: Order[], products: Product[]) {
     ],
     revenueSeries: Array.from(revenueByPeriod.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([day, revenue]) => ({ day, revenue })),
     categorySeries: Array.from(salesByCategory.entries()).map(([name, value]) => ({ name, value })),
-    latestOrders: allOrders.filter((order) => order.status !== 'Cancelado').slice(0, 5),
+    latestOrders: allOrders.filter((order) => order.status !== 'Cancelado').sort(byNewest).slice(0, 5),
   }
 }
 

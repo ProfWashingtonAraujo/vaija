@@ -4,6 +4,14 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/shared/empty-state'
 
+/** Hoje: só a hora. Outro dia: data e hora. Sem data de criação, usa o texto salvo no pedido. */
+function formatOrderTime(order: Order) {
+  if (!order.createdAt) return order.time
+  const created = new Date(order.createdAt)
+  const time = created.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return created.toDateString() === new Date().toDateString() ? time : `${created.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${time}`
+}
+
 export function LatestOrdersTable({ orders }: { orders: Order[] }) {
   return (
     <div className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
@@ -26,7 +34,7 @@ export function LatestOrdersTable({ orders }: { orders: Order[] }) {
               <tr key={order.id} className="border-t border-orange-50">
                 <td className="py-4 font-mono">#{order.id}</td>
                 <td className="py-4">{order.customer}</td>
-                <td className="py-4">{order.time}</td>
+                <td className="py-4">{formatOrderTime(order)}</td>
                 <td className="py-4 font-mono">{formatCurrency(order.value)}</td>
                 <td className="py-4"><StatusBadge status={order.status} /></td>
                 <td className="py-4"><Button variant="ghost">Detalhes</Button></td>
@@ -43,7 +51,7 @@ export function LatestOrdersTable({ orders }: { orders: Order[] }) {
               <StatusBadge status={order.status} />
             </div>
             <p className="mt-3 font-semibold text-slate-900">{order.customer}</p>
-            <p className="mt-1 text-sm text-slate-500">{order.time} • {formatCurrency(order.value)}</p>
+            <p className="mt-1 text-sm text-slate-500">{formatOrderTime(order)} • {formatCurrency(order.value)}</p>
           </div>
         ))}
       </div>
