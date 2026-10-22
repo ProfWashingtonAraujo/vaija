@@ -30,6 +30,8 @@ from routers import (
     couriers_router,
     cash_router,
     support_router,
+    billing_router,
+    billing_webhook_router,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -102,6 +104,8 @@ app.include_router(public_delivery_router)
 app.include_router(couriers_router)
 app.include_router(cash_router)
 app.include_router(support_router)
+app.include_router(billing_router)
+app.include_router(billing_webhook_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

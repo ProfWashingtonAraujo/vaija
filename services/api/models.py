@@ -266,3 +266,41 @@ class SupportTicket(Base):
     created_by: Mapped[str] = mapped_column(String, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Subscription(Base):
+    """Assinatura mensal do lojista no Vaija (cobrada pelo Asaas). Uma por tenant."""
+    __tablename__ = "subscriptions"
+
+    tenant_id: Mapped[str] = mapped_column(String, primary_key=True)
+    plan: Mapped[str] = mapped_column(String, nullable=False)  # Free | Start | Pro | Premium
+    status: Mapped[str] = mapped_column(String, nullable=False, default="trialing")  # trialing | active | past_due | cancelled
+    billing_type: Mapped[str | None] = mapped_column(String, nullable=True)  # PIX | BOLETO | CREDIT_CARD
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    overdue_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    customer_name: Mapped[str] = mapped_column(String, nullable=False, default="")
+    customer_email: Mapped[str] = mapped_column(String, nullable=False, default="")
+    customer_cpf_cnpj: Mapped[str] = mapped_column(String, nullable=False, default="")
+    asaas_customer_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    asaas_subscription_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class Invoice(Base):
+    """Cobrança mensal gerada pelo Asaas; criada/atualizada pelo webhook."""
+    __tablename__ = "invoices"
+    __table_args__ = (Index("invoices_tenant_idx", "tenant_id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String, nullable=False)
+    asaas_payment_id: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="open")  # open | paid | overdue | cancelled | refunded
+    billing_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    due_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    invoice_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     printer_port: int = 9100
     printer_model: str = "epson"
     print_copies: int = 1
+    # Cobrança da mensalidade do Vaija (Asaas)
+    asaas_api_key: str = ""
+    asaas_base_url: str = "https://api-sandbox.asaas.com/v3"  # produção: https://api.asaas.com/v3
+    asaas_webhook_token: str = ""
+    billing_trial_days: int = 7
+    billing_grace_days: int = 3
 
     class Config:
         env_file = ".env"
