@@ -1,23 +1,44 @@
-import type { PropsWithChildren } from 'react'
+import { useState, type PropsWithChildren } from 'react'
 import { motion } from 'framer-motion'
-import { PageContainer } from '@/components/layout/page-container'
 import { SaasHeader } from '@/components/layout/saas-header'
 import { SaasSidebar } from '@/components/layout/saas-sidebar'
+import { useSaasTheme } from '@/lib/saas-theme'
+
+const collapsedKey = 'vaija.saas.sidebarCollapsed'
+
+function readCollapsed() {
+  try {
+    return localStorage.getItem(collapsedKey) === 'true'
+  } catch {
+    return false
+  }
+}
 
 export function SaasLayout({ title, description, children }: PropsWithChildren<{ title: string; description: string }>) {
+  const { theme, setTheme } = useSaasTheme()
+  const [collapsed, setCollapsed] = useState(readCollapsed)
+
+  const toggleSidebar = () => {
+    const next = !collapsed
+    setCollapsed(next)
+    try {
+      localStorage.setItem(collapsedKey, String(next))
+    } catch {
+      // preferência não guardada
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(255,178,107,0.18),transparent_30%),#fffdf8] py-3 sm:py-4 lg:py-6">
-      <PageContainer>
-        <div className="grid gap-6 lg:grid-cols-[272px_minmax(0,1fr)]">
-          <div className="hidden lg:block">
-            <SaasSidebar />
-          </div>
-          <motion.main initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="min-w-0">
-            <SaasHeader title={title} description={description} />
-            {children}
-          </motion.main>
-        </div>
-      </PageContainer>
+    <div className="saas-shell flex min-h-screen bg-sa-bg text-sa-text">
+      <div className="sticky top-0 z-30 hidden h-screen shrink-0 lg:block">
+        <SaasSidebar collapsed={collapsed} onToggle={toggleSidebar} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <SaasHeader title={title} description={description} theme={theme} onThemeChange={setTheme} />
+        <motion.main initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mx-auto w-full max-w-[1600px] px-4 pb-12 pt-6 sm:px-6 lg:px-8">
+          {children}
+        </motion.main>
+      </div>
     </div>
   )
 }

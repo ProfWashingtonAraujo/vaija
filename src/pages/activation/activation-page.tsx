@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { AlertTriangle, ArrowUpRight, Building2, CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, ExternalLink, Eye, EyeOff, KeyRound, Pencil, ReceiptText, Trash2, TrendingUp, UserCog, UserPlus, Users, WalletCards, X } from 'lucide-react'
+import { AlertTriangle, ArrowUpRight, Building2, CheckCircle2, CircleDollarSign, Clock3, CreditCard, ExternalLink, Eye, EyeOff, KeyRound, Pencil, Search, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { SaasLayout } from '@/components/layout/saas-layout'
@@ -15,6 +15,9 @@ import { formatCurrency } from '@/lib/formatters'
 import { addAuditLog, readAuditLogs, readPlanConfigs, savePlanConfigs, type PlanConfig } from '@/lib/saas-admin-api'
 import { billingTypeLabels, cancelTenantSubscription, fetchAdminBilling, invoiceStatusLabels, subscriptionStatusLabels, type AdminSubscription, type BillingInvoice } from '@/lib/billing-api'
 import { usePolling } from '@/lib/use-polling'
+import { useAuth } from '@/contexts/auth-context'
+import { cn } from '@/lib/utils'
+import { FeaturedStat, InvoiceTable, RevenueChart, SaasCard, StatTile, SubscriptionMix, type SubscriptionMixCounts } from '@/components/saas/dashboard-parts'
 import { fetchAllTickets, updateTicket, type SupportTicket } from '@/lib/support-api'
 import { businessTypeLabels, businessTypeOptions, type BusinessType } from '@/lib/business-types'
 import { isValidOptionalEmail, isValidUsername, normalizeUsername, userErrorMessage, usernameHint } from '@/lib/username'
@@ -59,6 +62,9 @@ export function ActivationPage() {
   const [planConfigs, setPlanConfigs] = useState<PlanConfig[]>(() => readPlanConfigs())
   const [billingInvoices, setBillingInvoices] = useState<BillingInvoice[]>([])
   const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([])
+  const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'open' | 'overdue' | 'paid' | 'cancelled'>('all')
+  const [invoiceQuery, setInvoiceQuery] = useState('')
+  const { user: currentUser } = useAuth()
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([])
   const [auditLogs, setAuditLogs] = useState(() => readAuditLogs())
   const [restaurantName, setRestaurantName] = useState('')
@@ -112,14 +118,6 @@ export function ActivationPage() {
   const selectedTenant = tenantId ? clientTenants.find((tenant) => tenant.id === tenantId) : undefined
   const selectedTenantUsers = selectedTenant ? usersByTenant.get(selectedTenant.id) ?? [] : []
   const selectedTenantInvoices = selectedTenant ? billingInvoices.filter((invoice) => invoice.tenantId === selectedTenant.id) : []
-  const revenueByPlan = planOrder.map((currentPlan) => {
-    const tenantsByPlan = activeTenants.filter((tenant) => tenant.plan === currentPlan)
-    return {
-      plan: currentPlan,
-      clients: tenantsByPlan.length,
-      revenue: tenantsByPlan.length * planPrices[currentPlan],
-    }
-  })
   const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
   const subscriptionByTenant = new Map(subscriptions.map((item) => [item.tenantId, item]))
   const paidThisMonth = billingInvoices.filter((invoice) => invoice.status === 'paid' && invoice.paidAt?.slice(0, 7) === currentMonth)
@@ -127,9 +125,33 @@ export function ActivationPage() {
   const paidRevenue = sumInvoices(paidThisMonth)
   const openRevenue = sumInvoices(billingInvoices.filter((invoice) => invoice.status === 'open'))
   const overdueRevenue = sumInvoices(billingInvoices.filter((invoice) => invoice.status === 'overdue'))
+  const previousMonthDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)
+  const previousMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`
+  const paidLastMonth = sumInvoices(billingInvoices.filter((invoice) => invoice.status === 'paid' && invoice.paidAt?.slice(0, 7) === previousMonth))
+  const revenueDelta = paidLastMonth > 0 ? Math.round((paidRevenue - paidLastMonth) / paidLastMonth * 100) : null
+  const monthName = new Date().toLocaleDateString('pt-BR', { month: 'long' })
+  const mixCounts: SubscriptionMixCounts = { active: 0, trialing: 0, past_due: 0, cancelled: 0, none: 0 }
+  for (const tenant of clientTenants) {
+    const status = subscriptionByTenant.get(tenant.id)?.status ?? 'none'
+    mixCounts[status] += 1
+  }
+  const describeInvoice = (tenantId: string) => ({
+    name: clientTenants.find((item) => item.id === tenantId)?.restaurantName ?? subscriptionByTenant.get(tenantId)?.customerName ?? tenantId,
+    plan: subscriptionByTenant.get(tenantId)?.plan,
+  })
+  const visibleInvoices = billingInvoices.filter((invoice) => {
+    const matchesStatus = invoiceFilter === 'all' || invoice.status === invoiceFilter || (invoiceFilter === 'cancelled' && invoice.status === 'refunded')
+    const query = invoiceQuery.trim().toLowerCase()
+    return matchesStatus && (!query || describeInvoice(invoice.tenantId).name.toLowerCase().includes(query))
+  })
+  const invoiceFilters: { value: typeof invoiceFilter; label: string }[] = [
+    { value: 'all', label: 'Todas' }, { value: 'open', label: 'Em aberto' }, { value: 'overdue', label: 'Em atraso' }, { value: 'paid', label: 'Pagas' }, { value: 'cancelled', label: 'Canceladas' },
+  ]
+  const openClient = (tenantId: string) => {
+    if (clientTenants.some((item) => item.id === tenantId)) navigate(`/saas/clientes/${tenantId}`)
+  }
   const billableRevenue = paidRevenue + openRevenue + overdueRevenue
   const collectionRate = billableRevenue ? Math.round(paidRevenue / billableRevenue * 100) : 0
-  const maxPlanRevenue = Math.max(1, ...revenueByPlan.map((item) => item.revenue))
 
   const loadBilling = () => fetchAdminBilling()
     .then((result) => {
@@ -455,23 +477,12 @@ export function ActivationPage() {
   }
 
   const summaryCards = (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: 'Clientes ativos', value: activeTenants.length, icon: Building2, detail: `${inactiveTenants.length} inativo(s)` },
-          { label: 'MRR estimado', value: formatCurrency(monthlyRecurringRevenue), icon: TrendingUp, detail: 'Receita mensal recorrente' },
-          { label: 'Acessos criados', value: activeUsers.length, icon: KeyRound, detail: 'Usuários de clientes' },
-          { label: 'Ticket médio', value: formatCurrency(activeTenants.length ? monthlyRecurringRevenue / activeTenants.length : 0), icon: CreditCard, detail: 'Por cliente ativo' },
-        ].map(({ label, value, icon: Icon, detail }) => (
-          <div key={label} className="rounded-[28px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-500">{label}</p>
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><Icon className="h-5 w-5" /></div>
-            </div>
-            <p className="mt-4 font-heading text-3xl font-bold text-slate-900">{value}</p>
-            <p className="mt-1 text-xs font-semibold text-slate-400">{detail}</p>
-          </div>
-        ))}
-      </div>
+    <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <StatTile label="Clientes ativos" value={String(activeTenants.length)} detail={`${inactiveTenants.length} inativo(s)`} icon={<Building2 className="h-[18px] w-[18px]" />} />
+      <StatTile label="MRR estimado" value={formatCurrency(monthlyRecurringRevenue)} detail="Receita mensal recorrente" icon={<TrendingUp className="h-[18px] w-[18px]" />} tone="ok" />
+      <StatTile label="Acessos criados" value={String(activeUsers.length)} detail="Usuários de clientes" icon={<KeyRound className="h-[18px] w-[18px]" />} tone="info" />
+      <StatTile label="Ticket médio" value={formatCurrency(activeTenants.length ? monthlyRecurringRevenue / activeTenants.length : 0)} detail="Por cliente ativo" icon={<CreditCard className="h-[18px] w-[18px]" />} tone="warn" />
+    </div>
   )
 
   const clientsSection = (
@@ -655,104 +666,48 @@ export function ActivationPage() {
   )
 
   const financialSection = (
-    <div className="space-y-5">
-      <section className="relative overflow-hidden rounded-[30px] border border-slate-800 bg-slate-950 p-5 text-white shadow-[0_18px_48px_rgba(15,23,42,0.16)] sm:p-7">
-        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-orange-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 h-32 w-64 bg-orange-500/10 blur-3xl" />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-orange-100">
-              <CalendarDays className="h-3.5 w-3.5" />Visão consolidada do período
-            </div>
-            <p className="mt-5 text-sm font-medium text-slate-400">Receita mensal recorrente</p>
-            <p className="mt-1 font-heading text-4xl font-bold tracking-tight sm:text-5xl">{formatCurrency(monthlyRecurringRevenue)}</p>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">Receita projetada com base nos {activeTenants.length} clientes ativos e nos planos contratados.</p>
-          </div>
-          <div className="flex items-center gap-4 rounded-[24px] border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-300"><ArrowUpRight className="h-5 w-5" /></div>
-            <div>
-              <p className="text-xs font-medium text-slate-400">Taxa de recebimento</p>
-              <p className="mt-0.5 font-heading text-2xl font-bold">{collectionRate}%</p>
-            </div>
-          </div>
+    <div className="space-y-6">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.5fr)]">
+        <FeaturedStat label="Receita mensal recorrente" value={formatCurrency(monthlyRecurringRevenue)} caption={`Projeção com ${activeTenants.length} cliente(s) ativo(s)`} icon={<TrendingUp className="h-5 w-5" />} />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <StatTile tone="ok" label="Recebido no mês" value={formatCurrency(paidRevenue)} detail={`${paidThisMonth.length} cobrança(s) paga(s)`} icon={<CheckCircle2 className="h-[18px] w-[18px]" />} />
+          <StatTile tone="warn" label="A receber" value={formatCurrency(openRevenue)} detail={`${billingInvoices.filter((invoice) => invoice.status === 'open').length} cobrança(s) em aberto`} icon={<Clock3 className="h-[18px] w-[18px]" />} />
+          <StatTile tone="bad" label="Em atraso" value={formatCurrency(overdueRevenue)} detail={`${billingInvoices.filter((invoice) => invoice.status === 'overdue').length} cobrança(s) vencida(s)`} icon={<AlertTriangle className="h-[18px] w-[18px]" />} />
+          <StatTile label="Taxa de recebimento" value={`${collectionRate}%`} detail="Pago sobre o total cobrado" icon={<ArrowUpRight className="h-[18px] w-[18px]" />} />
         </div>
-      </section>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: 'Recebido no mês', value: paidRevenue, detail: `${paidThisMonth.length} cobranças pagas`, icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-600' },
-          { label: 'A receber', value: openRevenue, detail: `${billingInvoices.filter((invoice) => invoice.status === 'open').length} cobranças abertas`, icon: Clock3, tone: 'bg-amber-50 text-amber-600' },
-          { label: 'Em atraso', value: overdueRevenue, detail: `${billingInvoices.filter((invoice) => invoice.status === 'overdue').length} cobranças vencidas`, icon: AlertTriangle, tone: 'bg-red-50 text-red-600' },
-          { label: 'Ticket médio', value: activeTenants.length ? monthlyRecurringRevenue / activeTenants.length : 0, detail: 'Por cliente ativo', icon: WalletCards, tone: 'bg-orange-50 text-orange-600' },
-        ].map(({ label, value, detail, icon: Icon, tone }) => (
-          <div key={label} className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-500">{label}</p>
-                <p className="mt-2 font-heading text-2xl font-bold tracking-tight text-slate-950">{formatCurrency(value)}</p>
-              </div>
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${tone}`}><Icon className="h-4.5 w-4.5" /></div>
-            </div>
-            <p className="mt-3 text-xs font-medium text-slate-400">{detail}</p>
-          </div>
-        ))}
       </div>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <section className="rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.05)] sm:p-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><CircleDollarSign className="h-5 w-5" /></div>
-            <div><h2 className="font-heading text-xl font-bold text-slate-900">Receita por plano</h2><p className="text-xs text-slate-400">Composição do MRR atual</p></div>
-          </div>
-          <div className="mt-6 space-y-5">
-            {revenueByPlan.map((item) => (
-              <div key={item.plan}>
-                <div className="flex items-end justify-between gap-3">
-                  <div><p className="text-sm font-semibold text-slate-700">{planLabels[item.plan]}</p><p className="mt-0.5 text-xs text-slate-400">{item.clients} {item.clients === 1 ? 'cliente' : 'clientes'}</p></div>
-                  <p className="font-mono text-sm font-bold text-slate-900">{formatCurrency(item.revenue)}</p>
-                </div>
-                <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all" style={{ width: `${item.revenue / maxPlanRevenue * 100}%` }} /></div>
-              </div>
+      <SaasCard title="Receita por mês" description="Últimos 6 meses: o que entrou e o que ainda está para entrar.">
+        <RevenueChart invoices={billingInvoices} />
+      </SaasCard>
+
+      <SaasCard
+        title="Cobranças"
+        description={`${visibleInvoices.length} de ${billingInvoices.length} registro(s)`}
+        action={<span className="rounded-full bg-sa-hover px-3 py-1.5 text-xs font-semibold text-sa-text-2">Total {formatCurrency(billableRevenue)}</span>}
+      >
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {invoiceFilters.map((filter) => (
+              <button
+                key={filter.value}
+                type="button"
+                onClick={() => setInvoiceFilter(filter.value)}
+                aria-pressed={invoiceFilter === filter.value}
+                className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors', invoiceFilter === filter.value ? 'border-sa-accent bg-sa-accent-soft text-sa-accent-text' : 'border-sa-border text-sa-muted hover:text-sa-text')}
+              >
+                {filter.label}
+              </button>
             ))}
           </div>
-        </section>
-
-        <section className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_14px_36px_rgba(15,23,42,0.05)]">
-          <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><ReceiptText className="h-5 w-5" /></div>
-              <div><h2 className="font-heading text-xl font-bold text-slate-900">Cobranças</h2><p className="text-xs text-slate-400">{billingInvoices.length} registros no histórico</p></div>
-            </div>
-            <span className="w-fit rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">Total {formatCurrency(billableRevenue)}</span>
-          </div>
-          <div className="hidden grid-cols-[minmax(170px,1.4fr)_100px_120px_150px] gap-4 border-b border-slate-100 bg-slate-50/70 px-6 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 md:grid">
-            <span>Cliente</span><span>Vencimento</span><span>Valor</span><span>Status</span>
-          </div>
-          <div className="divide-y divide-slate-100">
-            {billingInvoices.map((invoice) => {
-              const tenant = clientTenants.find((item) => item.id === invoice.tenantId)
-              const subscription = subscriptionByTenant.get(invoice.tenantId)
-              const status = invoiceStatusLabels[invoice.status]
-              return (
-                <div key={invoice.id} className="p-5 transition-colors hover:bg-slate-50/60 sm:px-6">
-                  <div className="grid gap-4 md:grid-cols-[minmax(170px,1.4fr)_100px_120px_150px] md:items-center">
-                    <div className="min-w-0"><p className="truncate font-semibold text-slate-900">{tenant?.restaurantName ?? subscription?.customerName ?? invoice.tenantId}</p><p className="mt-1 text-xs text-slate-400">{subscription?.plan ? `Plano ${subscription.plan}` : 'Plano não informado'}{invoice.billingType ? ` · ${billingTypeLabels[invoice.billingType]}` : ''}</p></div>
-                    <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Vencimento</p><p className="mt-1 text-sm font-medium text-slate-600 md:mt-0">{new Date(invoice.dueDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p></div>
-                    <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Valor</p><p className="mt-1 font-mono text-sm font-bold text-slate-900 md:mt-0">{formatCurrency(invoice.amount)}</p></div>
-                    <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${status.style}`}>{status.label}</span>
-                  </div>
-                  <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-end">
-                    {invoice.paidAt ? <span className="text-xs text-slate-400 sm:mr-auto">Paga em {new Date(invoice.paidAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span> : null}
-                    {invoice.invoiceUrl ? <a href={invoice.invoiceUrl} target="_blank" rel="noopener noreferrer"><Button type="button" variant="ghost" className="h-9 justify-start px-3 text-xs sm:justify-center">Abrir fatura <ExternalLink className="ml-1.5 h-3.5 w-3.5" /></Button></a> : null}
-                    {tenant ? <Button type="button" variant="ghost" className="h-9 justify-start px-3 text-xs sm:justify-center" onClick={() => navigate(`/saas/clientes/${tenant.id}`)}>Ver cliente <ArrowUpRight className="ml-1.5 h-3.5 w-3.5" /></Button> : null}
-                  </div>
-                </div>
-              )
-            })}
-            {billingInvoices.length === 0 ? <div className="p-10 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-500"><ReceiptText className="h-5 w-5" /></div><p className="mt-4 font-semibold text-slate-700">Nenhuma cobrança gerada</p><p className="mt-1 text-sm text-slate-400">As novas cobranças aparecerão aqui.</p></div> : null}
-          </div>
-        </section>
-      </div>
+          <label className="relative sm:w-64">
+            <span className="sr-only">Buscar cliente</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sa-soft" />
+            <input value={invoiceQuery} onChange={(event) => setInvoiceQuery(event.target.value)} placeholder="Buscar cliente" className="h-10 w-full rounded-xl border border-sa-border bg-sa-surface-2 pl-9 pr-3 text-sm text-sa-text outline-none placeholder:text-sa-soft focus:border-sa-accent" />
+          </label>
+        </div>
+        <InvoiceTable invoices={visibleInvoices} describe={describeInvoice} onOpenClient={openClient} emptyText={billingInvoices.length ? 'Nenhuma cobrança com esse filtro.' : 'As cobranças aparecem aqui quando os clientes contratam um plano.'} />
+      </SaasCard>
     </div>
   )
 
@@ -883,49 +838,62 @@ export function ActivationPage() {
   )
 
   const overviewSection = (
-    <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-        <div className="flex items-center gap-3"><TrendingUp className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Crescimento por plano</h2></div>
-        <div className="mt-6 space-y-5">
-          {revenueByPlan.map((item) => {
-            const maxRevenue = Math.max(1, ...revenueByPlan.map((current) => current.revenue))
-            const width = `${Math.max(8, item.revenue / maxRevenue * 100)}%`
-            return (
-              <div key={item.plan}>
-                <div className="flex items-center justify-between gap-3 text-sm"><span className="font-semibold text-slate-700">{planLabels[item.plan]}</span><span className="font-mono font-bold text-slate-900">{formatCurrency(item.revenue)}</span></div>
-                <div className="mt-2 h-3 rounded-full bg-orange-50"><div className="h-3 rounded-full bg-orange-500" style={{ width }} /></div>
-                <p className="mt-1 text-xs text-slate-500">{item.clients} cliente(s) ativo(s)</p>
-              </div>
-            )
-          })}
+    <div className="space-y-6">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.5fr)]">
+        <FeaturedStat label={`Receita de ${monthName}`} value={formatCurrency(paidRevenue)} caption={revenueDelta === null ? `${paidThisMonth.length} cobrança(s) paga(s) neste mês` : 'em relação ao mês anterior'} delta={revenueDelta} icon={<CircleDollarSign className="h-5 w-5" />} />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <StatTile tone="warn" label="A receber" value={formatCurrency(openRevenue)} detail={`${billingInvoices.filter((invoice) => invoice.status === 'open').length} cobrança(s) em aberto`} icon={<Clock3 className="h-[18px] w-[18px]" />} />
+          <StatTile tone="bad" label="Em atraso" value={formatCurrency(overdueRevenue)} detail={`${billingInvoices.filter((invoice) => invoice.status === 'overdue').length} cobrança(s) vencida(s)`} icon={<AlertTriangle className="h-[18px] w-[18px]" />} />
+          <StatTile label="Clientes ativos" value={String(activeTenants.length)} detail={`${inactiveTenants.length} inativo(s)`} icon={<Building2 className="h-[18px] w-[18px]" />} />
+          <StatTile tone="ok" label="MRR estimado" value={formatCurrency(monthlyRecurringRevenue)} detail="Receita mensal recorrente" icon={<TrendingUp className="h-[18px] w-[18px]" />} />
         </div>
-      </section>
+      </div>
 
-      <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-        <div className="flex items-center gap-3"><Building2 className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Gestão rápida</h2></div>
-        <div className="mt-5 grid gap-3">
-          <button type="button" onClick={() => navigate('/saas/ativacoes')} className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 text-left transition hover:border-orange-300 hover:bg-orange-50"><span className="font-semibold text-slate-900">Ativar novo cliente</span><span className="mt-1 block text-sm text-slate-500">Criar restaurante, plano e primeiro acesso.</span></button>
-          <button type="button" onClick={() => navigate('/saas/financeiro')} className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 text-left transition hover:border-orange-300 hover:bg-orange-50"><span className="font-semibold text-slate-900">Ver financeiro</span><span className="mt-1 block text-sm text-slate-500">MRR e receita por plano.</span></button>
-          <button type="button" onClick={() => navigate('/saas/suporte')} className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 text-left transition hover:border-orange-300 hover:bg-orange-50"><span className="font-semibold text-slate-900">Abrir suporte</span><span className="mt-1 block text-sm text-slate-500">Tickets e prioridades dos clientes.</span></button>
-        </div>
-      </section>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <SaasCard title="Receita por mês" description="Últimos 6 meses: o que entrou e o que ainda está para entrar.">
+          <RevenueChart invoices={billingInvoices} />
+        </SaasCard>
+        <SaasCard title="Assinaturas" description={`${clientTenants.length} cliente(s) na carteira`}>
+          <SubscriptionMix counts={mixCounts} />
+        </SaasCard>
+      </div>
 
-      <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)] xl:col-span-2">
-        <div className="flex items-center gap-3"><KeyRound className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Acessos por cliente</h2><span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{activeUsers.length} usuário(s)</span></div>
-        <AccessChart tenants={clientTenants} users={activeUsers} />
-      </section>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <SaasCard title="Cobranças recentes" action={<button type="button" onClick={() => navigate('/saas/financeiro')} className="text-sm font-semibold text-sa-accent-text hover:underline">Ver todas</button>}>
+          <InvoiceTable invoices={billingInvoices.slice(0, 5)} describe={describeInvoice} onOpenClient={openClient} emptyText="As cobranças aparecem aqui quando os clientes contratam um plano." />
+        </SaasCard>
+        <SaasCard title="Atalhos">
+          <div className="grid gap-2.5">
+            {[
+              { label: 'Ativar novo cliente', detail: 'Cadastrar restaurante e criar o acesso', to: '/saas/ativacoes', icon: UserPlus },
+              { label: 'Ver financeiro', detail: 'Cobranças, recebimentos e atrasos', to: '/saas/financeiro', icon: CreditCard },
+              { label: 'Abrir suporte', detail: 'Chamados dos lojistas', to: '/saas/suporte', icon: Users },
+            ].map(({ label, detail, to, icon: Icon }) => (
+              <button type="button" key={to} onClick={() => navigate(to)} className="flex items-center gap-3 rounded-xl border border-sa-border bg-sa-surface-2 p-3.5 text-left transition-colors hover:border-sa-accent hover:bg-sa-hover">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sa-accent-soft text-sa-accent-text"><Icon className="h-[18px] w-[18px]" /></div>
+                <span className="min-w-0"><span className="block text-sm font-semibold text-sa-text">{label}</span><span className="block truncate text-xs text-sa-muted">{detail}</span></span>
+              </button>
+            ))}
+          </div>
+        </SaasCard>
+      </div>
 
-      <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)] xl:col-span-2">
-        <div className="flex items-center gap-3"><Users className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Últimos clientes</h2></div>
-        <div className="mt-5 grid gap-3 lg:grid-cols-3">
-          {clientTenants.slice(0, 6).map((tenant) => (
-            <button type="button" key={tenant.id} onClick={() => navigate(`/saas/clientes/${tenant.id}`)} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4 text-left transition hover:border-orange-300 hover:bg-orange-50">
-              <p className="font-semibold text-slate-900">{tenant.restaurantName}</p>
-              <p className="mt-1 text-sm text-slate-500">{planLabels[tenant.plan]} · {tenant.status === 'active' ? 'Ativo' : 'Inativo'}</p>
-            </button>
-          ))}
-        </div>
-      </section>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <SaasCard title="Acessos por cliente" action={<span className="rounded-full bg-sa-hover px-3 py-1 text-xs font-semibold text-sa-text-2">{activeUsers.length} usuário(s)</span>}>
+          <AccessChart tenants={clientTenants} users={activeUsers} />
+        </SaasCard>
+        <SaasCard title="Últimos clientes">
+          <div className="grid gap-2.5">
+            {clientTenants.slice(0, 6).map((tenant) => (
+              <button type="button" key={tenant.id} onClick={() => navigate(`/saas/clientes/${tenant.id}`)} className="rounded-xl border border-sa-border bg-sa-surface-2 p-3.5 text-left transition-colors hover:border-sa-accent hover:bg-sa-hover">
+                <p className="text-sm font-semibold text-sa-text">{tenant.restaurantName}</p>
+                <p className="mt-0.5 text-xs text-sa-muted">{planLabels[tenant.plan]} · {tenant.status === 'active' ? 'Ativo' : 'Inativo'}</p>
+              </button>
+            ))}
+            {clientTenants.length === 0 ? <p className="text-sm text-sa-muted">Nenhum cliente cadastrado.</p> : null}
+          </div>
+        </SaasCard>
+      </div>
     </div>
   )
 
@@ -993,20 +961,37 @@ export function ActivationPage() {
     </div>
   )
 
-  return (
-    <SaasLayout title={currentView === 'financeiro' ? 'Gestão financeira' : 'Dashboard SaaS'} description={currentView === 'financeiro' ? 'Acompanhe recorrência, recebimentos e a saúde da carteira SaaS.' : 'Gerencie clientes, acessos, financeiro e ativação dos planos da plataforma Vaija.'}>
-      {currentView !== 'financeiro' ? summaryCards : null}
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
+  const firstName = currentUser?.name?.split(' ')[0] ?? ''
+  const viewTitles: Record<string, [string, string]> = {
+    financeiro: ['Financeiro', 'Recebimentos, assinaturas e a saúde da carteira.'],
+    clientes: ['Clientes', 'Restaurantes da carteira e os planos contratados.'],
+    'cliente-detalhe': [selectedTenant?.restaurantName ?? 'Cliente', 'Dados, acessos, assinatura e cobranças.'],
+    acessos: ['Acessos', 'Usuários da plataforma e dos clientes.'],
+    planos: ['Planos', 'Tabela de planos exibida na página de vendas.'],
+    ativacoes: ['Ativações', 'Cadastre um novo restaurante e crie o primeiro acesso.'],
+    leads: ['Leads', 'Interessados que pediram contratação.'],
+    suporte: ['Suporte', 'Chamados abertos pelos lojistas.'],
+    auditoria: ['Auditoria', 'Registro das ações feitas no painel.'],
+    configuracoes: ['Configurações', 'Ajustes gerais da plataforma.'],
+  }
+  const [pageTitle, pageDescription] = currentView ? viewTitles[currentView] ?? ['Painel SaaS', 'Administração da plataforma Vaija.'] : [`${greeting}${firstName ? `, ${firstName}` : ''}`, 'Veja como está a carteira do Vaija hoje.']
 
-      {currentView === 'cliente-detalhe' ? <div className="mt-6">{clientDetailSection}</div> : null}
-      {currentView === 'financeiro' ? <div className="mt-6">{financialSection}</div> : null}
-      {currentView === 'acessos' ? <div className="mt-6">{accessSection}</div> : null}
-      {currentView === 'clientes' ? <div className="mt-6">{clientsSection}</div> : null}
-      {currentView === 'planos' ? <div className="mt-6">{plansSection}</div> : null}
-      {currentView === 'ativacoes' ? <div className="mt-6">{activationsSection}</div> : null}
-      {currentView === 'leads' ? <div className="mt-6">{leadsSection}</div> : null}
-      {currentView === 'suporte' ? <div className="mt-6">{supportSection}</div> : null}
-      {currentView === 'auditoria' ? <div className="mt-6">{auditSection}</div> : null}
-      {currentView === 'configuracoes' ? <div className="mt-6">{settingsSection}</div> : null}
+  return (
+    <SaasLayout title={pageTitle} description={pageDescription}>
+      {currentView && currentView !== 'financeiro' ? summaryCards : null}
+
+      {currentView === 'cliente-detalhe' ? <div>{clientDetailSection}</div> : null}
+      {currentView === 'financeiro' ? <div>{financialSection}</div> : null}
+      {currentView === 'acessos' ? <div>{accessSection}</div> : null}
+      {currentView === 'clientes' ? <div>{clientsSection}</div> : null}
+      {currentView === 'planos' ? <div>{plansSection}</div> : null}
+      {currentView === 'ativacoes' ? <div>{activationsSection}</div> : null}
+      {currentView === 'leads' ? <div>{leadsSection}</div> : null}
+      {currentView === 'suporte' ? <div>{supportSection}</div> : null}
+      {currentView === 'auditoria' ? <div>{auditSection}</div> : null}
+      {currentView === 'configuracoes' ? <div>{settingsSection}</div> : null}
 
       {!currentView ? overviewSection : null}
     </SaasLayout>

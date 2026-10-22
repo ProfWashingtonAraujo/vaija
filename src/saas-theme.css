@@ -1,0 +1,132 @@
+/*
+ * Tema do painel do dono do SaaS (/saas).
+ * Os tokens --sa-* valem só aqui: o modo escuro é ativado pela classe `saas-dark` no <html>,
+ * que o SaasLayout liga ao montar e desliga ao sair. As telas do lojista não são afetadas.
+ */
+:root {
+  --sa-bg: #faf7f2;
+  --sa-surface: #ffffff;
+  --sa-surface-2: #fbf8f4;
+  --sa-border: #ece6dd;
+  --sa-border-strong: #f5cfa8;
+  --sa-text: #1c1917;
+  --sa-text-2: #44403c;
+  --sa-muted: #6b625a;
+  --sa-soft: #9a9088;
+  --sa-accent: #ff6b00;
+  --sa-accent-text: #c2410c;
+  --sa-accent-soft: #fff1e4;
+  --sa-hover: #fdf3e8;
+  --sa-chart-1: #ff6b00;
+  --sa-chart-2: #d6cfc7;
+  --sa-ok: #15803d;
+  --sa-ok-soft: #e8f7ee;
+  --sa-warn: #b45309;
+  --sa-warn-soft: #fef3dc;
+  --sa-bad: #b91c1c;
+  --sa-bad-soft: #fdecec;
+  --sa-info: #0369a1;
+  --sa-info-soft: #e6f4fb;
+  --sa-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 8px 24px rgba(28, 25, 23, 0.05);
+}
+
+html.saas-dark {
+  color-scheme: dark;
+  --sa-bg: #0e0f13;
+  --sa-surface: #17181d;
+  --sa-surface-2: #1d1f25;
+  --sa-border: #2a2c34;
+  --sa-border-strong: #4a3524;
+  --sa-text: #f3f1ee;
+  --sa-text-2: #d4d0ca;
+  --sa-muted: #a39e97;
+  --sa-soft: #77726b;
+  --sa-accent: #ff7a1a;
+  --sa-accent-text: #ffa05c;
+  --sa-accent-soft: #2b1a0e;
+  --sa-hover: #20222a;
+  --sa-chart-1: #ff7a1a;
+  --sa-chart-2: #4b4d57;
+  --sa-ok: #6ee7b7;
+  --sa-ok-soft: #12261d;
+  --sa-warn: #fcd34d;
+  --sa-warn-soft: #2a2210;
+  --sa-bad: #fca5a5;
+  --sa-bad-soft: #2d1616;
+  --sa-info: #7dd3fc;
+  --sa-info-soft: #112431;
+  --sa-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+html.saas-dark body {
+  background: var(--sa-bg);
+  color: var(--sa-text);
+}
+
+/*
+ * Telas do painel que ainda usam as cores fixas do tema claro (clientes, acessos, planos,
+ * leads, suporte, auditoria, configurações e os diálogos). Aqui elas ganham a versão escura
+ * sem precisar reescrever cada tela.
+ */
+html.saas-dark .bg-white { background-color: var(--sa-surface); }
+html.saas-dark .bg-white\/80 { background-color: color-mix(in srgb, var(--sa-surface) 80%, transparent); }
+html.saas-dark .from-white { --tw-gradient-from: var(--sa-surface); }
+html.saas-dark .to-\[\#fffaf5\] { --tw-gradient-to: var(--sa-surface-2); }
+html.saas-dark .bg-orange-50,
+html.saas-dark .bg-orange-50\/40,
+html.saas-dark .bg-orange-100 { background-color: var(--sa-accent-soft); }
+html.saas-dark .bg-orange-50\/30,
+html.saas-dark .bg-orange-50\/60 { background-color: var(--sa-surface-2); }
+html.saas-dark .bg-slate-50,
+html.saas-dark .bg-slate-50\/60,
+html.saas-dark .bg-slate-50\/70 { background-color: var(--sa-surface-2); }
+html.saas-dark .bg-slate-100 { background-color: var(--sa-hover); }
+html.saas-dark .bg-emerald-50 { background-color: var(--sa-ok-soft); }
+html.saas-dark .bg-amber-50 { background-color: var(--sa-warn-soft); }
+html.saas-dark .bg-red-50,
+html.saas-dark .bg-rose-50 { background-color: var(--sa-bad-soft); }
+html.saas-dark .bg-sky-50 { background-color: var(--sa-info-soft); }
+
+html.saas-dark .hover\:bg-orange-50:hover,
+html.saas-dark .hover\:bg-orange-100:hover,
+html.saas-dark .hover\:bg-slate-50\/60:hover { background-color: var(--sa-hover); }
+
+html.saas-dark .border-orange-100,
+html.saas-dark .border-slate-100,
+html.saas-dark .border-slate-200,
+html.saas-dark .border-slate-200\/80 { border-color: var(--sa-border); }
+html.saas-dark .border-orange-200,
+html.saas-dark .border-orange-300,
+html.saas-dark .border-emerald-200,
+html.saas-dark .border-amber-200,
+html.saas-dark .border-sky-200,
+html.saas-dark .border-rose-200,
+html.saas-dark .border-rose-300 { border-color: var(--sa-border-strong); }
+html.saas-dark .divide-slate-100 > :not(:last-child) { border-color: var(--sa-border); }
+
+html.saas-dark .text-slate-900,
+html.saas-dark .text-slate-800 { color: var(--sa-text); }
+html.saas-dark .text-slate-700,
+html.saas-dark .text-slate-600 { color: var(--sa-text-2); }
+html.saas-dark .text-slate-500 { color: var(--sa-muted); }
+html.saas-dark .text-slate-400 { color: var(--sa-soft); }
+html.saas-dark .text-orange-700,
+html.saas-dark .text-orange-600,
+html.saas-dark .text-orange-500 { color: var(--sa-accent-text); }
+html.saas-dark .text-emerald-700,
+html.saas-dark .text-emerald-600 { color: var(--sa-ok); }
+html.saas-dark .text-amber-700,
+html.saas-dark .text-amber-600 { color: var(--sa-warn); }
+html.saas-dark .text-red-600,
+html.saas-dark .text-rose-700,
+html.saas-dark .text-rose-600 { color: var(--sa-bad); }
+html.saas-dark .text-sky-700 { color: var(--sa-info); }
+html.saas-dark .placeholder\:text-slate-400::placeholder { color: var(--sa-soft); }
+
+html.saas-dark .ring-orange-100,
+html.saas-dark .focus\:ring-orange-100:focus,
+html.saas-dark .ring-orange-200 { --tw-ring-color: color-mix(in srgb, var(--sa-accent) 30%, transparent); }
+
+/* Os botões primários e o que fica sobre laranja continuam com texto branco. */
+html.saas-dark .bg-orange-500,
+html.saas-dark .bg-orange-600 { color: #fff; }

@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
 @import 'tailwindcss';
+@import './saas-theme.css';
 
 @theme {
   --color-background: #fffdf8;
@@ -24,6 +25,31 @@
   --font-mono: 'JetBrains Mono', monospace;
   --shadow-premium: 0 18px 50px rgba(255, 107, 0, 0.12);
   --shadow-card: 0 14px 36px rgba(15, 23, 42, 0.08);
+}
+
+@theme inline {
+  --color-sa-bg: var(--sa-bg);
+  --color-sa-surface: var(--sa-surface);
+  --color-sa-surface-2: var(--sa-surface-2);
+  --color-sa-border: var(--sa-border);
+  --color-sa-border-strong: var(--sa-border-strong);
+  --color-sa-text: var(--sa-text);
+  --color-sa-text-2: var(--sa-text-2);
+  --color-sa-muted: var(--sa-muted);
+  --color-sa-soft: var(--sa-soft);
+  --color-sa-accent: var(--sa-accent);
+  --color-sa-accent-text: var(--sa-accent-text);
+  --color-sa-accent-soft: var(--sa-accent-soft);
+  --color-sa-hover: var(--sa-hover);
+  --color-sa-ok: var(--sa-ok);
+  --color-sa-ok-soft: var(--sa-ok-soft);
+  --color-sa-warn: var(--sa-warn);
+  --color-sa-warn-soft: var(--sa-warn-soft);
+  --color-sa-bad: var(--sa-bad);
+  --color-sa-bad-soft: var(--sa-bad-soft);
+  --color-sa-info: var(--sa-info);
+  --color-sa-info-soft: var(--sa-info-soft);
+  --shadow-sa: var(--sa-shadow);
 }
 
 html {
