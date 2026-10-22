@@ -180,6 +180,7 @@ async def checkout(body: CheckoutIn, auth: CurrentAuth, db: AsyncSession = Depen
         payments = await asaas.list_subscription_payments(sub.asaas_subscription_id)
     except asaas.AsaasError as exc:
         logger.warning("Checkout recusado pelo Asaas (tenant %s): %s", auth.tenant_id, exc)
+        await db.rollback()  # não deixa assinatura pela metade no banco
         return _error(503 if exc.code == "billing_not_configured" else 502, exc.code)
 
     sub.plan, sub.billing_type = body.plan, body.billing_type
