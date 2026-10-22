@@ -86,7 +86,7 @@ export function SaasSidebar({ collapsed = false, onToggle }: { collapsed?: boole
         ))}
       </nav>
 
-      <div className={cn('border-t border-sa-border p-3', collapsed && 'flex justify-center')}>
+      <div className={cn('border-t border-sa-border p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]', collapsed && 'flex justify-center')}>
         <button
           type="button"
           title={collapsed ? 'Sair' : undefined}

@@ -198,7 +198,7 @@ export function AppSidebar() {
       </nav>
 
       {/* Footer actions */}
-      <div className={cn('border-t border-orange-100/60 p-2', collapsed && 'flex flex-col items-center gap-1')}>
+      <div className={cn('border-t border-orange-100/60 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]', collapsed && 'flex flex-col items-center gap-1')}>
         <button
           type="button"
           title={collapsed ? 'Suporte' : undefined}
