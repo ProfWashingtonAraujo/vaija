@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { AlertTriangle, ArrowLeft, ArrowUpRight, Building2, CheckCircle2, CircleDollarSign, Clock3, CreditCard, Eye, EyeOff, Info, KeyRound, LogIn, MessageCircle, Pencil, ReceiptText, Search, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from 'lucide-react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { AlertTriangle, ArrowLeft, ArrowUpRight, Building2, CheckCircle2, CircleDollarSign, Clock3, CreditCard, Eye, EyeOff, Info, KeyRound, LogIn, MessageCircle, Plus, Pencil, ReceiptText, Search, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from 'lucide-react'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { SaasLayout } from '@/components/layout/saas-layout'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,8 @@ import { billingTypeLabels, fetchAdminBilling, subscriptionStatusLabels, type Ad
 import { usePolling } from '@/lib/use-polling'
 import { useAuth } from '@/contexts/auth-context'
 import { cn } from '@/lib/utils'
-import { ActionMenu, Avatar, EmptyBlock, FilterPills, FormField, Pill, SearchBox, type PillTone } from '@/components/saas/saas-ui'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { ActionMenu, Avatar, EmptyBlock, FilterPills, FormField, Pill, SearchBox, Tabs, type PillTone } from '@/components/saas/saas-ui'
 import { FeaturedStat, InvoiceTable, RevenueChart, SaasCard, StatTile, SubscriptionMix, type SubscriptionMixCounts } from '@/components/saas/dashboard-parts'
 import { fetchAllTickets, updateTicket, type SupportTicket } from '@/lib/support-api'
 import { businessTypeLabels, businessTypeOptions, type BusinessType } from '@/lib/business-types'
@@ -73,10 +74,21 @@ function PasswordInput({ value, onChange, placeholder }: { value: string; onChan
   )
 }
 
-export function ActivationPage() {
+export function SaasPage() {
   const navigate = useNavigate()
   const { view, tenantId } = useParams()
   const currentView = tenantId ? 'cliente-detalhe' : view
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Aba e janela de novo cliente ficam na URL: os links antigos (Ativações, Acessos) caem direto no lugar certo.
+  const clientsTab: 'restaurantes' | 'usuarios' = searchParams.get('aba') === 'usuarios' ? 'usuarios' : 'restaurantes'
+  const newClientOpen = searchParams.get('novo') === '1'
+  const updateSearch = (change: (next: URLSearchParams) => void) => {
+    const next = new URLSearchParams(searchParams)
+    change(next)
+    setSearchParams(next, { replace: true })
+  }
+  const setNewClientOpen = (open: boolean) => updateSearch((next) => (open ? next.set('novo', '1') : next.delete('novo')))
+  const setClientsTab = (tab: 'restaurantes' | 'usuarios') => updateSearch((next) => (tab === 'usuarios' ? next.set('aba', 'usuarios') : next.delete('aba')))
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [users, setUsers] = useState<AppUser[]>([])
   const [planConfigs, setPlanConfigs] = useState<PlanConfig[]>([])
@@ -278,6 +290,7 @@ export function ActivationPage() {
       setBusinessType('pizzeria')
       setPlan('Pro')
       setPassword('')
+      setNewClientOpen(false)
       toast.success('Cliente ativado e usuário administrador criado.')
     } catch (error) {
       if (tenant) await deleteTenant(tenant.id).catch(() => undefined)
@@ -556,7 +569,7 @@ export function ActivationPage() {
   )
 
   const clientGrid = 'lg:grid-cols-[minmax(200px,2fr)_150px_120px_72px_auto]'
-  const clientsSection = (
+  const restaurantsList = (
     <SaasCard>
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
@@ -639,32 +652,32 @@ export function ActivationPage() {
     </SaasCard>
   )
 
-  const activationForm = (
+  const newClientForm = (
     <form onSubmit={createClient}>
-      <SaasCard title="Novo cliente" description="O acesso e as categorias iniciais são configurados para o nicho escolhido.">
-        <div className="grid gap-3">
-          <Input value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} placeholder="Nome do restaurante" />
-          <Input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} placeholder="Responsável" />
-          <Input value={adminUsername} onChange={(event) => setAdminUsername(event.target.value)} placeholder="Usuário de login do admin (ex.: pizzaria.admin)" autoCapitalize="none" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-mail de contato" type="email" />
-            <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="WhatsApp" inputMode="tel" />
-          </div>
-          <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Cidade/UF" />
-          <FormField label="Nicho do negócio" hint={businessTypeOptions.find((option) => option.value === businessType)?.description}>
-            <select value={businessType} onChange={(event) => setBusinessType(event.target.value as BusinessType)} className="h-11 w-full border px-4 text-sm outline-none">
-              {businessTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </FormField>
-          <FormField label="Plano">
-            <select value={plan} onChange={(event) => setPlan(event.target.value as PlanKey)} className="h-11 w-full border px-4 text-sm outline-none">
-              {planOrder.map((item) => <option key={item} value={item}>{planPrices[item] === undefined ? planLabels[item] : `${planLabels[item]} · ${formatCurrency(planPrices[item])}/mês`}</option>)}
-            </select>
-          </FormField>
-          <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Senha inicial" type="password" />
+      <DialogTitle className="pr-8 font-heading text-xl font-bold text-slate-900">Novo cliente</DialogTitle>
+      <DialogDescription className="mt-1 text-sm text-slate-500">O acesso e as categorias iniciais são configurados para o nicho escolhido.</DialogDescription>
+      <div className="mt-5 grid gap-3">
+        <Input value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} placeholder="Nome do restaurante" />
+        <Input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} placeholder="Responsável" />
+        <Input value={adminUsername} onChange={(event) => setAdminUsername(event.target.value)} placeholder="Usuário de login do admin (ex.: pizzaria.admin)" autoCapitalize="none" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-mail de contato" type="email" />
+          <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="WhatsApp" inputMode="tel" />
         </div>
-        <Button type="submit" className="mt-5 w-full"><CheckCircle2 className="mr-2 h-4 w-4" />Ativar plano e criar acesso</Button>
-      </SaasCard>
+        <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Cidade/UF" />
+        <FormField label="Nicho do negócio" hint={businessTypeOptions.find((option) => option.value === businessType)?.description}>
+          <select value={businessType} onChange={(event) => setBusinessType(event.target.value as BusinessType)} className="h-11 w-full border px-4 text-sm outline-none">
+            {businessTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </FormField>
+        <FormField label="Plano">
+          <select value={plan} onChange={(event) => setPlan(event.target.value as PlanKey)} className="h-11 w-full border px-4 text-sm outline-none">
+            {planOrder.map((item) => <option key={item} value={item}>{planPrices[item] === undefined ? planLabels[item] : `${planLabels[item]} · ${formatCurrency(planPrices[item])}/mês`}</option>)}
+          </select>
+        </FormField>
+        <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Senha inicial" type="password" />
+      </div>
+      <Button type="submit" className="mt-5 w-full"><CheckCircle2 className="mr-2 h-4 w-4" />Ativar plano e criar acesso</Button>
     </form>
   )
 
@@ -888,26 +901,16 @@ export function ActivationPage() {
     </SaasCard>
   )
 
-  const activationsSection = (
-    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]">
-      {activationForm}
-      <SaasCard title="Clientes recentes" description="Os últimos restaurantes cadastrados.">
-        <ul className="space-y-2.5">
-          {clientTenants.slice(0, 8).map((tenant) => (
-            <li key={tenant.id}>
-              <button type="button" onClick={() => navigate(`/saas/clientes/${tenant.id}`)} className="flex w-full items-center gap-3 rounded-xl border border-sa-border bg-sa-surface-2 p-3 text-left transition-colors hover:border-sa-accent hover:bg-sa-hover">
-                <Avatar name={tenant.restaurantName} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-sa-text">{tenant.restaurantName}</span>
-                  <span className="block truncate text-xs text-sa-muted">{tenant.city}</span>
-                </span>
-                <Pill tone="accent">{tenant.plan}</Pill>
-              </button>
-            </li>
-          ))}
-        </ul>
-        {clientTenants.length === 0 ? <EmptyBlock icon={<Building2 className="h-5 w-5" />} text="Nenhum cliente cadastrado." /> : null}
-      </SaasCard>
+  const clientsSection = (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Tabs value={clientsTab} onChange={setClientsTab} tabs={[{ value: 'restaurantes', label: 'Restaurantes', count: clientTenants.length }, { value: 'usuarios', label: 'Usuários', count: activeUsers.length }]} />
+        <Button type="button" onClick={() => setNewClientOpen(true)}><Plus className="mr-2 h-4 w-4" />Novo cliente</Button>
+      </div>
+      {clientsTab === 'usuarios' ? accessSection : restaurantsList}
+      <Dialog open={newClientOpen} onOpenChange={setNewClientOpen}>
+        <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">{newClientForm}</DialogContent>
+      </Dialog>
     </div>
   )
 
@@ -1044,7 +1047,7 @@ export function ActivationPage() {
         <SaasCard title="Atalhos">
           <div className="grid gap-2.5">
             {[
-              { label: 'Ativar novo cliente', detail: 'Cadastrar restaurante e criar o acesso', to: '/saas/ativacoes', icon: UserPlus },
+              { label: 'Novo cliente', detail: 'Cadastrar restaurante e criar o acesso', to: '/saas/clientes?novo=1', icon: UserPlus },
               { label: 'Ver financeiro', detail: 'Cobranças, recebimentos e atrasos', to: '/saas/financeiro', icon: CreditCard },
               { label: 'Abrir suporte', detail: 'Chamados dos lojistas', to: '/saas/suporte', icon: Users },
             ].map(({ label, detail, to, icon: Icon }) => (
@@ -1151,20 +1154,22 @@ export function ActivationPage() {
     </div>
   )
 
+  // Endereços das telas que foram juntadas: favoritos e links antigos seguem para o lugar novo.
+  const movedViews: Record<string, string> = { acessos: '/saas/clientes?aba=usuarios', ativacoes: '/saas/clientes?novo=1', leads: '/saas/comercial', configuracoes: '/saas/equipe' }
+  if (view && movedViews[view]) return <Navigate to={movedViews[view]} replace />
+
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite'
   const firstName = currentUser?.name?.split(' ')[0] ?? ''
   const viewTitles: Record<string, [string, string]> = {
     financeiro: ['Financeiro', 'Recebimentos, assinaturas e a saúde da carteira.'],
-    clientes: ['Clientes', 'Restaurantes da carteira e os planos contratados.'],
+    clientes: ['Clientes', 'Restaurantes da carteira, seus usuários e novos cadastros.'],
     'cliente-detalhe': [selectedTenant?.restaurantName ?? 'Cliente', 'Dados, acessos, assinatura e cobranças.'],
-    acessos: ['Acessos', 'Usuários dos restaurantes clientes.'],
     planos: ['Planos', 'Preços e textos usados na página de vendas e no checkout.'],
-    ativacoes: ['Ativações', 'Cadastre um novo restaurante e crie o primeiro acesso.'],
-    leads: ['Leads', 'Interessados que pediram contratação.'],
+    comercial: ['Comercial', 'Interessados que pediram contratação na página de vendas.'],
     suporte: ['Suporte', 'Chamados abertos pelos lojistas.'],
     auditoria: ['Auditoria', 'Registro das ações feitas no painel.'],
-    configuracoes: ['Configurações', 'Ajustes gerais da plataforma.'],
+    equipe: ['Equipe', 'Quem tem acesso a este painel e o que cada pessoa pode fazer.'],
   }
   const [pageTitle, pageDescription] = currentView ? viewTitles[currentView] ?? ['Painel SaaS', 'Administração da plataforma Vaija.'] : [`${greeting}${firstName ? `, ${firstName}` : ''}`, 'Veja como está a carteira do Vaija hoje.']
 
@@ -1174,14 +1179,12 @@ export function ActivationPage() {
 
       {currentView === 'cliente-detalhe' ? <div>{clientDetailSection}</div> : null}
       {currentView === 'financeiro' ? <div>{financialSection}</div> : null}
-      {currentView === 'acessos' ? <div>{accessSection}</div> : null}
       {currentView === 'clientes' ? <div>{clientsSection}</div> : null}
       {currentView === 'planos' ? <div>{plansSection}</div> : null}
-      {currentView === 'ativacoes' ? <div>{activationsSection}</div> : null}
-      {currentView === 'leads' ? <div>{leadsSection}</div> : null}
+      {currentView === 'comercial' ? <div>{leadsSection}</div> : null}
       {currentView === 'suporte' ? <div>{supportSection}</div> : null}
       {currentView === 'auditoria' ? <div>{auditSection}</div> : null}
-      {currentView === 'configuracoes' ? <div>{settingsSection}</div> : null}
+      {currentView === 'equipe' ? <div>{settingsSection}</div> : null}
 
       {!currentView ? overviewSection : null}
     </SaasLayout>

@@ -21,7 +21,6 @@ const routeLabels: Record<string, string> = {
   '/settings': 'Configurações',
   '/users': 'Equipe',
   '/saas': 'Plataforma',
-  '/activation': 'Plataforma',
   '/operator': 'Área do Operador',
 }
 

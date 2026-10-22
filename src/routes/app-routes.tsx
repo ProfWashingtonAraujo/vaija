@@ -14,7 +14,7 @@ const PosPage = lazy(() => import('@/pages/pos/pos-page').then((module) => ({ de
 const MenuPage = lazy(() => import('@/pages/menu/menu-page').then((module) => ({ default: module.MenuPage })))
 const ReportsPage = lazy(() => import('@/pages/reports/reports-page').then((module) => ({ default: module.ReportsPage })))
 const SettingsPage = lazy(() => import('@/pages/settings/settings-page').then((module) => ({ default: module.SettingsPage })))
-const ActivationPage = lazy(() => import('@/pages/activation/activation-page').then((module) => ({ default: module.ActivationPage })))
+const SaasPage = lazy(() => import('@/pages/saas/saas-page').then((module) => ({ default: module.SaasPage })))
 const CustomerOrderPage = lazy(() => import('@/pages/customer-order/customer-order-page').then((module) => ({ default: module.CustomerOrderPage })))
 const CustomerCheckoutPage = lazy(() => import('@/pages/customer-order/customer-checkout-page').then((module) => ({ default: module.CustomerCheckoutPage })))
 const CustomerTrackingPage = lazy(() => import('@/pages/customer-order/customer-tracking-page').then((module) => ({ default: module.CustomerTrackingPage })))
@@ -57,9 +57,9 @@ export function AppRoutes() {
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['admin']} allowedPlans={['Free', 'Start', 'Pro', 'Premium']} />}>
           <Route path="/activation" element={<Navigate to="/saas" replace />} />
-          <Route path="/saas" element={<ActivationPage />} />
-          <Route path="/saas/:view" element={<ActivationPage />} />
-          <Route path="/saas/clientes/:tenantId" element={<ActivationPage />} />
+          <Route path="/saas" element={<SaasPage />} />
+          <Route path="/saas/:view" element={<SaasPage />} />
+          <Route path="/saas/clientes/:tenantId" element={<SaasPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['admin']} allowedPlans={['Free', 'Start', 'Pro', 'Premium']} />}>
           <Route path="/subscription" element={<SubscriptionPage />} />

@@ -1,4 +1,4 @@
-import { Building2, ChevronLeft, ClipboardList, CreditCard, FileClock, Headphones, KeyRound, LayoutDashboard, LogOut, Settings, ShieldCheck, Users } from 'lucide-react'
+import { Briefcase, Building2, ChevronLeft, ClipboardList, CreditCard, FileClock, Headphones, LayoutDashboard, LogOut, Users } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth-context'
 import { cn } from '@/lib/utils'
@@ -14,19 +14,17 @@ const groups = [
     ],
   },
   {
-    label: 'Operação',
+    label: 'Atendimento',
     links: [
-      { to: '/saas/acessos', label: 'Acessos', icon: KeyRound },
-      { to: '/saas/ativacoes', label: 'Ativações', icon: ShieldCheck },
-      { to: '/saas/leads', label: 'Leads', icon: Users },
+      { to: '/saas/comercial', label: 'Comercial', icon: Briefcase },
       { to: '/saas/suporte', label: 'Suporte', icon: Headphones },
     ],
   },
   {
     label: 'Sistema',
     links: [
+      { to: '/saas/equipe', label: 'Equipe', icon: Users },
       { to: '/saas/auditoria', label: 'Auditoria', icon: FileClock },
-      { to: '/saas/configuracoes', label: 'Configurações', icon: Settings },
     ],
   },
 ]

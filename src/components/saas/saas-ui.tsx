@@ -123,3 +123,22 @@ export function FormField({ label, hint, children }: { label: string; hint?: str
     </label>
   )
 }
+
+export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { value: T; label: string; count?: number }[]; value: T; onChange: (value: T) => void }) {
+  return (
+    <div role="tablist" className="inline-flex gap-1 rounded-xl border border-sa-border bg-sa-surface-2 p-1">
+      {tabs.map((tab) => (
+        <button
+          key={tab.value}
+          type="button"
+          role="tab"
+          aria-selected={value === tab.value}
+          onClick={() => onChange(tab.value)}
+          className={cn('rounded-lg px-4 py-2 text-sm font-semibold transition-colors', value === tab.value ? 'bg-sa-surface text-sa-text shadow-sa' : 'text-sa-muted hover:text-sa-text')}
+        >
+          {tab.label}{tab.count !== undefined ? <span className="ml-2 text-xs opacity-70">{tab.count}</span> : null}
+        </button>
+      ))}
+    </div>
+  )
+}

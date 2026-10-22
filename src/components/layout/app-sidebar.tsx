@@ -64,7 +64,7 @@ const operatorLinks = [
   { to: '/pos', label: 'PDV', icon: CreditCard },
 ]
 
-const adminLinks = [{ to: '/activation', label: 'Ativação', icon: Rocket }]
+const adminLinks = [{ to: '/saas', label: 'Painel SaaS', icon: Rocket }]
 
 export function AppSidebar() {
   const navigate = useNavigate()

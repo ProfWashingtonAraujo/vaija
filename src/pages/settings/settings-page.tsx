@@ -389,7 +389,7 @@ function SettingsForm() {
                   </div>
                 </Row>
               ) : null}
-              <Row label="Plano" hint="A troca de plano é feita em Ativação.">
+              <Row label="Plano" hint="A troca de plano é feita em Assinatura.">
                 <p className="flex items-center gap-2 text-sm text-slate-800">
                   <span className={cn('h-2 w-2 rounded-full', tenant.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300')} />
                   {planLabels[tenant.plan]} · {tenant.status === 'active' ? 'assinatura ativa' : 'assinatura inativa'}

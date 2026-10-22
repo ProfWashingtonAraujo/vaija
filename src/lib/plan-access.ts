@@ -8,14 +8,14 @@ export const planLabels: Record<PlanKey, string> = {
 }
 
 export const planRoutes: Record<PlanKey, string[]> = {
-  Free: ['/orders', '/cash', '/settings', '/activation'],
-  Start: ['/orders', '/cash', '/settings', '/activation'],
-  Pro: ['/dashboard', '/orders', '/pos', '/cash', '/menu', '/deliveries', '/settings', '/activation'],
-  Premium: ['/dashboard', '/operator', '/orders', '/pos', '/cash', '/menu', '/deliveries', '/reports', '/settings', '/activation'],
+  Free: ['/orders', '/cash', '/settings'],
+  Start: ['/orders', '/cash', '/settings'],
+  Pro: ['/dashboard', '/orders', '/pos', '/cash', '/menu', '/deliveries', '/settings'],
+  Premium: ['/dashboard', '/operator', '/orders', '/pos', '/cash', '/menu', '/deliveries', '/reports', '/settings'],
 }
 
 export function canAccessPath(plan: PlanKey, path: string) {
-  if (path.startsWith('/saas') || path === '/activation' || path === '/support' || path === '/subscription') {
+  if (path.startsWith('/saas') || path === '/support' || path === '/subscription') {
     return true
   }
 
