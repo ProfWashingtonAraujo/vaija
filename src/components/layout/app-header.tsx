@@ -135,7 +135,7 @@ export function AppHeader({ title }: { title: string; description?: string }) {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-orange-100/60 bg-white/80 px-4 backdrop-blur-sm sm:px-6">
+    <header className="relative z-40 flex h-16 shrink-0 items-center justify-between border-b border-orange-100/60 bg-white/80 px-4 backdrop-blur-sm sm:px-6">
       {/* Left: breadcrumb (o menu no celular fica na barra inferior) */}
       <div className="flex items-center gap-3">
         {/* Breadcrumb */}

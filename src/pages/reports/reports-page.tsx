@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
+import { Bar, BarChart, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
+import { ReportLegend } from '@/components/reports/report-legend'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { ReportKpiCard } from '@/components/reports/report-kpi-card'
@@ -15,7 +16,18 @@ import { usePolling } from '@/lib/use-polling'
 import { formatCurrency } from '@/lib/formatters'
 import { buildReport, downloadCsv, printReport, reportPeriodLabels, reportToCsv, type ReportPeriod } from '@/lib/reports'
 
-const pieColors = ['#ff6b00', '#ffb26b', '#ffd4ad', '#fed7aa', '#fdba74']
+const pieColors = ['#ff6b00', '#0f766e', '#2563eb', '#a855f7', '#eab308', '#e11d48', '#64748b', '#84cc16']
+
+function PieWithLegend({ data, unit }: { data: Array<{ name: string; value: number }>; unit: string }) {
+  return (
+    <div className="flex h-full items-center gap-2">
+      <div className="h-full w-1/2 shrink-0">
+        <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data} dataKey="value" nameKey="name" innerRadius={45} outerRadius={80}>{data.map((entry, index) => <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer>
+      </div>
+      <ReportLegend items={data} colors={pieColors} unit={unit} />
+    </div>
+  )
+}
 const emptyState = <div className="flex h-full items-center justify-center text-sm text-slate-500">Sem dados no período.</div>
 
 export function ReportsPage() {
@@ -74,16 +86,16 @@ export function ReportsPage() {
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <ReportChartCard title="Receita por dia">
-          <ResponsiveContainer width="100%" height="100%"><BarChart data={report.dailyRevenue}><XAxis dataKey="day" tickLine={false} axisLine={false} /><Tooltip formatter={(value: unknown) => formatCurrency(Number(value ?? 0))} /><Bar dataKey="value" fill="#ff6b00" radius={[10, 10, 0, 0]} /></BarChart></ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%"><BarChart data={report.dailyRevenue}><XAxis dataKey="day" tickLine={false} axisLine={false} /><Tooltip formatter={(value: unknown) => formatCurrency(Number(value ?? 0))} /><Bar dataKey="value" fill="#ff6b00" radius={[10, 10, 0, 0]}><LabelList dataKey="value" position="top" formatter={(value: unknown) => (Number(value) > 0 ? formatCurrency(Number(value)) : '')} className="fill-slate-700 text-[11px] font-semibold" /></Bar></BarChart></ResponsiveContainer>
         </ReportChartCard>
         <ReportChartCard title="Pedidos por status">
-          {report.statusSeries.length === 0 ? emptyState : <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={report.statusSeries} dataKey="value" nameKey="name" innerRadius={60} outerRadius={95}>{report.statusSeries.map((entry, index) => <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer>}
+          {report.statusSeries.length === 0 ? emptyState : <PieWithLegend data={report.statusSeries} unit="pedidos" />}
         </ReportChartCard>
         <ReportChartCard title="Vendas por categoria">
-          {report.categorySeries.length === 0 ? emptyState : <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={report.categorySeries} dataKey="value" nameKey="name" innerRadius={60} outerRadius={95}>{report.categorySeries.map((entry, index) => <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer>}
+          {report.categorySeries.length === 0 ? emptyState : <PieWithLegend data={report.categorySeries} unit="un." />}
         </ReportChartCard>
         <ReportChartCard title="Métodos de pagamento">
-          {report.paymentSeries.length === 0 ? emptyState : <ResponsiveContainer width="100%" height="100%"><BarChart data={report.paymentSeries}><XAxis dataKey="name" tickLine={false} axisLine={false} /><Tooltip /><Bar dataKey="value" fill="#ffb26b" radius={[10, 10, 0, 0]} /></BarChart></ResponsiveContainer>}
+          {report.paymentSeries.length === 0 ? emptyState : <ResponsiveContainer width="100%" height="100%"><BarChart data={report.paymentSeries}><XAxis dataKey="name" tickLine={false} axisLine={false} /><Tooltip /><Bar dataKey="value" fill="#ffb26b" radius={[10, 10, 0, 0]}><LabelList dataKey="value" position="top" className="fill-slate-700 text-xs font-semibold" /></Bar></BarChart></ResponsiveContainer>}
         </ReportChartCard>
       </div>
       <div className="mt-6"><ProductsPerformanceTable products={report.products} /></div>
