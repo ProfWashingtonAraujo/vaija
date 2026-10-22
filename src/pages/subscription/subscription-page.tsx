@@ -41,6 +41,8 @@ const billingTypes: { value: BillingType; label: string }[] = [
 const planKeys: PlanKey[] = ['Free', 'Start', 'Pro', 'Premium']
 const fieldClass = 'h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100'
 const formatDate = (value: string) => new Date(value).toLocaleDateString('pt-BR')
+// Vencimento e pagamento chegam como data (meia-noite UTC); no fuso do Brasil cairiam no dia anterior.
+const formatCalendarDate = (value: string) => new Date(value).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
 
 function maskCpfCnpj(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 14)
@@ -114,7 +116,7 @@ export function SubscriptionPage() {
     <div key={invoice.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-orange-50/30 p-4">
       <div>
         <p className="font-semibold text-slate-900">{formatCurrency(invoice.amount)}</p>
-        <p className="mt-1 text-xs text-slate-500">Vence em {formatDate(invoice.dueDate)}{invoice.paidAt ? ` · paga em ${formatDate(invoice.paidAt)}` : ''}</p>
+        <p className="mt-1 text-xs text-slate-500">Vence em {formatCalendarDate(invoice.dueDate)}{invoice.paidAt ? ` · paga em ${formatCalendarDate(invoice.paidAt)}` : ''}</p>
       </div>
       <div className="flex items-center gap-3">
         <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', invoiceLabels[invoice.status].style)}>{invoiceLabels[invoice.status].label}</span>
