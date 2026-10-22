@@ -18,12 +18,11 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth, useTenant } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { readSettings, settingsUpdatedEvent, syncSettingsFromServer, type AppSettings } from '@/lib/settings'
 import { canAccessPath, planLabels } from '@/lib/plan-access'
-import { getTenantForUser, tenantsUpdatedEvent, type Tenant } from '@/lib/tenants-api'
 import { useSidebar } from '@/components/layout/sidebar-context'
 
 const navGroups = [
@@ -72,7 +71,7 @@ export function AppSidebar() {
   const { user, logout } = useAuth()
   const { collapsed, toggle } = useSidebar()
   const [settings, setSettings] = useState(() => readSettings())
-  const [tenant, setTenant] = useState(() => getTenantForUser(user))
+  const tenant = useTenant()
   const currentPlan = tenant.plan
   const canCreatePosOrder = canAccessPath(currentPlan, '/pos')
 
@@ -86,15 +85,6 @@ export function AppSidebar() {
 
   useEffect(() => {
     if (user && !user.isPlatformAdmin) void syncSettingsFromServer().catch(() => undefined)
-  }, [user])
-
-  useEffect(() => {
-    const updateTenant = (event: Event) => {
-      const tenants = (event as CustomEvent<Tenant[]>).detail
-      setTenant(tenants?.find((item) => item.id === user?.restaurantId) ?? getTenantForUser(user))
-    }
-    window.addEventListener(tenantsUpdatedEvent, updateTenant)
-    return () => window.removeEventListener(tenantsUpdatedEvent, updateTenant)
   }, [user])
 
   const resolvedGroups = user?.isPlatformAdmin

@@ -5,10 +5,9 @@ import { AdminLayout } from '@/components/layout/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth, useTenant } from '@/contexts/auth-context'
 import { supportFaq } from '@/data/support-faq'
 import { createTicket, fetchMyTickets, supportWhatsappUrl, type SupportTicket, type TicketPriority, type TicketStatus } from '@/lib/support-api'
-import { getTenantForUser } from '@/lib/tenants-api'
 import { usePolling } from '@/lib/use-polling'
 
 const statusStyles: Record<TicketStatus, string> = {
@@ -21,7 +20,7 @@ const fieldClass = 'rounded-2xl border border-orange-100 bg-white px-4 text-sm t
 
 export function SupportPage() {
   const { user } = useAuth()
-  const tenant = getTenantForUser(user)
+  const tenant = useTenant()
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')

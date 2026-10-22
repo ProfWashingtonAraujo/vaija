@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth, useTenant } from '@/contexts/auth-context'
 import { getPricingPlans } from '@/data/pricing-plans'
 import {
   billingErrorMessage, cancelSubscription, fetchBillingOverview, invoiceStatusLabels, startCheckout, subscriptionStatusLabels,
@@ -14,7 +14,6 @@ import {
 import { invalidateBillingAccess } from '@/lib/billing-access'
 import { formatCurrency } from '@/lib/formatters'
 import type { PlanKey } from '@/lib/plan-access'
-import { getTenantForUser, updateTenant } from '@/lib/tenants-api'
 import { cn } from '@/lib/utils'
 
 const billingTypes: { value: BillingType; label: string }[] = [
@@ -38,8 +37,8 @@ function maskCpfCnpj(value: string) {
 }
 
 export function SubscriptionPage() {
-  const { user } = useAuth()
-  const tenant = getTenantForUser(user)
+  const { refreshTenant } = useAuth()
+  const tenant = useTenant()
   const [searchParams] = useSearchParams()
   const requestedPlan = planKeys.find((key) => key.toLowerCase() === (searchParams.get('plano') ?? '').toLowerCase())
   const [overview, setOverview] = useState<BillingOverview | null>(null)
@@ -77,8 +76,7 @@ export function SubscriptionPage() {
     setSending(true)
     try {
       const result = await startCheckout({ plan, billingType, name: name.trim(), email: email.trim(), cpfCnpj })
-      // Enquanto o plano da loja ainda mora no navegador, espelha o plano contratado.
-      updateTenant(tenant.id, { plan })
+      await refreshTenant()
       setPayUrl(result.invoiceUrl)
       await load()
       toast.success(price === 0 ? 'Plano Free ativado.' : 'Assinatura criada. Enviamos a cobrança para o seu e-mail.')

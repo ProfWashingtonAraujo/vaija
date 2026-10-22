@@ -32,6 +32,9 @@ from routers import (
     support_router,
     billing_router,
     billing_webhook_router,
+    saas_router,
+    tenant_router,
+    public_leads_router,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -106,6 +109,9 @@ app.include_router(cash_router)
 app.include_router(support_router)
 app.include_router(billing_router)
 app.include_router(billing_webhook_router)
+app.include_router(saas_router)
+app.include_router(tenant_router)
+app.include_router(public_leads_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

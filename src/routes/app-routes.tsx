@@ -25,7 +25,7 @@ const SubscriptionPage = lazy(() => import('@/pages/subscription/subscription-pa
 const CourierPage = lazy(() => import('@/pages/courier/courier-page').then((module) => ({ default: module.CourierPage })))
 
 export function AppRoutes() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, tenant, isAuthenticated } = useAuth()
 
   return (
     <Suspense fallback={null}>
@@ -39,7 +39,7 @@ export function AppRoutes() {
         <Route path="/pedido/:tenantId/checkout" element={<CustomerCheckoutPage />} />
         <Route path="/pedido/:tenantId/acompanhar" element={<CustomerTrackingPage />} />
         <Route path="/entregador/:token" element={<CourierPage />} />
-        <Route path="/login" element={isAuthenticated ? <Navigate to={getHomePathForUser(user)} replace /> : <LoginPage />} />
+        <Route path="/login" element={isAuthenticated ? <Navigate to={getHomePathForUser(user, tenant)} replace /> : <LoginPage />} />
         <Route element={<ProtectedRoute allowedRoles={['operator']} allowedPlans={['Premium']} />}>
           <Route path="/operator" element={<OperatorPage />} />
         </Route>

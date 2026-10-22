@@ -12,6 +12,7 @@ from .couriers import couriers_router
 from .cash import cash_router
 from .support import support_router
 from .billing import billing_router, billing_webhook_router
+from .saas import saas_router, tenant_router, public_leads_router
 
 __all__ = [
     "auth_router",
@@ -34,4 +35,7 @@ __all__ = [
     "support_router",
     "billing_router",
     "billing_webhook_router",
+    "saas_router",
+    "tenant_router",
+    "public_leads_router",
 ]

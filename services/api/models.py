@@ -304,3 +304,47 @@ class Invoice(Base):
     invoice_url: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class Tenant(Base):
+    """Cliente (restaurante) do Vaija. O id é o mesmo tenant_id dos usuários e dos dados da loja."""
+    __tablename__ = "tenants"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    restaurant_name: Mapped[str] = mapped_column(String, nullable=False)
+    owner_name: Mapped[str] = mapped_column(String, nullable=False, default="")
+    email: Mapped[str] = mapped_column(String, nullable=False, default="")
+    phone: Mapped[str] = mapped_column(String, nullable=False, default="")
+    city: Mapped[str] = mapped_column(String, nullable=False, default="")
+    business_type: Mapped[str] = mapped_column(String, nullable=False, default="pizzeria")
+    plan: Mapped[str] = mapped_column(String, nullable=False, default="Free")  # Free | Start | Pro | Premium
+    status: Mapped[str] = mapped_column(String, nullable=False, default="active")  # active | inactive
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class Lead(Base):
+    """Interessado que pediu para contratar um plano na página de vendas."""
+    __tablename__ = "leads"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    plan: Mapped[str] = mapped_column(String, nullable=False)
+    restaurant_name: Mapped[str] = mapped_column(String, nullable=False)
+    owner_name: Mapped[str] = mapped_column(String, nullable=False)
+    phone: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    city: Mapped[str] = mapped_column(String, nullable=False)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String, nullable=False, default="Novo")  # Novo | Contatado | Convertido | Perdido
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AuditLog(Base):
+    """Registro do que a equipe do SaaS fez no painel."""
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    action: Mapped[str] = mapped_column(String, nullable=False)
+    target: Mapped[str] = mapped_column(String, nullable=False, default="")
+    actor: Mapped[str] = mapped_column(String, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -1,11 +1,10 @@
 import { CreditCard, LayoutDashboard, Menu, ShoppingBag, Truck, UserCog } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth, useTenant } from '@/contexts/auth-context'
 import { MobileDrawer } from '@/components/shared/mobile-drawer'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { SidebarProvider } from '@/components/layout/sidebar-context'
 import { canAccessPath } from '@/lib/plan-access'
-import { getTenantForUser } from '@/lib/tenants-api'
 import { cn } from '@/lib/utils'
 
 const managerTabs = [
@@ -24,7 +23,7 @@ const operatorTabs = [
 /** Navegação inferior do painel no celular; o botão Menu abre o menu completo. */
 export function MobileTabBar() {
   const { user } = useAuth()
-  const plan = getTenantForUser(user).plan
+  const plan = useTenant().plan
   const tabs = user?.roleKey === 'operator' ? operatorTabs : managerTabs.filter((tab) => canAccessPath(plan, tab.to))
 
   return (

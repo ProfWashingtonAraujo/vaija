@@ -29,9 +29,9 @@ export function LoginPage() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const loggedUser = await login(values.username, values.password)
+      const { user: loggedUser, tenant: loggedTenant } = await login(values.username, values.password)
       toast.success('Login realizado com sucesso.')
-      navigate(location.state?.from?.pathname ?? getHomePathForUser(loggedUser), { replace: true })
+      navigate(location.state?.from?.pathname ?? getHomePathForUser(loggedUser, loggedTenant), { replace: true })
     } catch (error) {
       toast.error(error instanceof Error && error.message === 'invalid_credentials'
         ? 'Usuário ou senha inválidos.'

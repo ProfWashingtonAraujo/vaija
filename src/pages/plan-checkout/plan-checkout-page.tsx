@@ -6,28 +6,11 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
 import { Input } from '@/components/ui/input'
 import { getPricingPlans } from '@/data/pricing-plans'
+import { submitLead as sendLead } from '@/lib/saas-api'
+import type { PlanKey } from '@/lib/plan-access'
 import { cn } from '@/lib/utils'
 
-type PlanLead = {
-  id: number
-  plan: string
-  restaurantName: string
-  ownerName: string
-  phone: string
-  email: string
-  city: string
-  notes?: string
-  createdAt: string
-  status: 'Novo'
-}
-
-const planLeadsKey = 'vaija.planLeads'
 const salesWhatsapp = '5599999999999'
-
-function readPlanLeads() {
-  const storedLeads = localStorage.getItem(planLeadsKey)
-  return storedLeads ? JSON.parse(storedLeads) as PlanLead[] : []
-}
 
 export function PlanCheckoutPage() {
   const { user } = useAuth()
@@ -58,21 +41,18 @@ export function PlanCheckoutPage() {
       return
     }
 
-    const leads = readPlanLeads()
-    const lead: PlanLead = {
-      id: Math.max(0, ...leads.map((item) => item.id)) + 1,
-      plan: currentPlan.name,
+    const lead = {
+      plan: currentPlan.name as PlanKey,
       restaurantName: trimmedRestaurantName,
       ownerName: trimmedOwnerName,
       phone: trimmedPhone,
       email: trimmedEmail,
       city: trimmedCity,
       notes: notes.trim() || undefined,
-      createdAt: new Date().toISOString(),
-      status: 'Novo',
     }
 
-    localStorage.setItem(planLeadsKey, JSON.stringify([lead, ...leads]))
+    // O lead vai para o painel do dono; o WhatsApp abre na hora, sem esperar a resposta.
+    void sendLead(lead).catch(() => undefined)
     toast.success('Interesse registrado. Vamos abrir o WhatsApp comercial.')
 
     const message = encodeURIComponent(`Olá! Quero contratar o plano ${currentPlan.name} da Vaija. Restaurante: ${lead.restaurantName}. Responsável: ${lead.ownerName}. Cidade: ${lead.city}. WhatsApp: ${lead.phone}. E-mail: ${lead.email}.`)

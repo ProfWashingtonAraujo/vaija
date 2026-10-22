@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api-client'
+import { placeholderTenant, type Tenant } from '@/lib/tenants-api'
 
 export type AuthUser = {
   id: number
@@ -19,6 +20,11 @@ const localUsersKey = 'vaija.users'
 const offlineMode = import.meta.env.VITE_OFFLINE_MODE === 'true'
 
 type StoredUser = AuthUser & { password: string }
+
+// Modo offline (desenvolvimento): sem servidor, a loja libera tudo.
+function offlineTenant(user: AuthUser): Tenant {
+  return { ...placeholderTenant, id: user.tenantId, restaurantName: 'Vaija (offline)', plan: 'Premium' }
+}
 
 const rolePermissions: Record<string, string[]> = {
   admin: ['users:read', 'users:create', 'users:update', 'users:change-password', 'catalog:write', 'orders:write'],
@@ -144,7 +150,7 @@ export async function loginRequest(username: string, password: string) {
     if (!localUser) throw new Error('invalid_credentials')
     const publicUser = getPublicUser(localUser)
     localStorage.setItem(localSessionKey, JSON.stringify(publicUser))
-    return { user: publicUser }
+    return { user: publicUser, tenant: offlineTenant(publicUser) }
   }
 
   const tenantId = normalizedUsername === 'admin' ? 'admin' : undefined
@@ -155,10 +161,10 @@ export async function loginRequest(username: string, password: string) {
   }, false)
   if (response.status === 401) throw new Error('invalid_credentials')
   if (!response.ok) throw new Error('server_unavailable')
-  const result = await response.json() as { user: Omit<AuthUser, 'restaurantId'> }
+  const result = await response.json() as { user: Omit<AuthUser, 'restaurantId'>; tenant: Tenant }
   const user = normalizeRemoteUser(result.user)
   localStorage.setItem(localSessionKey, JSON.stringify(user))
-  return { user }
+  return { user, tenant: result.tenant }
 }
 
 export async function fetchMe() {
@@ -166,7 +172,8 @@ export async function fetchMe() {
 
   if (offlineMode) {
     if (!storedUser) throw new Error('failed_to_fetch_me')
-    return { user: JSON.parse(storedUser) as AuthUser }
+    const offlineUser = JSON.parse(storedUser) as AuthUser
+    return { user: offlineUser, tenant: offlineTenant(offlineUser) }
   }
 
   const response = await apiFetch('/api/auth/me')
@@ -174,10 +181,10 @@ export async function fetchMe() {
     localStorage.removeItem(localSessionKey)
     throw new Error('failed_to_fetch_me')
   }
-  const result = await response.json() as { user: Omit<AuthUser, 'restaurantId'> }
+  const result = await response.json() as { user: Omit<AuthUser, 'restaurantId'>; tenant: Tenant }
   const user = normalizeRemoteUser(result.user)
   localStorage.setItem(localSessionKey, JSON.stringify(user))
-  return { user }
+  return { user, tenant: result.tenant }
 }
 
 export async function logoutRequest() {
@@ -192,7 +199,7 @@ function normalizeRemoteUser(user: Omit<AuthUser, 'restaurantId'>): AuthUser {
   return {
     ...user,
     tenantId,
-    restaurantId: tenantId === 'default' ? 'taperas-pizzaria' : tenantId,
+    restaurantId: tenantId,
     isPlatformAdmin: tenantId === 'admin' && user.roleKey === 'admin',
   }
 }

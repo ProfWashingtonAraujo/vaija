@@ -19,7 +19,7 @@ export type AppUser = {
 
 function normalizeRemoteUser(user: AppUser): AppUser {
 	const tenantId = user.tenantId ?? 'default'
-	return { ...user, tenantId, restaurantId: tenantId === 'default' ? 'taperas-pizzaria' : tenantId }
+	return { ...user, tenantId, restaurantId: tenantId }
 }
 
 type StoredUser = AppUser & { password: string }

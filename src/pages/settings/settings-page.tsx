@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth, useTenant } from '@/contexts/auth-context'
 import { changeOwnPassword, createUser, fetchUsers, type AppUser } from '@/lib/users-api'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,6 @@ import { pushSettingsToServer, readSettings, saveSettings, syncSettingsFromServe
 import { planLabels } from '@/lib/plan-access'
 import { isPixConfigured, pixKeyTypeLabels, type PixKeyType } from '@/lib/pix'
 import { CouriersPanel } from '@/components/delivery/couriers-panel'
-import { getTenantForUser } from '@/lib/tenants-api'
 import { getPublicOrderUrl } from '@/lib/public-order-url'
 import { userErrorMessage, usernameHint, usernamePattern } from '@/lib/username'
 import { cn } from '@/lib/utils'
@@ -171,7 +170,7 @@ function SettingsForm() {
   const [restaurantLogo, setRestaurantLogo] = useState(storedSettings.restaurant.logo ?? '')
   const [brandColor, setBrandColor] = useState(normalizeHex(storedSettings.restaurant.brandColor))
   const [cepStatus, setCepStatus] = useState<string | null>(null)
-  const tenant = getTenantForUser(user)
+  const tenant = useTenant()
   const publicOrderUrl = user ? getPublicOrderUrl(user.tenantId) : ''
 
   // campos fora do react-hook-form (horários, entrega e logo) são comparados com o último estado salvo

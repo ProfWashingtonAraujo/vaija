@@ -1,7 +1,6 @@
-import type { AuthUser } from '@/lib/auth-api'
-import type { PlanKey } from '@/lib/plan-access'
-import { platformTenantId } from '@/lib/tenant-storage'
+import { apiFetch } from '@/lib/api-client'
 import type { BusinessType } from '@/lib/business-types'
+import type { PlanKey } from '@/lib/plan-access'
 
 export type TenantStatus = 'active' | 'inactive'
 
@@ -15,117 +14,124 @@ export type Tenant = {
   businessType: BusinessType
   plan: PlanKey
   status: TenantStatus
-  createdAt: string
+  createdAt: string | null
 }
 
-const tenantsKey = 'vaija.tenants'
-export const defaultTenantId = 'taperas-pizzaria'
-export const tenantsUpdatedEvent = 'vaija.tenants.updated'
+export type TenantInput = Omit<Tenant, 'id' | 'createdAt'>
 
-const platformTenant: Tenant = {
-  id: platformTenantId,
-  restaurantName: 'Vaija Administração SaaS',
-  ownerName: 'Washington',
-  email: 'admin@vaija.com.br',
-  phone: '(11) 4002-8922',
-  city: 'Sao Paulo/SP',
-  businessType: 'restaurant',
-  plan: 'Premium',
-  status: 'active',
-  createdAt: new Date(0).toISOString(),
-}
-
-const defaultTenant: Tenant = {
-  id: defaultTenantId,
-  restaurantName: 'Taperas Pizzaria',
-  ownerName: 'Washington',
-  email: 'contato@taperaspizzaria.com.br',
-  phone: '(11) 4002-8922',
-  city: 'Sao Paulo/SP',
+/** Enquanto o cadastro não chega do servidor: sem plano pago, sem nome. */
+export const placeholderTenant: Tenant = {
+  id: '',
+  restaurantName: '',
+  ownerName: '',
+  email: '',
+  phone: '',
+  city: '',
   businessType: 'pizzeria',
-  plan: 'Premium',
+  plan: 'Free',
   status: 'active',
-  createdAt: new Date(0).toISOString(),
+  createdAt: null,
 }
 
-function slugify(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-}
+/** Código de erro devolvido pelo backend ({ ok: false, error }). */
+export class TenantsError extends Error {
+  code: string
 
-function ensureTenantDefaults(tenants: Tenant[]) {
-  let nextTenants = tenants.map((tenant) => ({ ...tenant, businessType: tenant.businessType ?? 'pizzeria' as BusinessType }))
-
-  if (!nextTenants.some((tenant) => tenant.id === platformTenantId)) {
-    nextTenants = [platformTenant, ...nextTenants]
+  constructor(code: string) {
+    super(code)
+    this.code = code
   }
-
-  return nextTenants
 }
 
-export function readTenants() {
-  const storedTenants = localStorage.getItem(tenantsKey)
-  if (!storedTenants) {
-    localStorage.setItem(tenantsKey, JSON.stringify([platformTenant, defaultTenant]))
-    return [platformTenant, defaultTenant]
+const jsonHeaders = { 'Content-Type': 'application/json' }
+
+async function readJson<T>(response: Response) {
+  const data = await response.json().catch(() => ({})) as T & { error?: string }
+  if (!response.ok) throw new TenantsError(data.error ?? `tenants_request_failed:${response.status}`)
+  return data
+}
+
+export async function fetchTenants() {
+  return (await readJson<{ tenants: Tenant[] }>(await apiFetch('/api/platform/tenants'))).tenants
+}
+
+export async function fetchMyTenant() {
+  return (await readJson<{ tenant: Tenant }>(await apiFetch('/api/tenant/me'))).tenant
+}
+
+export async function createTenant(input: TenantInput) {
+  return (await readJson<{ tenant: Tenant }>(await apiFetch('/api/platform/tenants', { method: 'POST', headers: jsonHeaders, body: JSON.stringify(input) }))).tenant
+}
+
+export async function updateTenant(id: string, values: Partial<Pick<Tenant, 'restaurantName' | 'ownerName' | 'email' | 'phone' | 'city' | 'plan' | 'status'>>) {
+  return (await readJson<{ tenant: Tenant }>(await apiFetch(`/api/platform/tenants/${encodeURIComponent(id)}`, { method: 'PATCH', headers: jsonHeaders, body: JSON.stringify(values) }))).tenant
+}
+
+export async function deleteTenant(id: string) {
+  await readJson<object>(await apiFetch(`/api/platform/tenants/${encodeURIComponent(id)}`, { method: 'DELETE' }))
+}
+
+const legacyTenantsKey = 'vaija.tenants'
+const legacyImportedKey = 'vaija.tenants.importedToServer'
+const legacyPlatformId = 'vaija-saas'
+
+/** A loja padrão se chamava 'taperas-pizzaria' no navegador e 'default' no servidor. */
+const legacyIdAliases: Record<string, string> = { 'taperas-pizzaria': 'default' }
+
+/** Falso depois que os clientes do navegador foram enviados ao servidor (nesta máquina). */
+export function needsLegacyImport() {
+  try {
+    return !localStorage.getItem(legacyImportedKey)
+  } catch {
+    return true
   }
-
-  const tenants = ensureTenantDefaults(JSON.parse(storedTenants) as Tenant[])
-  localStorage.setItem(tenantsKey, JSON.stringify(tenants))
-  return tenants
 }
 
-export function saveTenants(tenants: Tenant[]) {
-  localStorage.setItem(tenantsKey, JSON.stringify(tenants))
-  window.dispatchEvent(new CustomEvent(tenantsUpdatedEvent, { detail: tenants }))
-}
-
-export function getTenantForUser(user: Pick<AuthUser, 'restaurantId' | 'email'> | null | undefined) {
-  const tenants = readTenants()
-  return tenants.find((tenant) => tenant.id === user?.restaurantId) ?? tenants.find((tenant) => Boolean(user?.email) && tenant.email.toLowerCase() === user?.email?.toLowerCase()) ?? tenants[0]
-}
-
-export function createTenant(input: Omit<Tenant, 'id' | 'createdAt'>) {
-  const tenants = readTenants()
-  const baseId = slugify(input.restaurantName) || `cliente-${Date.now()}`
-  let id = baseId
-  let suffix = 2
-
-  while (tenants.some((tenant) => tenant.id === id)) {
-    id = `${baseId}-${suffix}`
-    suffix += 1
+/** Clientes que o dono cadastrou antes de existir cadastro no servidor (só existem neste navegador). */
+export function readLegacyTenants(): Tenant[] {
+  try {
+    if (localStorage.getItem(legacyImportedKey)) return []
+    const stored = localStorage.getItem(legacyTenantsKey)
+    if (!stored) return []
+    return (JSON.parse(stored) as Tenant[])
+      .filter((tenant) => tenant.id !== legacyPlatformId)
+      .map((tenant) => ({ ...tenant, id: legacyIdAliases[tenant.id] ?? tenant.id }))
+  } catch {
+    return []
   }
-
-  const tenant: Tenant = {
-    ...input,
-    id,
-    createdAt: new Date().toISOString(),
-  }
-
-  saveTenants([tenant, ...tenants])
-  return tenant
 }
 
-export function updateTenant(id: string, values: Partial<Omit<Tenant, 'id' | 'createdAt'>>) {
-  const tenants = readTenants()
-  const nextTenants = tenants.map((tenant) => tenant.id === id ? { ...tenant, ...values } : tenant)
-  saveTenants(nextTenants)
-  return nextTenants.find((tenant) => tenant.id === id)
+let importInFlight: Promise<{ imported: number; registeredFromUsers: number }> | null = null
+
+/** Envia os clientes do navegador ao servidor (ele também registra as lojas que já têm acesso). */
+export function importLegacyTenants(tenants: Tenant[]) {
+  // Chamadas ao mesmo tempo (o React executa o carregamento duas vezes em desenvolvimento) viram uma só.
+  importInFlight ??= sendLegacyTenants(tenants).finally(() => {
+    importInFlight = null
+  })
+  return importInFlight
 }
 
-export function deleteTenant(id: string) {
-  if (id === platformTenantId) {
-    throw new Error('cannot_delete_platform_tenant')
+async function sendLegacyTenants(tenants: Tenant[]) {
+  const result = await readJson<{ imported: number; registeredFromUsers: number }>(
+    await apiFetch('/api/platform/tenants/import', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ tenants }) }),
+  )
+  try {
+    localStorage.setItem(legacyImportedKey, '1')
+  } catch {
+    // sem armazenamento: tenta de novo na próxima visita, o servidor ignora o que já existe
   }
-  const tenants = readTenants()
-  const tenant = tenants.find((current) => current.id === id)
-  if (!tenant) {
-    throw new Error('tenant_not_found')
-  }
-  saveTenants(tenants.filter((current) => current.id !== id))
-  return tenant
+  return result
+}
+
+const errorMessages: Record<string, string> = {
+  invalid_business_type: 'Tipo de negócio inválido.',
+  tenant_not_found: 'Cliente não encontrado.',
+  cannot_delete_platform_tenant: 'A conta da plataforma não pode ser excluída.',
+  gateway_rejected: 'Não foi possível cancelar a cobrança no Asaas. O cliente não foi excluído.',
+  gateway_unavailable: 'Não conseguimos falar com o Asaas agora. O cliente não foi excluído.',
+}
+
+export function tenantErrorMessage(error: unknown, fallback: string) {
+  return errorMessages[error instanceof TenantsError ? error.code : ''] ?? fallback
 }

@@ -19,7 +19,7 @@ import asaas
 from auth import CurrentAuth, PlatformAdmin
 from config import get_settings
 from database import get_db
-from models import Invoice, Subscription
+from models import Invoice, Subscription, Tenant
 
 logger = logging.getLogger(__name__)
 billing_router = APIRouter(prefix="/api/billing", tags=["billing"])
@@ -123,6 +123,15 @@ async def _upsert_invoice(db: AsyncSession, tenant_id: str, payment: dict, statu
     return invoice
 
 
+async def _set_tenant_plan(db: AsyncSession, tenant_id: str, plan: str, body: "CheckoutIn") -> None:
+    """O plano que libera as telas é o do cadastro do cliente, no servidor."""
+    tenant = await db.get(Tenant, tenant_id)
+    if tenant is None:
+        db.add(Tenant(id=tenant_id, restaurant_name=body.name, owner_name=body.name, email=body.email, plan=plan))
+    else:
+        tenant.plan = plan
+
+
 async def _sync_from_gateway(db: AsyncSession, sub: Subscription) -> None:
     """Reconcilia faturas e status com o Asaas; cobre webhook perdido ou ainda não configurado."""
     if not sub.asaas_subscription_id or sub.status == "cancelled":
@@ -189,6 +198,7 @@ async def checkout(body: CheckoutIn, auth: CurrentAuth, db: AsyncSession = Depen
             db.add(sub)
         sub.plan, sub.status, sub.billing_type = "Free", "active", None
         sub.asaas_subscription_id, sub.overdue_since = None, None
+        await _set_tenant_plan(db, auth.tenant_id, "Free", body)
         return {"ok": True, "subscription": _sub_to_dict(sub), "invoiceUrl": None}
 
     # Trial só na primeira assinatura paga do tenant.
@@ -222,6 +232,7 @@ async def checkout(body: CheckoutIn, auth: CurrentAuth, db: AsyncSession = Depen
     sub.plan, sub.billing_type = body.plan, body.billing_type
     sub.customer_name, sub.customer_email, sub.customer_cpf_cnpj = body.name, body.email, cpf_cnpj
     sub.trial_ends_at = trial_ends_at
+    await _set_tenant_plan(db, auth.tenant_id, body.plan, body)
     await db.flush()
 
     invoice_url = None

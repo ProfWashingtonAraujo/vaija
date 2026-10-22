@@ -1,15 +1,14 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth, useTenant } from '@/contexts/auth-context'
 import { BillingBlocked } from '@/components/shared/billing-blocked'
 import { useBillingAccess } from '@/lib/billing-access'
 import { getHomePathForUser } from '@/lib/navigation'
 import { canAccessPath, type PlanKey } from '@/lib/plan-access'
-import { getTenantForUser } from '@/lib/tenants-api'
 
 export function ProtectedRoute({ allowedRoles, allowedPlans }: { allowedRoles?: string[]; allowedPlans?: PlanKey[] }) {
   const { user, isAuthenticated, isLoading } = useAuth()
   const location = useLocation()
-  const tenant = getTenantForUser(user)
+  const tenant = useTenant()
   const currentPlan = tenant.plan
   const billing = useBillingAccess(user && !user.isPlatformAdmin ? user.id : undefined)
 
@@ -22,7 +21,7 @@ export function ProtectedRoute({ allowedRoles, allowedPlans }: { allowedRoles?: 
   }
 
   if (allowedRoles && (!user || !allowedRoles.includes(user.roleKey))) {
-    return <Navigate to={getHomePathForUser(user)} replace />
+    return <Navigate to={getHomePathForUser(user, tenant)} replace />
   }
 
   if (user?.isPlatformAdmin && !location.pathname.startsWith('/saas') && location.pathname !== '/activation') {
@@ -30,7 +29,7 @@ export function ProtectedRoute({ allowedRoles, allowedPlans }: { allowedRoles?: 
   }
 
   if ((location.pathname.startsWith('/saas') || location.pathname === '/activation') && !user?.isPlatformAdmin) {
-    return <Navigate to={getHomePathForUser(user)} replace />
+    return <Navigate to={getHomePathForUser(user, tenant)} replace />
   }
 
   if (tenant.status !== 'active' && !location.pathname.startsWith('/saas') && location.pathname !== '/activation') {
@@ -49,7 +48,7 @@ export function ProtectedRoute({ allowedRoles, allowedPlans }: { allowedRoles?: 
   }
 
   if ((allowedPlans && !allowedPlans.includes(currentPlan)) || !canAccessPath(currentPlan, location.pathname)) {
-    return <Navigate to={getHomePathForUser(user)} replace />
+    return <Navigate to={getHomePathForUser(user, tenant)} replace />
   }
 
   return <Outlet />

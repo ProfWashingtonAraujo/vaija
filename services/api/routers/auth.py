@@ -10,6 +10,7 @@ from typing import Annotated
 from database import get_db
 from models import User
 from schemas import LoginRequest, UserOut
+from tenants_service import tenant_payload
 from user_utils import normalize_username, user_to_dict
 from auth import (
     verify_password, new_session, rotate_session, delete_session,
@@ -60,7 +61,7 @@ async def login(
 
     access, refresh = await new_session(db, user)
     set_auth_cookies(response, access, refresh)
-    return {"ok": True, "user": _to_user_out(user), "tenantId": user.tenant_id}
+    return {"ok": True, "user": _to_user_out(user), "tenantId": user.tenant_id, "tenant": await tenant_payload(db, user.tenant_id)}
 
 
 @auth_router.post("/refresh")
@@ -74,7 +75,7 @@ async def refresh(
     user = await rotate_session(db, vaija_refresh_token)
     access, new_refresh = await new_session(db, user)
     set_auth_cookies(response, access, new_refresh)
-    return {"ok": True, "user": _to_user_out(user), "tenantId": user.tenant_id}
+    return {"ok": True, "user": _to_user_out(user), "tenantId": user.tenant_id, "tenant": await tenant_payload(db, user.tenant_id)}
 
 
 @auth_router.post("/logout")
@@ -97,4 +98,4 @@ async def me(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="user_not_found")
-    return {"ok": True, "user": _to_user_out(user), "tenantId": auth.tenant_id}
+    return {"ok": True, "user": _to_user_out(user), "tenantId": auth.tenant_id, "tenant": await tenant_payload(db, auth.tenant_id)}

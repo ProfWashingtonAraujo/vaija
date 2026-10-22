@@ -8,12 +8,12 @@ import { Input } from '@/components/ui/input'
 import { AccessChart } from '@/components/saas/access-chart'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { planLabels, type PlanKey } from '@/lib/plan-access'
-import { createTenant, deleteTenant, readTenants, updateTenant, type Tenant, type TenantStatus } from '@/lib/tenants-api'
-import { platformTenantId } from '@/lib/tenant-storage'
+import { createTenant, deleteTenant, fetchTenants, importLegacyTenants, needsLegacyImport, readLegacyTenants, tenantErrorMessage, updateTenant, type Tenant, type TenantStatus } from '@/lib/tenants-api'
 import { createPlatformUser, createTenantAdminUser, deleteTenantAccess, fetchAllUsers, impersonateUser, platformPermissionLabels, updatePlatformUser, updatePlatformUserPermissions, updateTenantAccess, type AppUser } from '@/lib/users-api'
 import { formatCurrency } from '@/lib/formatters'
-import { addAuditLog, readAuditLogs, readPlanConfigs, savePlanConfigs, type PlanConfig } from '@/lib/saas-admin-api'
-import { billingTypeLabels, cancelTenantSubscription, fetchAdminBilling, subscriptionStatusLabels, type AdminSubscription, type BillingInvoice, type SubscriptionStatus } from '@/lib/billing-api'
+import { readPlanConfigs, savePlanConfigs, type PlanConfig } from '@/lib/saas-admin-api'
+import { addAuditLog, deleteLead, fetchAuditLogs, fetchLeads, updateLeadStatus, type Lead, type LeadStatus, type SaasAuditLog } from '@/lib/saas-api'
+import { billingTypeLabels, fetchAdminBilling, subscriptionStatusLabels, type AdminSubscription, type BillingInvoice, type SubscriptionStatus } from '@/lib/billing-api'
 import { usePolling } from '@/lib/use-polling'
 import { useAuth } from '@/contexts/auth-context'
 import { cn } from '@/lib/utils'
@@ -59,7 +59,7 @@ export function ActivationPage() {
   const navigate = useNavigate()
   const { view, tenantId } = useParams()
   const currentView = tenantId ? 'cliente-detalhe' : view
-  const [tenants, setTenants] = useState<Tenant[]>(() => readTenants())
+  const [tenants, setTenants] = useState<Tenant[]>([])
   const [users, setUsers] = useState<AppUser[]>([])
   const [planConfigs, setPlanConfigs] = useState<PlanConfig[]>(() => readPlanConfigs())
   const [billingInvoices, setBillingInvoices] = useState<BillingInvoice[]>([])
@@ -71,7 +71,8 @@ export function ActivationPage() {
   const [ticketFilter, setTicketFilter] = useState<'all' | SupportTicket['status']>('all')
   const { user: currentUser } = useAuth()
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([])
-  const [auditLogs, setAuditLogs] = useState(() => readAuditLogs())
+  const [auditLogs, setAuditLogs] = useState<SaasAuditLog[]>([])
+  const [leads, setLeads] = useState<Lead[]>([])
   const [restaurantName, setRestaurantName] = useState('')
   const [ownerName, setOwnerName] = useState('')
   const [adminUsername, setAdminUsername] = useState('')
@@ -111,7 +112,7 @@ export function ActivationPage() {
     void fetchAllUsers().then((result) => setUsers(result.users))
   }, [tenants])
 
-  const clientTenants = tenants.filter((tenant) => tenant.id !== platformTenantId)
+  const clientTenants = tenants
   const filteredClientTenants = clientTenants.filter((tenant) => clientFilter === 'all' || tenant.plan === clientFilter || tenant.status === clientFilter)
   const activeTenants = clientTenants.filter((tenant) => tenant.status === 'active')
   const inactiveTenants = clientTenants.filter((tenant) => tenant.status === 'inactive')
@@ -173,25 +174,42 @@ export function ActivationPage() {
 
   const loadTickets = () => fetchAllTickets().then(setSupportTickets).catch(() => undefined)
 
+  const loadTenants = async () => {
+    try {
+      // Primeira abertura nesta máquina: leva ao servidor os clientes que só existiam no navegador.
+      if (needsLegacyImport()) await importLegacyTenants(readLegacyTenants())
+      setTenants(await fetchTenants())
+    } catch {
+      toast.error('Não foi possível carregar os clientes.')
+    }
+  }
+
+  const loadLeads = () => fetchLeads().then(setLeads).catch(() => undefined)
+  const loadAudit = () => fetchAuditLogs().then(setAuditLogs).catch(() => undefined)
+
   const refreshData = () => {
-    setTenants(readTenants())
+    void loadTenants()
     void fetchAllUsers().then((result) => setUsers(result.users))
     void loadBilling()
     void loadTickets()
-    setAuditLogs(readAuditLogs())
+    void loadLeads()
+    void loadAudit()
   }
 
   useEffect(() => {
+    void loadTenants()
     void loadBilling()
     void loadTickets()
+    void loadLeads()
+    void loadAudit()
   }, [])
 
   usePolling(loadBilling, 60_000)
   usePolling(loadTickets, 30_000)
+  usePolling(loadLeads, 60_000)
 
   const logAction = (action: string, target: string) => {
-    addAuditLog({ action, target, actor: 'Administrador SaaS' })
-    setAuditLogs(readAuditLogs())
+    void addAuditLog(action, target).then(loadAudit).catch(() => undefined)
   }
 
   const createClient = async (event: FormEvent<HTMLFormElement>) => {
@@ -215,7 +233,7 @@ export function ActivationPage() {
 
     let tenant: Tenant | undefined
     try {
-      tenant = createTenant({
+      tenant = await createTenant({
         restaurantName: trimmedRestaurantName,
         ownerName: trimmedOwnerName,
         email: trimmedEmail,
@@ -240,16 +258,20 @@ export function ActivationPage() {
       setPassword('')
       toast.success('Cliente ativado e usuário administrador criado.')
     } catch (error) {
-      if (tenant) deleteTenant(tenant.id)
-      toast.error(userErrorMessage(error, 'Não foi possível ativar o cliente.'))
+      if (tenant) await deleteTenant(tenant.id).catch(() => undefined)
+      toast.error(tenantErrorMessage(error, userErrorMessage(error, 'Não foi possível ativar o cliente.')))
     }
   }
 
-  const updateClient = (tenant: Tenant, values: { plan?: PlanKey; status?: TenantStatus }) => {
-    updateTenant(tenant.id, values)
-    refreshData()
-    logAction(values.plan ? 'Plano alterado' : 'Status alterado', `${tenant.restaurantName} · ${values.plan ? planLabels[values.plan] : values.status}`)
-    toast.success('Assinatura atualizada.')
+  const updateClient = async (tenant: Tenant, values: { plan?: PlanKey; status?: TenantStatus }) => {
+    try {
+      await updateTenant(tenant.id, values)
+      refreshData()
+      logAction(values.plan ? 'Plano alterado' : 'Status alterado', `${tenant.restaurantName} · ${values.plan ? planLabels[values.plan] : values.status}`)
+      toast.success('Cliente atualizado.')
+    } catch (error) {
+      toast.error(tenantErrorMessage(error, 'Não foi possível atualizar o cliente.'))
+    }
   }
 
   const accessClient = async (tenant: Tenant) => {
@@ -457,20 +479,25 @@ export function ActivationPage() {
     setEditingTenantCity('')
   }
 
-  const saveTenant = (event: FormEvent<HTMLFormElement>, tenant: Tenant) => {
+  const saveTenant = async (event: FormEvent<HTMLFormElement>, tenant: Tenant) => {
     event.preventDefault()
     if (!editingRestaurantName.trim() || !editingOwnerName.trim() || !editingTenantEmail.trim() || !editingTenantPhone.trim() || !editingTenantCity.trim()) {
       toast.error('Preencha restaurante, responsável, e-mail, telefone e cidade.')
       return
     }
     const updatedRestaurantName = editingRestaurantName.trim()
-    updateTenant(tenant.id, {
-      restaurantName: updatedRestaurantName,
-      ownerName: editingOwnerName.trim(),
-      email: editingTenantEmail.trim().toLowerCase(),
-      phone: editingTenantPhone.trim(),
-      city: editingTenantCity.trim(),
-    })
+    try {
+      await updateTenant(tenant.id, {
+        restaurantName: updatedRestaurantName,
+        ownerName: editingOwnerName.trim(),
+        email: editingTenantEmail.trim().toLowerCase(),
+        phone: editingTenantPhone.trim(),
+        city: editingTenantCity.trim(),
+      })
+    } catch (error) {
+      toast.error(tenantErrorMessage(error, 'Não foi possível salvar o cliente.'))
+      return
+    }
     cancelEditingTenant()
     refreshData()
     logAction('Cliente atualizado', updatedRestaurantName)
@@ -479,16 +506,17 @@ export function ActivationPage() {
 
   const removeTenant = async (tenant: Tenant, tenantUsers: AppUser[]) => {
     try {
-      await cancelTenantSubscription(tenant.id)
-      await Promise.all(tenantUsers.map((user) => deleteTenantAccess(user.id)))
-      deleteTenant(tenant.id)
-      if (editingTenantId === tenant.id) cancelEditingTenant()
-      refreshData()
-      logAction('Cliente excluído', tenant.restaurantName)
-      toast.success('Cliente e acessos vinculados excluídos.')
-    } catch {
-      toast.error('Não foi possível excluir o cliente.')
+      // O servidor cancela a cobrança no Asaas antes de excluir; se falhar, nada é removido.
+      await deleteTenant(tenant.id)
+    } catch (error) {
+      toast.error(tenantErrorMessage(error, 'Não foi possível excluir o cliente.'))
+      return
     }
+    await Promise.allSettled(tenantUsers.map((user) => deleteTenantAccess(user.id)))
+    if (editingTenantId === tenant.id) cancelEditingTenant()
+    refreshData()
+    logAction('Cliente excluído', tenant.restaurantName)
+    toast.success('Cliente e acessos vinculados excluídos.')
   }
 
   const summaryCards = (
@@ -853,7 +881,23 @@ export function ActivationPage() {
     </div>
   )
 
-  const leads = JSON.parse(localStorage.getItem('vaija.planLeads') ?? '[]') as Array<{ id: number; plan: string; restaurantName: string; ownerName: string; phone: string; email: string; city: string; createdAt: string; status: string }>
+  const leadStatusTones: Record<LeadStatus, PillTone> = { Novo: 'info', Contatado: 'warn', Convertido: 'ok', Perdido: 'neutral' }
+  const changeLeadStatus = async (lead: Lead, status: LeadStatus) => {
+    try {
+      const updated = await updateLeadStatus(lead.id, status)
+      setLeads((current) => current.map((item) => item.id === updated.id ? updated : item))
+    } catch {
+      toast.error('Não foi possível atualizar o lead.')
+    }
+  }
+  const removeLead = async (lead: Lead) => {
+    try {
+      await deleteLead(lead.id)
+      setLeads((current) => current.filter((item) => item.id !== lead.id))
+    } catch {
+      toast.error('Não foi possível excluir o lead.')
+    }
+  }
   const leadsSection = (
     <SaasCard title="Leads da página de vendas" description={`${leads.length} contato(s) de quem pediu para contratar`}>
       <div className="grid gap-3 lg:grid-cols-2">
@@ -866,11 +910,24 @@ export function ActivationPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <p className="truncate text-sm font-semibold text-sa-text">{lead.restaurantName}</p>
-                  <Pill tone="accent">{lead.plan}</Pill>
+                  <div className="flex shrink-0 items-center gap-1.5"><Pill tone={leadStatusTones[lead.status]}>{lead.status}</Pill><Pill tone="accent">{lead.plan}</Pill></div>
                 </div>
                 <p className="mt-0.5 text-sm text-sa-muted">{lead.ownerName} · {lead.city}</p>
-                <p className="mt-0.5 truncate text-xs text-sa-soft">{lead.email} · {lead.phone}</p>
-                {whatsapp ? <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-sa-accent-text hover:underline"><MessageCircle className="h-3.5 w-3.5" />Chamar no WhatsApp</a> : null}
+                <p className="mt-0.5 truncate text-xs text-sa-soft">{lead.email} · {lead.phone} · {new Date(lead.createdAt).toLocaleDateString('pt-BR')}</p>
+                {lead.notes ? <p className="mt-2 whitespace-pre-wrap text-sm text-sa-text-2">{lead.notes}</p> : null}
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {whatsapp ? <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-sa-accent-text hover:underline"><MessageCircle className="h-3.5 w-3.5" />Chamar no WhatsApp</a> : null}
+                  <select value={lead.status} onChange={(event) => void changeLeadStatus(lead, event.target.value as LeadStatus)} aria-label="Situação do lead" className="h-8 border px-2 text-xs font-semibold outline-none">
+                    <option>Novo</option><option>Contatado</option><option>Convertido</option><option>Perdido</option>
+                  </select>
+                  <ConfirmDialog
+                    trigger={<button type="button" aria-label={`Excluir lead ${lead.restaurantName}`} title="Excluir lead" className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-sa-bad transition-colors hover:bg-sa-bad-soft"><Trash2 className="h-4 w-4" /></button>}
+                    title="Excluir lead?"
+                    description={`O contato de ${lead.restaurantName} será removido da lista.`}
+                    confirmLabel="Excluir lead"
+                    onConfirm={() => { void removeLead(lead) }}
+                  />
+                </div>
               </div>
             </div>
           )
