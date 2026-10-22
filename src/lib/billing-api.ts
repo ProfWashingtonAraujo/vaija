@@ -33,6 +33,26 @@ export type BillingOverview = {
   trialDays: number
 }
 
+export type AdminSubscription = Subscription & { tenantId: string; customerName: string }
+
+export const subscriptionStatusLabels: Record<SubscriptionStatus, { label: string; style: string }> = {
+  none: { label: 'Sem assinatura', style: 'bg-slate-100 text-slate-600' },
+  trialing: { label: 'Teste grátis', style: 'bg-sky-50 text-sky-700' },
+  active: { label: 'Ativa', style: 'bg-emerald-50 text-emerald-700' },
+  past_due: { label: 'Pagamento em atraso', style: 'bg-red-50 text-red-700' },
+  cancelled: { label: 'Cancelada', style: 'bg-slate-100 text-slate-600' },
+}
+
+export const invoiceStatusLabels: Record<InvoiceStatus, { label: string; style: string }> = {
+  open: { label: 'Em aberto', style: 'bg-amber-50 text-amber-700' },
+  paid: { label: 'Paga', style: 'bg-emerald-50 text-emerald-700' },
+  overdue: { label: 'Vencida', style: 'bg-red-50 text-red-700' },
+  cancelled: { label: 'Cancelada', style: 'bg-slate-100 text-slate-600' },
+  refunded: { label: 'Estornada', style: 'bg-slate-100 text-slate-600' },
+}
+
+export const billingTypeLabels: Record<BillingType, string> = { PIX: 'PIX', BOLETO: 'Boleto', CREDIT_CARD: 'Cartão' }
+
 export type CheckoutInput = { plan: PlanKey; billingType: BillingType; name: string; email: string; cpfCnpj: string }
 export type CheckoutResult = { subscription: Subscription; invoiceUrl: string | null }
 
@@ -64,6 +84,18 @@ export async function startCheckout(input: CheckoutInput) {
 
 export async function cancelSubscription() {
   return readJson<{ subscription: Subscription }>(await apiFetch('/api/billing/cancel', { method: 'POST' }))
+}
+
+export async function fetchAdminBilling() {
+  const [subscriptions, invoices] = await Promise.all([
+    readJson<{ subscriptions: AdminSubscription[] }>(await apiFetch('/api/billing/admin/subscriptions')),
+    readJson<{ invoices: BillingInvoice[] }>(await apiFetch('/api/billing/admin/invoices')),
+  ])
+  return { subscriptions: subscriptions.subscriptions, invoices: invoices.invoices }
+}
+
+export async function cancelTenantSubscription(tenantId: string) {
+  return readJson<{ cancelled: boolean }>(await apiFetch(`/api/billing/admin/cancel/${encodeURIComponent(tenantId)}`, { method: 'POST' }))
 }
 
 const errorMessages: Record<string, string> = {

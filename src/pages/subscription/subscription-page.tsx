@@ -8,30 +8,14 @@ import { Input } from '@/components/ui/input'
 import { useAuth } from '@/contexts/auth-context'
 import { getPricingPlans } from '@/data/pricing-plans'
 import {
-  billingErrorMessage, cancelSubscription, fetchBillingOverview, startCheckout,
-  type BillingInvoice, type BillingOverview, type BillingType, type InvoiceStatus, type SubscriptionStatus,
+  billingErrorMessage, cancelSubscription, fetchBillingOverview, invoiceStatusLabels, startCheckout, subscriptionStatusLabels,
+  type BillingInvoice, type BillingOverview, type BillingType,
 } from '@/lib/billing-api'
 import { invalidateBillingAccess } from '@/lib/billing-access'
 import { formatCurrency } from '@/lib/formatters'
 import type { PlanKey } from '@/lib/plan-access'
 import { getTenantForUser, updateTenant } from '@/lib/tenants-api'
 import { cn } from '@/lib/utils'
-
-const statusLabels: Record<SubscriptionStatus, { label: string; style: string }> = {
-  none: { label: 'Sem assinatura', style: 'bg-slate-100 text-slate-600' },
-  trialing: { label: 'Teste grátis', style: 'bg-sky-50 text-sky-700' },
-  active: { label: 'Ativa', style: 'bg-emerald-50 text-emerald-700' },
-  past_due: { label: 'Pagamento em atraso', style: 'bg-red-50 text-red-700' },
-  cancelled: { label: 'Cancelada', style: 'bg-slate-100 text-slate-600' },
-}
-
-const invoiceLabels: Record<InvoiceStatus, { label: string; style: string }> = {
-  open: { label: 'Em aberto', style: 'bg-amber-50 text-amber-700' },
-  paid: { label: 'Paga', style: 'bg-emerald-50 text-emerald-700' },
-  overdue: { label: 'Vencida', style: 'bg-red-50 text-red-700' },
-  cancelled: { label: 'Cancelada', style: 'bg-slate-100 text-slate-600' },
-  refunded: { label: 'Estornada', style: 'bg-slate-100 text-slate-600' },
-}
 
 const billingTypes: { value: BillingType; label: string }[] = [
   { value: 'PIX', label: 'PIX' },
@@ -123,7 +107,7 @@ export function SubscriptionPage() {
         <p className="mt-1 text-xs text-slate-500">Vence em {formatCalendarDate(invoice.dueDate)}{invoice.paidAt ? ` · paga em ${formatCalendarDate(invoice.paidAt)}` : ''}</p>
       </div>
       <div className="flex items-center gap-3">
-        <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', invoiceLabels[invoice.status].style)}>{invoiceLabels[invoice.status].label}</span>
+        <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', invoiceStatusLabels[invoice.status].style)}>{invoiceStatusLabels[invoice.status].label}</span>
         {invoice.invoiceUrl && (invoice.status === 'open' || invoice.status === 'overdue') ? (
           <a href={invoice.invoiceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:text-orange-700">Pagar<ExternalLink className="h-3.5 w-3.5" /></a>
         ) : null}
@@ -141,7 +125,7 @@ export function SubscriptionPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Situação atual</p>
                 <h2 className="mt-1 font-heading text-2xl font-bold text-slate-900">{subscription?.plan ? `Plano ${subscription.plan}` : 'Nenhum plano contratado'}</h2>
               </div>
-              {subscription ? <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', statusLabels[subscription.status].style)}>{statusLabels[subscription.status].label}</span> : null}
+              {subscription ? <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', subscriptionStatusLabels[subscription.status].style)}>{subscriptionStatusLabels[subscription.status].label}</span> : null}
             </div>
             {subscription?.status === 'trialing' && subscription.trialEndsAt ? <p className="mt-3 text-sm text-slate-600">Seu teste grátis vai até {formatDate(subscription.trialEndsAt)}. A primeira cobrança vence nessa data.</p> : null}
             {subscription?.status === 'active' && subscription.currentPeriodEnd ? <p className="mt-3 text-sm text-slate-600">Próxima cobrança em {formatCalendarDate(subscription.currentPeriodEnd)}.</p> : null}

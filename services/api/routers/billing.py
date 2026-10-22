@@ -256,6 +256,21 @@ async def all_subscriptions(_: PlatformAdmin, db: AsyncSession = Depends(get_db)
     return {"ok": True, "subscriptions": [{"tenantId": s.tenant_id, "customerName": s.customer_name, **_sub_to_dict(s)} for s in subs]}
 
 
+@billing_router.post("/admin/cancel/{tenant_id}")
+async def admin_cancel(tenant_id: str, _: PlatformAdmin, db: AsyncSession = Depends(get_db)):
+    """Cancela a cobrança recorrente de uma loja (ex.: ao excluir o cliente), para o Asaas parar de cobrar."""
+    sub = await db.get(Subscription, tenant_id)
+    if sub is None or sub.status == "cancelled":
+        return {"ok": True, "cancelled": False}
+    if sub.asaas_subscription_id:
+        try:
+            await asaas.cancel_subscription(sub.asaas_subscription_id)
+        except asaas.AsaasError as exc:
+            return _error(502, exc.code)
+    sub.status = "cancelled"
+    return {"ok": True, "cancelled": True}
+
+
 @billing_router.get("/admin/invoices")
 async def all_invoices(_: PlatformAdmin, db: AsyncSession = Depends(get_db)):
     invoices = (await db.execute(select(Invoice).order_by(Invoice.due_date.desc()).limit(500))).scalars().all()

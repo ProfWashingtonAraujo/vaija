@@ -1,5 +1,4 @@
 import type { PlanKey } from '@/lib/plan-access'
-import type { Tenant } from '@/lib/tenants-api'
 
 export type SaasAuditLog = {
   id: number
@@ -24,23 +23,9 @@ export type PlanConfig = {
   description: string
 }
 
-export type BillingStatus = 'paid' | 'open' | 'overdue' | 'cancelled'
-
-export type BillingInvoice = {
-  id: string
-  tenantId: string
-  referenceMonth: string
-  amount: number
-  status: BillingStatus
-  dueDate: string
-  paidAt?: string
-  createdAt: string
-}
-
 const auditLogsKey = 'vaija.saas.auditLogs'
 const saasSettingsKey = 'vaija.saas.settings'
 const planConfigsKey = 'vaija.saas.planConfigs'
-const billingInvoicesKey = 'vaija.saas.billingInvoices'
 export const planConfigsUpdatedEvent = 'vaija.saas.planConfigs.updated'
 
 const defaultSettings: SaasSettings = {
@@ -105,48 +90,4 @@ export function readPlanConfigs() {
 export function savePlanConfigs(configs: PlanConfig[]) {
   localStorage.setItem(planConfigsKey, JSON.stringify(configs))
   window.dispatchEvent(new CustomEvent(planConfigsUpdatedEvent, { detail: configs }))
-}
-
-export function readBillingInvoices() {
-  return readList<BillingInvoice>(billingInvoicesKey)
-}
-
-export function saveBillingInvoices(invoices: BillingInvoice[]) {
-  writeList(billingInvoicesKey, invoices)
-}
-
-export function syncCurrentBillingInvoices(tenants: Tenant[], planPrices: Record<PlanKey, number>) {
-  const invoices = readBillingInvoices()
-  const referenceMonth = new Date().toISOString().slice(0, 7)
-  const existingKeys = new Set(invoices.map((invoice) => `${invoice.tenantId}:${invoice.referenceMonth}`))
-  const nextInvoices = [...invoices]
-
-  for (const tenant of tenants) {
-    const key = `${tenant.id}:${referenceMonth}`
-    if (existingKeys.has(key)) {
-      continue
-    }
-
-    const dueDate = new Date()
-    dueDate.setDate(10)
-
-    nextInvoices.unshift({
-      id: `${tenant.id}-${referenceMonth}`,
-      tenantId: tenant.id,
-      referenceMonth,
-      amount: planPrices[tenant.plan],
-      status: tenant.status === 'active' ? 'open' : 'cancelled',
-      dueDate: dueDate.toISOString(),
-      createdAt: new Date().toISOString(),
-    })
-  }
-
-  saveBillingInvoices(nextInvoices)
-  return nextInvoices
-}
-
-export function updateBillingInvoice(id: string, values: Partial<Pick<BillingInvoice, 'status' | 'paidAt'>>) {
-  const invoices = readBillingInvoices().map((invoice) => invoice.id === id ? { ...invoice, ...values } : invoice)
-  saveBillingInvoices(invoices)
-  return invoices
 }

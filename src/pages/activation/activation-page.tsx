@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { AlertTriangle, ArrowUpRight, Building2, CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, Eye, EyeOff, KeyRound, Pencil, ReceiptText, Trash2, TrendingUp, UserCog, UserPlus, Users, WalletCards, X } from 'lucide-react'
+import { AlertTriangle, ArrowUpRight, Building2, CalendarDays, CheckCircle2, CircleDollarSign, Clock3, CreditCard, ExternalLink, Eye, EyeOff, KeyRound, Pencil, ReceiptText, Trash2, TrendingUp, UserCog, UserPlus, Users, WalletCards, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { SaasLayout } from '@/components/layout/saas-layout'
@@ -12,7 +12,9 @@ import { createTenant, deleteTenant, readTenants, updateTenant, type Tenant, typ
 import { platformTenantId } from '@/lib/tenant-storage'
 import { createPlatformUser, createTenantAdminUser, deleteTenantAccess, fetchAllUsers, impersonateUser, platformPermissionLabels, updatePlatformUser, updatePlatformUserPermissions, updateTenantAccess, type AppUser } from '@/lib/users-api'
 import { formatCurrency } from '@/lib/formatters'
-import { addAuditLog, readAuditLogs, readBillingInvoices, readPlanConfigs, saveBillingInvoices, savePlanConfigs, syncCurrentBillingInvoices, updateBillingInvoice, type BillingInvoice, type PlanConfig } from '@/lib/saas-admin-api'
+import { addAuditLog, readAuditLogs, readPlanConfigs, savePlanConfigs, type PlanConfig } from '@/lib/saas-admin-api'
+import { billingTypeLabels, cancelTenantSubscription, fetchAdminBilling, invoiceStatusLabels, subscriptionStatusLabels, type AdminSubscription, type BillingInvoice } from '@/lib/billing-api'
+import { usePolling } from '@/lib/use-polling'
 import { fetchAllTickets, updateTicket, type SupportTicket } from '@/lib/support-api'
 import { businessTypeLabels, businessTypeOptions, type BusinessType } from '@/lib/business-types'
 import { isValidOptionalEmail, isValidUsername, normalizeUsername, userErrorMessage, usernameHint } from '@/lib/username'
@@ -25,6 +27,11 @@ const defaultPlanPrices: Record<PlanKey, number> = {
 }
 
 const planOrder: PlanKey[] = ['Free', 'Start', 'Pro', 'Premium']
+
+function SubscriptionBadge({ subscription }: { subscription?: AdminSubscription }) {
+  const info = subscriptionStatusLabels[subscription?.status ?? 'none']
+  return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${info.style}`}>{subscription ? `Cobrança: ${info.label}` : 'Sem cobrança'}</span>
+}
 
 function PasswordInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
   const [visible, setVisible] = useState(false)
@@ -50,7 +57,8 @@ export function ActivationPage() {
   const [tenants, setTenants] = useState<Tenant[]>(() => readTenants())
   const [users, setUsers] = useState<AppUser[]>([])
   const [planConfigs, setPlanConfigs] = useState<PlanConfig[]>(() => readPlanConfigs())
-  const [billingInvoices, setBillingInvoices] = useState<BillingInvoice[]>(() => readBillingInvoices())
+  const [billingInvoices, setBillingInvoices] = useState<BillingInvoice[]>([])
+  const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([])
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([])
   const [auditLogs, setAuditLogs] = useState(() => readAuditLogs())
   const [restaurantName, setRestaurantName] = useState('')
@@ -112,29 +120,37 @@ export function ActivationPage() {
       revenue: tenantsByPlan.length * planPrices[currentPlan],
     }
   })
-  const paidRevenue = billingInvoices.filter((invoice) => invoice.status === 'paid').reduce((sum, invoice) => sum + invoice.amount, 0)
-  const openRevenue = billingInvoices.filter((invoice) => invoice.status === 'open').reduce((sum, invoice) => sum + invoice.amount, 0)
-  const overdueRevenue = billingInvoices.filter((invoice) => invoice.status === 'overdue').reduce((sum, invoice) => sum + invoice.amount, 0)
+  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  const subscriptionByTenant = new Map(subscriptions.map((item) => [item.tenantId, item]))
+  const paidThisMonth = billingInvoices.filter((invoice) => invoice.status === 'paid' && invoice.paidAt?.slice(0, 7) === currentMonth)
+  const sumInvoices = (items: BillingInvoice[]) => items.reduce((sum, invoice) => sum + invoice.amount, 0)
+  const paidRevenue = sumInvoices(paidThisMonth)
+  const openRevenue = sumInvoices(billingInvoices.filter((invoice) => invoice.status === 'open'))
+  const overdueRevenue = sumInvoices(billingInvoices.filter((invoice) => invoice.status === 'overdue'))
   const billableRevenue = paidRevenue + openRevenue + overdueRevenue
   const collectionRate = billableRevenue ? Math.round(paidRevenue / billableRevenue * 100) : 0
   const maxPlanRevenue = Math.max(1, ...revenueByPlan.map((item) => item.revenue))
 
+  const loadBilling = () => fetchAdminBilling()
+    .then((result) => {
+      setSubscriptions(result.subscriptions)
+      setBillingInvoices(result.invoices)
+    })
+    .catch(() => undefined)
+
   const refreshData = () => {
-    const nextTenants = readTenants()
-    const nextClientTenants = nextTenants.filter((tenant) => tenant.id !== platformTenantId)
-    const nextInvoices = syncCurrentBillingInvoices(nextClientTenants, planPrices)
-    setTenants(nextTenants)
+    setTenants(readTenants())
     void fetchAllUsers().then((result) => setUsers(result.users))
-    setBillingInvoices(nextInvoices)
+    void loadBilling()
     void fetchAllTickets().then(setSupportTickets).catch(() => undefined)
     setAuditLogs(readAuditLogs())
   }
 
   useEffect(() => {
-    const nextClientTenants = tenants.filter((tenant) => tenant.id !== platformTenantId)
-    const nextPlanPrices = planConfigs.reduce((prices, config) => ({ ...prices, [config.key]: config.price }), defaultPlanPrices)
-    setBillingInvoices(syncCurrentBillingInvoices(nextClientTenants, nextPlanPrices))
-  }, [tenants, planConfigs])
+    void loadBilling()
+  }, [])
+
+  usePolling(loadBilling, 60_000)
 
   const logAction = (action: string, target: string) => {
     addAuditLog({ action, target, actor: 'Administrador SaaS' })
@@ -218,16 +234,8 @@ export function ActivationPage() {
 
   const savePlansConfiguration = () => {
     savePlanConfigs(planConfigs)
-    setBillingInvoices(syncCurrentBillingInvoices(clientTenants, planPrices))
     logAction('Planos configurados', 'Tabela de planos')
     toast.success('Planos salvos e publicados na landing page.')
-  }
-
-  const setInvoiceStatus = (invoice: BillingInvoice, status: BillingInvoice['status']) => {
-    const paidAt = status === 'paid' ? new Date().toISOString() : undefined
-    setBillingInvoices(updateBillingInvoice(invoice.id, { status, paidAt }))
-    logAction('Cobrança atualizada', `${invoice.referenceMonth} · ${status}`)
-    toast.success('Cobrança atualizada.')
   }
 
   const togglePlatformPermission = async (user: AppUser, permission: string) => {
@@ -434,9 +442,9 @@ export function ActivationPage() {
 
   const removeTenant = async (tenant: Tenant, tenantUsers: AppUser[]) => {
     try {
+      await cancelTenantSubscription(tenant.id)
       await Promise.all(tenantUsers.map((user) => deleteTenantAccess(user.id)))
       deleteTenant(tenant.id)
-      saveBillingInvoices(readBillingInvoices().filter((invoice) => invoice.tenantId !== tenant.id))
       if (editingTenantId === tenant.id) cancelEditingTenant()
       refreshData()
       logAction('Cliente excluído', tenant.restaurantName)
@@ -514,6 +522,7 @@ export function ActivationPage() {
                     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">{businessTypeLabels[tenant.businessType]}</span>
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{tenant.status === 'active' ? 'Ativo' : 'Inativo'}</span>
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{tenantUsers.length} acesso(s)</span>
+                    <SubscriptionBadge subscription={subscriptionByTenant.get(tenant.id)} />
                   </div>
                 </div>
               )}
@@ -594,6 +603,7 @@ export function ActivationPage() {
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{planLabels[selectedTenant.plan]}</span>
             <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{selectedTenant.status === 'active' ? 'Ativo' : 'Inativo'}</span>
+            <SubscriptionBadge subscription={subscriptionByTenant.get(selectedTenant.id)} />
           </div>
         </div>
         <div className="mt-6 grid gap-3 md:grid-cols-2">
@@ -622,7 +632,18 @@ export function ActivationPage() {
       <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)] xl:col-span-2">
         <h2 className="font-heading text-2xl font-bold text-slate-900">Cobranças</h2>
         <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          {selectedTenantInvoices.map((invoice) => <div key={invoice.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-slate-900">{invoice.referenceMonth} · {formatCurrency(invoice.amount)}</p><p className="mt-1 text-sm text-slate-500">Vencimento {new Date(invoice.dueDate).toLocaleDateString('pt-BR')}</p></div><span className="rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-semibold text-orange-700">{{ paid: 'Pago', open: 'Aberto', overdue: 'Inadimplente', cancelled: 'Cancelado' }[invoice.status]}</span></div><div className="mt-3 flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setInvoiceStatus(invoice, 'paid')}>Pago</Button><Button type="button" variant="outline" onClick={() => setInvoiceStatus(invoice, 'overdue')}>Inadimplente</Button></div></div>)}
+          {selectedTenantInvoices.map((invoice) => (
+            <div key={invoice.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-slate-900">{formatCurrency(invoice.amount)}{invoice.billingType ? ` · ${billingTypeLabels[invoice.billingType]}` : ''}</p>
+                  <p className="mt-1 text-sm text-slate-500">Vencimento {new Date(invoice.dueDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}{invoice.paidAt ? ` · paga em ${new Date(invoice.paidAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}` : ''}</p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${invoiceStatusLabels[invoice.status].style}`}>{invoiceStatusLabels[invoice.status].label}</span>
+              </div>
+              {invoice.invoiceUrl ? <a href={invoice.invoiceUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:text-orange-700">Abrir fatura<ExternalLink className="h-3.5 w-3.5" /></a> : null}
+            </div>
+          ))}
         </div>
       </section>
     </div>
@@ -659,7 +680,7 @@ export function ActivationPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: 'Recebido', value: paidRevenue, detail: `${billingInvoices.filter((invoice) => invoice.status === 'paid').length} cobranças pagas`, icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Recebido no mês', value: paidRevenue, detail: `${paidThisMonth.length} cobranças pagas`, icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-600' },
           { label: 'A receber', value: openRevenue, detail: `${billingInvoices.filter((invoice) => invoice.status === 'open').length} cobranças abertas`, icon: Clock3, tone: 'bg-amber-50 text-amber-600' },
           { label: 'Em atraso', value: overdueRevenue, detail: `${billingInvoices.filter((invoice) => invoice.status === 'overdue').length} cobranças vencidas`, icon: AlertTriangle, tone: 'bg-red-50 text-red-600' },
           { label: 'Ticket médio', value: activeTenants.length ? monthlyRecurringRevenue / activeTenants.length : 0, detail: 'Por cliente ativo', icon: WalletCards, tone: 'bg-orange-50 text-orange-600' },
@@ -710,27 +731,19 @@ export function ActivationPage() {
           <div className="divide-y divide-slate-100">
             {billingInvoices.map((invoice) => {
               const tenant = clientTenants.find((item) => item.id === invoice.tenantId)
-              const status = {
-                paid: { label: 'Pago', style: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-                open: { label: 'Em aberto', style: 'border-amber-200 bg-amber-50 text-amber-700' },
-                overdue: { label: 'Em atraso', style: 'border-red-200 bg-red-50 text-red-700' },
-                cancelled: { label: 'Cancelado', style: 'border-slate-200 bg-slate-100 text-slate-500' },
-              }[invoice.status]
+              const subscription = subscriptionByTenant.get(invoice.tenantId)
+              const status = invoiceStatusLabels[invoice.status]
               return (
                 <div key={invoice.id} className="p-5 transition-colors hover:bg-slate-50/60 sm:px-6">
                   <div className="grid gap-4 md:grid-cols-[minmax(170px,1.4fr)_100px_120px_150px] md:items-center">
-                    <div className="min-w-0"><p className="truncate font-semibold text-slate-900">{tenant?.restaurantName ?? 'Cliente'}</p><p className="mt-1 text-xs text-slate-400">Referência {invoice.referenceMonth}</p></div>
-                    <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Vencimento</p><p className="mt-1 text-sm font-medium text-slate-600 md:mt-0">{new Date(invoice.dueDate).toLocaleDateString('pt-BR')}</p></div>
+                    <div className="min-w-0"><p className="truncate font-semibold text-slate-900">{tenant?.restaurantName ?? subscription?.customerName ?? invoice.tenantId}</p><p className="mt-1 text-xs text-slate-400">{subscription?.plan ? `Plano ${subscription.plan}` : 'Plano não informado'}{invoice.billingType ? ` · ${billingTypeLabels[invoice.billingType]}` : ''}</p></div>
+                    <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Vencimento</p><p className="mt-1 text-sm font-medium text-slate-600 md:mt-0">{new Date(invoice.dueDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p></div>
                     <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 md:hidden">Valor</p><p className="mt-1 font-mono text-sm font-bold text-slate-900 md:mt-0">{formatCurrency(invoice.amount)}</p></div>
-                    <span className={`w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${status.style}`}>{status.label}</span>
+                    <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${status.style}`}>{status.label}</span>
                   </div>
                   <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-end">
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                      Atualizar status
-                      <select value={invoice.status} onChange={(event) => setInvoiceStatus(invoice, event.target.value as BillingInvoice['status'])} className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-                        <option value="paid">Pago</option><option value="open">Em aberto</option><option value="overdue">Em atraso</option><option value="cancelled">Cancelado</option>
-                      </select>
-                    </label>
+                    {invoice.paidAt ? <span className="text-xs text-slate-400 sm:mr-auto">Paga em {new Date(invoice.paidAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span> : null}
+                    {invoice.invoiceUrl ? <a href={invoice.invoiceUrl} target="_blank" rel="noopener noreferrer"><Button type="button" variant="ghost" className="h-9 justify-start px-3 text-xs sm:justify-center">Abrir fatura <ExternalLink className="ml-1.5 h-3.5 w-3.5" /></Button></a> : null}
                     {tenant ? <Button type="button" variant="ghost" className="h-9 justify-start px-3 text-xs sm:justify-center" onClick={() => navigate(`/saas/clientes/${tenant.id}`)}>Ver cliente <ArrowUpRight className="ml-1.5 h-3.5 w-3.5" /></Button> : null}
                   </div>
                 </div>
