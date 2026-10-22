@@ -1,10 +1,23 @@
-import { defaultPlanConfigs, type PlanConfig } from '@/lib/saas-api'
+import type { PlanKey } from '@/lib/plan-access'
+import type { PlanConfig } from '@/lib/saas-api'
 
-export const pricingPlans = [
+export type PricingPlan = {
+  name: PlanKey
+  /** Preço já formatado, vindo do servidor. */
+  price: string
+  /** Texto vindo do servidor. */
+  description: string
+  cta: string
+  highlight?: boolean
+  badge?: string
+  screens: string[]
+  features: string[]
+}
+
+/** Só o que é de vendas e não tem número: telas e benefícios. Preço, texto e disponibilidade vêm do servidor. */
+export const pricingPlans: Omit<PricingPlan, 'price' | 'description'>[] = [
   {
     name: 'Free',
-    price: 'R$ 0/mes',
-    description: 'Para testar o Vaija e receber os primeiros pedidos online sem custo mensal.',
     cta: 'Começar grátis',
     screens: [
       'Pedidos online',
@@ -22,8 +35,6 @@ export const pricingPlans = [
   },
   {
     name: 'Start',
-    price: 'R$ 79/mes',
-    description: 'Para pequenos negócios que querem organizar pedidos e cardápio.',
     cta: 'Começar no Start',
     screens: [
       'Cardápio online',
@@ -43,8 +54,6 @@ export const pricingPlans = [
   },
   {
     name: 'Pro',
-    price: 'R$ 149/mes',
-    description: 'Para restaurantes que precisam de PDV, delivery e relatórios completos.',
     cta: 'Assinar Plano Pro',
     highlight: true,
     badge: 'Mais escolhido',
@@ -70,8 +79,6 @@ export const pricingPlans = [
   },
   {
     name: 'Premium',
-    price: 'R$ 249/mes',
-    description: 'Para operações maiores que precisam de controle avançado e visão estratégica.',
     cta: 'Quero o Premium',
     screens: [
       'Painel geral',
@@ -98,18 +105,18 @@ export const pricingPlans = [
   },
 ]
 
-export function getPricingPlans(planConfigs: PlanConfig[] = defaultPlanConfigs) {
+export function formatPlanPrice(price: number) {
+  if (price === 0) return 'Grátis'
+  const value = Number.isInteger(price) ? String(price) : price.toFixed(2).replace('.', ',')
+  return `R$ ${value}/mês`
+}
 
-  const plans = pricingPlans.map((plan) => {
+/** Junta o que é de vendas com o catálogo do servidor (preço, descrição e se o plano aparece). */
+export function getPricingPlans(planConfigs: PlanConfig[]): PricingPlan[] {
+  const plans = pricingPlans.flatMap((plan) => {
     const config = planConfigs.find((item) => item.key === plan.name)
-    return {
-      ...plan,
-      price: config ? `R$ ${config.price}/mes` : plan.price,
-      description: config?.description || plan.description,
-      active: config?.active ?? true,
-    }
+    return config ? [{ plan: { ...plan, price: formatPlanPrice(config.price), description: config.description }, active: config.active }] : []
   })
-
-  const activePlans = plans.filter((plan) => plan.active)
-  return activePlans.length ? activePlans : plans
+  const visible = plans.filter((item) => item.active)
+  return (visible.length ? visible : plans).map((item) => item.plan)
 }

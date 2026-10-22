@@ -11,7 +11,7 @@ import { planLabels, type PlanKey } from '@/lib/plan-access'
 import { createTenant, deleteTenant, fetchTenants, importLegacyTenants, needsLegacyImport, readLegacyTenants, tenantErrorMessage, updateTenant, type Tenant, type TenantStatus } from '@/lib/tenants-api'
 import { createPlatformUser, createTenantAdminUser, deleteTenantAccess, fetchAllUsers, impersonateUser, platformPermissionLabels, updatePlatformUser, updatePlatformUserPermissions, updateTenantAccess, type AppUser } from '@/lib/users-api'
 import { formatCurrency } from '@/lib/formatters'
-import { addAuditLog, defaultPlanConfigs, deleteLead, fetchAuditLogs, fetchLeads, fetchPlanConfigs, savePlanConfigs, updateLeadStatus, type Lead, type LeadStatus, type PlanConfig, type SaasAuditLog } from '@/lib/saas-api'
+import { addAuditLog, deleteLead, fetchAuditLogs, fetchLeads, fetchPlanConfigs, savePlanConfigs, updateLeadStatus, type Lead, type LeadStatus, type PlanConfig, type SaasAuditLog } from '@/lib/saas-api'
 import { billingTypeLabels, fetchAdminBilling, subscriptionStatusLabels, type AdminSubscription, type BillingInvoice, type SubscriptionStatus } from '@/lib/billing-api'
 import { usePolling } from '@/lib/use-polling'
 import { useAuth } from '@/contexts/auth-context'
@@ -21,13 +21,6 @@ import { FeaturedStat, InvoiceTable, RevenueChart, SaasCard, StatTile, Subscript
 import { fetchAllTickets, updateTicket, type SupportTicket } from '@/lib/support-api'
 import { businessTypeLabels, businessTypeOptions, type BusinessType } from '@/lib/business-types'
 import { isValidOptionalEmail, isValidUsername, normalizeUsername, userErrorMessage, usernameHint } from '@/lib/username'
-
-const defaultPlanPrices: Record<PlanKey, number> = {
-  Free: 0,
-  Start: 79,
-  Pro: 149,
-  Premium: 249,
-}
 
 const planOrder: PlanKey[] = ['Free', 'Start', 'Pro', 'Premium']
 
@@ -86,7 +79,7 @@ export function ActivationPage() {
   const currentView = tenantId ? 'cliente-detalhe' : view
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [users, setUsers] = useState<AppUser[]>([])
-  const [planConfigs, setPlanConfigs] = useState<PlanConfig[]>(defaultPlanConfigs)
+  const [planConfigs, setPlanConfigs] = useState<PlanConfig[]>([])
   const [billingInvoices, setBillingInvoices] = useState<BillingInvoice[]>([])
   const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([])
   const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'open' | 'overdue' | 'paid' | 'cancelled'>('all')
@@ -141,7 +134,7 @@ export function ActivationPage() {
   const filteredClientTenants = clientTenants.filter((tenant) => clientFilter === 'all' || tenant.plan === clientFilter || tenant.status === clientFilter)
   const activeTenants = clientTenants.filter((tenant) => tenant.status === 'active')
   const inactiveTenants = clientTenants.filter((tenant) => tenant.status === 'inactive')
-  const planPrices = planConfigs.reduce((prices, config) => ({ ...prices, [config.key]: config.price }), defaultPlanPrices)
+  const planPrices = planConfigs.reduce<Partial<Record<PlanKey, number>>>((prices, config) => ({ ...prices, [config.key]: config.price }), {})
   const recurringSubscriptions = subscriptions.filter((item) => (item.status === 'active' || item.status === 'past_due') && item.price > 0)
   const monthlyRecurringRevenue = recurringSubscriptions.reduce((sum, item) => sum + item.price, 0)
   const averageTicket = recurringSubscriptions.length ? monthlyRecurringRevenue / recurringSubscriptions.length : 0
@@ -665,7 +658,7 @@ export function ActivationPage() {
           </FormField>
           <FormField label="Plano">
             <select value={plan} onChange={(event) => setPlan(event.target.value as PlanKey)} className="h-11 w-full border px-4 text-sm outline-none">
-              {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]} · {formatCurrency(planPrices[item])}/mês</option>)}
+              {planOrder.map((item) => <option key={item} value={item}>{planPrices[item] === undefined ? planLabels[item] : `${planLabels[item]} · ${formatCurrency(planPrices[item])}/mês`}</option>)}
             </select>
           </FormField>
           <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Senha inicial" type="password" />
@@ -876,6 +869,7 @@ export function ActivationPage() {
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-sa-accent-text" />
         <p>Estes preços valem para a página de vendas e para o checkout. Quem já tem assinatura ativa mantém o valor atual até trocar de plano; ao trocar o plano de um cliente em Clientes, a cobrança no Asaas é atualizada para o preço de agora.</p>
       </div>
+      {planConfigs.length === 0 ? <p className="text-sm text-sa-muted">Carregando os planos do servidor...</p> : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {planConfigs.map((config) => (
           <div key={config.key} className="rounded-xl border border-sa-border bg-sa-surface-2 p-4">

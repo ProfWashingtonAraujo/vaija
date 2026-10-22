@@ -67,14 +67,6 @@ export type PlanConfig = {
   description: string
 }
 
-/** Valores de partida enquanto o catálogo não chega do servidor (o servidor tem os mesmos padrões). */
-export const defaultPlanConfigs: PlanConfig[] = [
-  { key: 'Free', price: 0, active: true, description: 'Plano gratuito para começar com pedidos online e configuração básica.' },
-  { key: 'Start', price: 79, active: true, description: 'Entrada para pedido online e operação simples.' },
-  { key: 'Pro', price: 149, active: true, description: 'Operação com painel, PDV, pedidos e cardápio.' },
-  { key: 'Premium', price: 249, active: true, description: 'Gestão completa com operador, controle de ingredientes e relatórios.' },
-]
-
 /** Preços e textos dos planos, públicos: a página de vendas e o checkout usam os mesmos valores da cobrança. */
 export async function fetchPlanConfigs() {
   return (await readJson<{ plans: PlanConfig[] }>(await apiFetch('/api/public/plans', undefined, false))).plans

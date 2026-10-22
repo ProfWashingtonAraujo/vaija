@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
 import { Input } from '@/components/ui/input'
+import type { PricingPlan } from '@/data/pricing-plans'
 import { usePricingPlans } from '@/data/use-pricing-plans'
 import { submitLead as sendLead } from '@/lib/saas-api'
 import type { PlanKey } from '@/lib/plan-access'
@@ -13,10 +14,28 @@ import { cn } from '@/lib/utils'
 const salesWhatsapp = '5599999999999'
 
 export function PlanCheckoutPage() {
+  const { plans, status, retry } = usePricingPlans()
+
+  if (plans.length === 0) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#fff8f1] px-4 text-center">
+        {status === 'error' ? (
+          <div className="max-w-sm rounded-[30px] border border-orange-100 bg-white p-6">
+            <p className="font-semibold text-slate-800">Não conseguimos carregar os planos agora.</p>
+            <Button className="mt-4" onClick={retry}>Tentar de novo</Button>
+          </div>
+        ) : <p className="text-sm font-medium text-slate-500">Carregando planos...</p>}
+      </main>
+    )
+  }
+
+  return <PlanCheckoutForm plans={plans} />
+}
+
+function PlanCheckoutForm({ plans }: { plans: PricingPlan[] }) {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const requestedPlan = searchParams.get('plano') ?? 'Pro'
-  const plans = usePricingPlans()
   const selectedPlan = plans.find((plan) => plan.name.toLowerCase() === requestedPlan.toLowerCase()) ?? plans[1] ?? plans[0]
   const [planName, setPlanName] = useState(selectedPlan.name)
   const [restaurantName, setRestaurantName] = useState('')
@@ -87,7 +106,7 @@ export function PlanCheckoutPage() {
         <form onSubmit={submitLead} className="rounded-[34px] border border-orange-100 bg-white p-6 shadow-[0_18px_42px_rgba(15,23,42,0.08)]">
           <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold">Dados para contratação</h2></div>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <label className="grid gap-2 text-sm font-semibold text-slate-700">Plano<select value={planName} onChange={(event) => setPlanName(event.target.value)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">{plans.map((plan) => <option key={plan.name} value={plan.name}>{plan.name} - {plan.price}</option>)}</select></label>
+            <label className="grid gap-2 text-sm font-semibold text-slate-700">Plano<select value={planName} onChange={(event) => setPlanName(event.target.value as PlanKey)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">{plans.map((plan) => <option key={plan.name} value={plan.name}>{plan.name} - {plan.price}</option>)}</select></label>
             <label className="grid gap-2 text-sm font-semibold text-slate-700">Restaurante<Input value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} placeholder="Nome do restaurante" /></label>
             <label className="grid gap-2 text-sm font-semibold text-slate-700">Responsável<Input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} placeholder="Seu nome" /></label>
             <label className="grid gap-2 text-sm font-semibold text-slate-700">WhatsApp<Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(00) 99999-9999" inputMode="tel" /></label>

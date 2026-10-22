@@ -53,6 +53,16 @@ async def get_db():
             await session.close()
 
 
+async def _seed_plan_configs(conn):
+    """Grava os planos padrão se ainda não existirem; depois disso o banco é a única fonte dos preços."""
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    from models import PlanConfig
+    from plans_service import DEFAULT_PLANS
+
+    rows = [{"key": key, **values} for key, values in DEFAULT_PLANS.items()]
+    await conn.execute(pg_insert(PlanConfig).values(rows).on_conflict_do_nothing(index_elements=[PlanConfig.key]))
+
+
 async def init_db():
     """Cria tabelas que ainda não existem (idempotente)."""
     from models import User, AuthSession, Category, Product, IngredientStock, Order, CashRegister, RestaurantSettings, Delivery, Courier, CourierPayout, CashSession, CashMovement, Subscription, Invoice, Tenant, Lead, AuditLog, PlanConfig  # noqa: F401
@@ -60,6 +70,7 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
         # create_all não altera tabelas existentes: colunas novas entram aqui.
         await conn.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS ingredients JSONB NOT NULL DEFAULT '[]'::jsonb"))
+        await _seed_plan_configs(conn)
         await conn.execute(text("ALTER TABLE ingredient_stock ADD COLUMN IF NOT EXISTS name TEXT"))
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS courier_name TEXT"))
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS finished_by TEXT"))

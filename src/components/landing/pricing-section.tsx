@@ -7,12 +7,26 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export function PricingSection() {
-  const plans = usePricingPlans()
+  const { plans, status, retry } = usePricingPlans()
 
   return (
     <section id="planos" className="py-20">
       <PageContainer constrained>
         <SectionHeader title="Escolha o plano ideal para o seu restaurante." description="Comece simples e evolua conforme sua operação cresce." />
+        {plans.length === 0 ? (
+          <div className="mt-10">
+            {status === 'error' ? (
+              <div className="flex flex-col items-center gap-3 rounded-[26px] border border-orange-100 bg-[#fffaf5] p-8 text-center">
+                <p className="text-slate-600">Não conseguimos carregar os planos agora.</p>
+                <Button variant="outline" onClick={retry}>Tentar de novo</Button>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" aria-busy="true" aria-label="Carregando planos">
+                {[0, 1, 2, 3].map((item) => <div key={item} className="h-96 animate-pulse rounded-[26px] border border-orange-100 bg-orange-50/60" />)}
+              </div>
+            )}
+          </div>
+        ) : null}
         <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => (
             <div key={plan.name} className={cn('relative rounded-[26px] border bg-white p-4 shadow-sm transition hover:-translate-y-1 sm:p-5', plan.highlight ? 'border-orange-400 bg-[linear-gradient(180deg,#fff8ef_0%,#fff_100%)] shadow-[0_18px_46px_rgba(255,107,0,0.14)]' : 'border-orange-100 hover:border-orange-300')}>

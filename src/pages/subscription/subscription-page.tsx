@@ -50,7 +50,7 @@ export function SubscriptionPage() {
   const [sending, setSending] = useState(false)
   const [payUrl, setPayUrl] = useState<string | null>(null)
 
-  const planDetails = usePricingPlans()
+  const { plans: planDetails } = usePricingPlans()
   const load = () => fetchBillingOverview().then((data) => {
     invalidateBillingAccess()
     setOverview(data)
