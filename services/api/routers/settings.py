@@ -3,10 +3,13 @@
 O painel lê e grava tudo; o link público do cliente só enxerga o que ele precisa (nome, telefone, logo
 e regras de entrega), nunca preferências internas, horários ou plano.
 """
+import base64
 import json
+import re
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -79,3 +82,54 @@ async def get_public_settings(tenant_id: str, db: AsyncSession = Depends(get_db)
     if payments:
         public["payments"] = {key: payments[key] for key in ("pix", "card", "cash", "pixKeyType", "pixKey", "pixName", "pixCity") if key in payments}
     return public
+
+
+_DATA_URL = re.compile(r"^data:(image/(?:png|jpeg|webp));base64,(.+)$", re.DOTALL)
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+async def _public_restaurant(db: AsyncSession, tenant_id: str) -> dict:
+    row = await db.get(RestaurantSettings, tenant_id)
+    return ((row.data if row else {}) or {}).get("restaurant") or {}
+
+
+@public_settings_router.get("/api/public/{tenant_id}/manifest.webmanifest")
+async def get_public_manifest(tenant_id: str, db: AsyncSession = Depends(get_db)):
+    """Manifesto do app instalável do cliente final: abre direto no cardápio da loja, não na landing page.
+
+    Precisa ser uma URL de verdade (não blob:), senão o Chrome do Android ignora a troca e instala com o
+    manifesto padrão da Vaija.
+    """
+    restaurant = await _public_restaurant(db, tenant_id)
+    name = str(restaurant.get("name") or "Pedidos")
+    color = restaurant.get("brandColor")
+    start_url = "/pedido" if tenant_id == "default" else f"/pedido/{quote(tenant_id, safe='')}"
+    logo = _DATA_URL.match(str(restaurant.get("logo") or ""))
+    icons = (
+        [{"src": f"/api/public/{quote(tenant_id, safe='')}/icon", "sizes": "512x512", "type": logo.group(1), "purpose": "any"}]
+        if logo else
+        [
+            {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png"},
+        ]
+    )
+    manifest = {
+        "name": name, "short_name": name[:12], "start_url": start_url, "scope": start_url, "display": "standalone",
+        "orientation": "portrait", "background_color": "#ffffff",
+        "theme_color": color if isinstance(color, str) and _HEX_COLOR.match(color) else "#ff6b00",
+        "icons": icons,
+    }
+    return Response(json.dumps(manifest), media_type="application/manifest+json", headers={"Cache-Control": "public, max-age=300"})
+
+
+@public_settings_router.get("/api/public/{tenant_id}/icon")
+async def get_public_icon(tenant_id: str, db: AsyncSession = Depends(get_db)):
+    """Logo da loja como imagem de verdade (a logo é guardada como data URL nas configurações)."""
+    logo = _DATA_URL.match(str((await _public_restaurant(db, tenant_id)).get("logo") or ""))
+    if not logo:
+        return RedirectResponse("/icon-512.png", status_code=302)
+    try:
+        content = base64.b64decode(logo.group(2))
+    except ValueError:
+        return RedirectResponse("/icon-512.png", status_code=302)
+    return Response(content, media_type=logo.group(1), headers={"Cache-Control": "public, max-age=300"})

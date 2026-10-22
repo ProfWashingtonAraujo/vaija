@@ -2,7 +2,7 @@
   "name": "Vaija",
   "short_name": "Vaija",
   "description": "Pedidos, entregas e gestão do seu restaurante.",
-  "start_url": "/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

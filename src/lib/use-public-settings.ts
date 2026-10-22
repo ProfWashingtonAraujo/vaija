@@ -20,6 +20,6 @@ export function usePublicSettings(tenantId: string) {
   const ready = state?.tenantId === tenantId
   const settings = ready ? state.settings : defaults
   useBrandTheme(ready ? settings.restaurant.brandColor : undefined)
-  useTenantManifest(tenantId, ready ? settings.restaurant.name : 'Pedidos', ready ? settings.restaurant.brandColor : undefined, ready ? settings.restaurant.logo : undefined)
+  useTenantManifest(tenantId)
   return { settings, ready }
 }

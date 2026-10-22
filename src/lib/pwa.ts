@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { normalizeHex } from '@/lib/brand'
 
 export function registerServiceWorker() {
   if (!('serviceWorker' in navigator) || !import.meta.env.PROD) return
@@ -7,28 +6,18 @@ export function registerServiceWorker() {
 }
 
 /** Manifest por loja: ao instalar o link do cliente, o app leva o nome, a cor e a página da própria loja. */
-export function useTenantManifest(tenantId: string, name: string, color: string | undefined, logo: string | undefined) {
+export function useTenantManifest(tenantId: string) {
   useEffect(() => {
     const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
     if (!link) return
     const original = link.href
-    const startUrl = tenantId === 'default' ? '/pedido' : `/pedido/${encodeURIComponent(tenantId)}`
-    const absolute = (path: string) => new URL(path, window.location.origin).toString()
-    const icons = logo?.startsWith('data:image/')
-      ? [{ src: logo, sizes: '512x512', type: logo.slice(5, logo.indexOf(';')) }]
-      : [
-        { src: absolute('/icon-192.png'), sizes: '192x192', type: 'image/png' },
-        { src: absolute('/icon-512.png'), sizes: '512x512', type: 'image/png' },
-      ]
-    const manifest = {
-      name, short_name: name.slice(0, 12), start_url: absolute(startUrl), scope: absolute(startUrl), display: 'standalone',
-      orientation: 'portrait', background_color: '#ffffff', theme_color: normalizeHex(color), icons,
-    }
-    const blobUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }))
-    link.href = blobUrl
-    return () => { link.href = original; URL.revokeObjectURL(blobUrl) }
-  }, [tenantId, name, color, logo])
+    link.href = tenantManifestUrl(tenantId)
+    return () => { link.href = original }
+  }, [tenantId])
 }
+
+/** Precisa ser uma URL real: o Chrome do Android não instala a partir de manifest blob:. */
+export const tenantManifestUrl = (tenantId: string) => `/api/public/${encodeURIComponent(tenantId)}/manifest.webmanifest`
 
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
 
