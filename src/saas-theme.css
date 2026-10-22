@@ -27,6 +27,8 @@
   --sa-bad-soft: #fdecec;
   --sa-info: #0369a1;
   --sa-info-soft: #e6f4fb;
+  --sa-violet: #6d28d9;
+  --sa-violet-soft: #f1ebfd;
   --sa-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 8px 24px rgba(28, 25, 23, 0.05);
 }
 
@@ -55,6 +57,8 @@ html.saas-dark {
   --sa-bad-soft: #2d1616;
   --sa-info: #7dd3fc;
   --sa-info-soft: #112431;
+  --sa-violet: #c4b5fd;
+  --sa-violet-soft: #1f1a33;
   --sa-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 

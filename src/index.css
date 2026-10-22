@@ -48,6 +48,8 @@
   --color-sa-bad: var(--sa-bad);
   --color-sa-bad-soft: var(--sa-bad-soft);
   --color-sa-info: var(--sa-info);
+  --color-sa-violet: var(--sa-violet);
+  --color-sa-violet-soft: var(--sa-violet-soft);
   --color-sa-info-soft: var(--sa-info-soft);
   --shadow-sa: var(--sa-shadow);
 }
