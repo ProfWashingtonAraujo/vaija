@@ -16,7 +16,9 @@ export type CashSessionInfo = {
   difference: number | null
 }
 
-export type CashMovementKind = 'sangria' | 'suprimento'
+/** O que se lança à mão; o acerto de entregador só nasce pelo botão "Receber". */
+export type ManualMovementKind = 'sangria' | 'suprimento'
+export type CashMovementKind = ManualMovementKind | 'acerto'
 
 export type CashMovement = {
   id: number
@@ -26,6 +28,19 @@ export type CashMovement = {
   note: string | null
   createdBy: string
   createdAt: string | null
+  /** Estornada: continua na lista, riscada, mas não conta no caixa. */
+  voided?: boolean
+  voidedBy?: string | null
+}
+
+export type CourierCash = {
+  outstandingTotal: number
+  outstanding: Array<{
+    name: string
+    count: number
+    total: number
+    orders: Array<{ orderId: number; customer: string; value: number; finishedAt: string | null }>
+  }>
 }
 
 export type CashReport = {
@@ -42,17 +57,29 @@ export type CashReport = {
   pix: { unconfirmedCount: number; unconfirmedTotal: number }
   cancelled: { count: number; total: number }
   movements: CashMovement[]
-  cash: { openingFloat: number; cashSales: number; suprimentos: number; sangrias: number; expected: number }
+  cash: {
+    openingFloat: number
+    cashSales: number
+    /** Vendas em dinheiro que entraram na gaveta. Relatórios antigos não têm: vale cashSales. */
+    drawerCashSales?: number
+    courierCashSales?: number
+    acertos?: number
+    suprimentos: number
+    sangrias: number
+    expected: number
+  }
+  couriers?: CourierCash
 }
 
 export type CashSessionSummary = CashSessionInfo & { salesCount: number; gross: number }
 
-export const movementReasons: Record<CashMovementKind, Array<[string, string]>> = {
-  sangria: [['cofre', 'Levar ao cofre'], ['gas', 'Gás'], ['gelo', 'Gelo'], ['compra', 'Compra rápida'], ['outro', 'Outro']],
+export const movementReasons: Record<ManualMovementKind, Array<[string, string]>> = {
+  sangria: [['cofre', 'Levar ao cofre'], ['gas', 'Gás'], ['gelo', 'Gelo'], ['compra', 'Compra rápida'], ['entregador', 'Pagamento a entregador'], ['outro', 'Outro']],
   suprimento: [['troco', 'Reforço de troco'], ['outro', 'Outro']],
 }
 
 export function reasonLabel(kind: CashMovementKind, reason: string) {
+  if (kind === 'acerto') return 'Acerto de entregador'
   return movementReasons[kind].find(([key]) => key === reason)?.[1] ?? reason
 }
 
@@ -71,6 +98,10 @@ export function cashErrorMessage(error: unknown) {
     if (error.code === 'cash_closed') return 'O caixa está fechado. Abra o caixa primeiro.'
     if (error.code === 'forbidden') return 'Só administrador ou gerente pode mexer no caixa.'
     if (error.code === 'invalid_reason') return 'Escolha um motivo válido.'
+    if (error.code === 'nothing_to_settle') return 'Não há mais dinheiro pendente com esse entregador. Atualize a tela.'
+    if (error.code === 'already_voided') return 'Essa movimentação já foi estornada.'
+    if (error.code === 'linked_to_payout') return 'Essa sangria veio do pagamento de um repasse. Para desfazer, use "Desfazer" em Entregas → Repasse.'
+    if (error.code === 'movement_not_found') return 'Movimentação não encontrada neste caixa.'
   }
   return 'Não foi possível concluir. Verifique a internet e tente de novo.'
 }
@@ -112,7 +143,7 @@ export async function openCash(openingFloat: number, note: string): Promise<Cash
   return data.report
 }
 
-export async function addCashMovement(kind: CashMovementKind, amount: number, reason: string, note: string): Promise<CashReport> {
+export async function addCashMovement(kind: ManualMovementKind, amount: number, reason: string, note: string): Promise<CashReport> {
   const data = await post<{ report: CashReport }>('/api/cash/movements', { kind, amount, reason, note: note.trim() || undefined })
   return data.report
 }
@@ -134,4 +165,23 @@ export async function fetchCashSession(id: number): Promise<CashReport> {
   const response = await apiFetch(`/api/cash/sessions/${id}`, { headers: { 'X-Tenant-Id': getTenantId() } })
   if (!response.ok) throw await failure(response)
   return (await response.json() as { report: CashReport }).report
+}
+
+/** Dinheiro de pedidos pagos em dinheiro que ainda está com os entregadores (aparece mesmo com o caixa fechado). */
+export async function fetchCourierCash(): Promise<CourierCash> {
+  const response = await apiFetch('/api/cash/couriers', { headers: { 'X-Tenant-Id': getTenantId() } })
+  if (!response.ok) throw await failure(response)
+  return await response.json() as CourierCash
+}
+
+/** Recebe o dinheiro de um entregador no caixa aberto. `amount` vazio = o total devido. */
+export async function settleCourierCash(courierName: string, amount?: number): Promise<CashReport> {
+  const data = await post<{ report: CashReport }>('/api/cash/settlements', { courierName, amount })
+  return data.report
+}
+
+/** Estorna uma movimentação do caixa aberto (continua na lista, riscada). */
+export async function voidCashMovement(id: number): Promise<CashReport> {
+  const data = await post<{ report: CashReport }>(`/api/cash/movements/${id}/void`, {})
+  return data.report
 }

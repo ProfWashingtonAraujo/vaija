@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import CurrentAuth
 from database import get_db
 from integrations import notify_order
-from models import Courier, CourierPayout, Delivery, Order, RestaurantSettings, User
+from models import CashMovement, Courier, CourierPayout, Delivery, Order, RestaurantSettings, User
+from .cash import _current_session
 from .orders import _order_to_dict
 
 delivery_router = APIRouter(tags=["delivery"])
@@ -304,6 +305,8 @@ class PayoutIn(BaseModel):
     courierName: str = Field(default="", max_length=60)
     start: str
     end: str
+    # paga com dinheiro da gaveta: registra uma sangria no caixa aberto
+    fromCash: bool = False
 
 
 def _payout_dict(payout: CourierPayout) -> dict:
@@ -314,6 +317,7 @@ def _payout_dict(payout: CourierPayout) -> dict:
         "count": payout.deliveries_count,
         "paidBy": payout.paid_by,
         "paidAt": _iso(payout.paid_at),
+        "fromCash": payout.movement_id is not None,
     }
 
 
@@ -340,6 +344,11 @@ async def create_payout(body: PayoutIn, auth: CurrentAuth, db: AsyncSession = De
         return _error(403, "forbidden")
     start_dt, end_dt = _parse_range(body.start, body.end)
     name = body.courierName.strip()
+    cash_session = None
+    if body.fromCash:
+        cash_session = await _current_session(db, auth.tenant_id)
+        if cash_session is None:
+            return _error(409, "cash_closed")
 
     query = select(Delivery).where(
         Delivery.tenant_id == auth.tenant_id,
@@ -366,6 +375,20 @@ async def create_payout(body: PayoutIn, auth: CurrentAuth, db: AsyncSession = De
         total += pay
 
     user = await db.get(User, auth.user_id)
+    who = (user.name or user.username) if user else None
+    movement = None
+    if cash_session is not None:
+        movement = CashMovement(
+            tenant_id=auth.tenant_id,
+            session_id=cash_session.id,
+            kind="sangria",
+            amount=round(total, 2),
+            reason="entregador",
+            note=f"Repasse · {name or 'Sem entregador informado'} · {len(rows)} {'entrega' if len(rows) == 1 else 'entregas'}",
+            created_by=who or "Operador",
+        )
+        db.add(movement)
+        await db.flush()
     payout = CourierPayout(
         tenant_id=auth.tenant_id,
         courier_name=name,
@@ -373,7 +396,8 @@ async def create_payout(body: PayoutIn, auth: CurrentAuth, db: AsyncSession = De
         deliveries_count=len(rows),
         period_start=start_dt,
         period_end=end_dt,
-        paid_by=(user.name or user.username) if user else None,
+        paid_by=who,
+        movement_id=movement.id if movement else None,
     )
     db.add(payout)
     await db.flush()
@@ -392,6 +416,15 @@ async def undo_payout(payout_id: int, auth: CurrentAuth, db: AsyncSession = Depe
     payout = await db.get(CourierPayout, payout_id)
     if payout is None or payout.tenant_id != auth.tenant_id:
         return _error(404, "payout_not_found")
+    if payout.movement_id is not None:
+        movement = await db.get(CashMovement, payout.movement_id)
+        if movement is not None and movement.voided_at is None:
+            session = await _current_session(db, auth.tenant_id)
+            if session is None or session.id != movement.session_id:
+                return _error(409, "payout_cash_closed")  # o caixa em que saiu esse dinheiro já foi fechado
+            user = await db.get(User, auth.user_id)
+            movement.voided_at = _now()
+            movement.voided_by = (user.name or user.username) if user else None
     await db.execute(update(Delivery).where(Delivery.tenant_id == auth.tenant_id, Delivery.payout_id == payout_id).values(payout_id=None))
     await db.execute(delete(CourierPayout).where(CourierPayout.id == payout_id))
     await db.flush()

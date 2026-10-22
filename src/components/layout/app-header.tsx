@@ -9,6 +9,7 @@ import { orderSourceIcons, orderSourceLabel, resolveOrderSource } from '@/lib/or
 import { formatCurrency } from '@/lib/formatters'
 import { usePolling } from '@/lib/use-polling'
 import { OpenCashDialog } from '@/components/cash/cash-dialogs'
+import { hoursOpenTooLong } from '@/components/cash/cash-report'
 import { cashRegisterUpdatedEvent, fetchCashRegister, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
 
 const routeLabels: Record<string, string> = {
@@ -107,6 +108,7 @@ export function AppHeader({ title }: { title: string; description?: string }) {
   const navigate = useNavigate()
   const [cashRegister, setCashRegister] = useState(() => readCashRegister())
   const [openCashDialog, setOpenCashDialog] = useState(false)
+  const forgottenHours = cashRegister.isOpen ? hoursOpenTooLong(cashRegister.openedAt) : null
   const watchOrders = Boolean(user && !user.isPlatformAdmin)
   const canManageCashRegister = user?.roleKey === 'admin' || user?.roleKey === 'manager'
   const pageLabel = routeLabels[location.pathname] ?? title
@@ -149,8 +151,8 @@ export function AppHeader({ title }: { title: string; description?: string }) {
         {/* Cash register */}
         {canManageCashRegister && (
           <div className="flex items-center gap-2">
-            <span className="hidden rounded-lg border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 sm:inline">
-              Caixa {cashRegister.isOpen ? 'aberto' : 'fechado'}
+            <span className={`hidden rounded-lg border px-2.5 py-1 text-xs font-semibold sm:inline ${forgottenHours !== null ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-orange-100 bg-orange-50 text-orange-700'}`}>
+              {forgottenHours !== null ? `Caixa aberto há ${forgottenHours} h` : `Caixa ${cashRegister.isOpen ? 'aberto' : 'fechado'}`}
             </span>
             <Button
               type="button"

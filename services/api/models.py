@@ -189,6 +189,8 @@ class Delivery(Base):
     courier_pay: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     # pagamento em que esta entrega foi quitada; vazio = ainda a pagar
     payout_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # acerto do dinheiro em mãos do entregador (pedido pago em dinheiro): movimentação do caixa que o recebeu
+    cash_movement_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -206,6 +208,8 @@ class CourierPayout(Base):
     period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     paid_by: Mapped[str | None] = mapped_column(String, nullable=True)
     paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # sangria do caixa que pagou este repasse; vazio = pago por fora do caixa
+    movement_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
 
 class CashSession(Base):
@@ -237,9 +241,11 @@ class CashMovement(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     tenant_id: Mapped[str] = mapped_column(String, nullable=False)
     session_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    kind: Mapped[str] = mapped_column(String, nullable=False)  # sangria | suprimento
+    kind: Mapped[str] = mapped_column(String, nullable=False)  # sangria | suprimento | acerto (dinheiro recebido de entregador)
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     reason: Mapped[str] = mapped_column(String, nullable=False)
     note: Mapped[str | None] = mapped_column(String, nullable=True)
     created_by: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    voided_by: Mapped[str | None] = mapped_column(String, nullable=True)

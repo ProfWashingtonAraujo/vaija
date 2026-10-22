@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { differenceLabel } from '@/components/cash/cash-report'
-import { addCashMovement, cashErrorMessage, closeCash, movementReasons, openCash, parseMoney, type CashMovementKind, type CashReport } from '@/lib/cash-api'
+import { addCashMovement, cashErrorMessage, closeCash, movementReasons, openCash, parseMoney, settleCourierCash, type CashReport, type ManualMovementKind } from '@/lib/cash-api'
 import { formatCurrency } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
 
@@ -73,13 +73,13 @@ export function OpenCashDialog({ open, onOpenChange, onOpened }: { open: boolean
   )
 }
 
-const movementCopy: Record<CashMovementKind, { title: string; description: string; cta: string }> = {
+const movementCopy: Record<ManualMovementKind, { title: string; description: string; cta: string }> = {
   sangria: { title: 'Sangria', description: 'Retirada de dinheiro do caixa, por exemplo para levar ao cofre ou pagar uma compra.', cta: 'Registrar sangria' },
   suprimento: { title: 'Suprimento', description: 'Dinheiro que você coloca no caixa, por exemplo para reforçar o troco.', cta: 'Registrar suprimento' },
 }
 
 /** Sangria (sai dinheiro) ou suprimento (entra dinheiro), com motivo. */
-export function MovementDialog({ kind, onClose, onSaved }: { kind: CashMovementKind | null; onClose: () => void; onSaved: (report: CashReport) => void }) {
+export function MovementDialog({ kind, onClose, onSaved }: { kind: ManualMovementKind | null; onClose: () => void; onSaved: (report: CashReport) => void }) {
   const [amountText, setAmountText] = useState('')
   const [reason, setReason] = useState('')
   const [note, setNote] = useState('')
@@ -191,6 +191,60 @@ export function CloseCashDialog({ report, onClose, onClosed }: { report: CashRep
             <Input value={note} onChange={(event) => setNote(event.target.value)} maxLength={120} placeholder="Ex: troco dado a mais na mesa 4" />
           </label>
           <Button type="submit" disabled={busy || counted === null}>{busy ? 'Fechando...' : 'Fechar caixa'}</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export type SettleTarget = { name: string; count: number; total: number }
+
+/** Acerto: o entregador volta e entrega o dinheiro dos pedidos pagos em dinheiro. Entra no caixa aberto. */
+export function SettleCourierDialog({ target, onClose, onSettled }: { target: SettleTarget | null; onClose: () => void; onSettled: (report: CashReport) => void }) {
+  const [amountText, setAmountText] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (target) setAmountText(target.total.toFixed(2).replace('.', ','))
+  }, [target])
+
+  const amount = parseMoney(amountText)
+  const difference = target && amount !== null ? Math.round((amount - target.total) * 100) / 100 : null
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!target || amount === null) {
+      toast.error('Informe o valor que o entregador entregou.')
+      return
+    }
+    setBusy(true)
+    try {
+      const report = await settleCourierCash(target.name, amount)
+      toast.success(`${formatCurrency(amount)} recebido de ${target.name || 'o entregador'} e lançado no caixa.`)
+      onSettled(report)
+      onClose()
+    } catch (error) {
+      toast.error(cashErrorMessage(error))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open={target !== null} onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="max-w-md">
+        <form onSubmit={submit} className="grid gap-5">
+          <div>
+            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-slate-900">Receber do entregador</DialogTitle>
+            <DialogDescription className="mt-2 text-sm leading-6 text-slate-500">
+              {target?.name || 'O entregador'} tem {formatCurrency(target?.total ?? 0)} de {target?.count ?? 0} {target?.count === 1 ? 'pedido pago' : 'pedidos pagos'} em dinheiro. Confira o valor que ele entregou: ele entra no dinheiro esperado do caixa.
+            </DialogDescription>
+          </div>
+          <MoneyField label="Valor entregue" value={amountText} onChange={setAmountText} autoFocus />
+          {difference !== null && Math.abs(difference) >= 0.005 ? (
+            <p className={cn('rounded-2xl px-4 py-3 text-center text-sm font-semibold', difference < 0 ? 'bg-rose-50 text-rose-700' : 'bg-sky-50 text-sky-700')}>{difference < 0 ? `Faltam ${formatCurrency(Math.abs(difference))} (fica anotado no acerto)` : `${formatCurrency(difference)} a mais (fica anotado no acerto)`}</p>
+          ) : null}
+          <Button type="submit" disabled={busy || amount === null}>{busy ? 'Recebendo...' : 'Receber e lançar no caixa'}</Button>
         </form>
       </DialogContent>
     </Dialog>

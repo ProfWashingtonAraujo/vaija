@@ -71,6 +71,8 @@ export type CourierPayout = {
   count: number
   paidBy: string | null
   paidAt: string | null
+  /** O dinheiro saiu do caixa (sangria registrada no caixa aberto). */
+  fromCash?: boolean
 }
 
 /** Pagamentos registrados que cobrem o período. */
@@ -81,20 +83,42 @@ export async function fetchCourierPayouts(start: string, end: string): Promise<C
 }
 
 /** Marca como pagas as entregas ainda a pagar de um entregador no período. */
-export async function createCourierPayout(courierName: string, start: string, end: string): Promise<CourierPayout> {
+export class PayoutError extends Error {
+  code: string
+
+  constructor(status: number, code: string) {
+    super(`courier_payout_failed:${status}:${code}`)
+    this.code = code
+  }
+}
+
+export function payoutErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof PayoutError) {
+    if (error.code === 'cash_closed') return 'O caixa está fechado. Abra o caixa para pagar com o dinheiro da gaveta.'
+    if (error.code === 'payout_cash_closed') return 'Esse pagamento saiu de um caixa que já foi fechado, então não dá para desfazer por aqui.'
+  }
+  return fallback
+}
+
+async function payoutFailure(response: Response) {
+  const body = await response.json().catch(() => ({})) as { error?: string }
+  return new PayoutError(response.status, body.error ?? 'unknown')
+}
+
+export async function createCourierPayout(courierName: string, start: string, end: string, fromCash = false): Promise<CourierPayout> {
   const response = await apiFetch('/api/deliveries/payouts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': getTenantId() },
-    body: JSON.stringify({ courierName, start, end }),
+    body: JSON.stringify({ courierName, start, end, fromCash }),
   })
-  if (!response.ok) throw new Error(`failed_to_create_courier_payout:${response.status}`)
+  if (!response.ok) throw await payoutFailure(response)
   return (await response.json() as { payout: CourierPayout }).payout
 }
 
 /** Desfaz um pagamento registrado por engano. */
 export async function undoCourierPayout(id: number) {
   const response = await apiFetch(`/api/deliveries/payouts/${id}`, { method: 'DELETE', headers: { 'X-Tenant-Id': getTenantId() } })
-  if (!response.ok) throw new Error(`failed_to_undo_courier_payout:${response.status}`)
+  if (!response.ok) throw await payoutFailure(response)
 }
 
 /** Gerente/administrador: quanto pagar a cada entregador entre `start` e `end` (ISO, fim exclusivo). */
