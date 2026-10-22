@@ -8,12 +8,11 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import CurrentAuth
 from database import get_db
-from models import CashRegister, User
+from models import CashRegister
 
 cash_register_router = APIRouter(tags=["cash-register"])
 public_cash_register_router = APIRouter(tags=["public"])
@@ -51,27 +50,12 @@ async def get_cash_register(auth: CurrentAuth, db: AsyncSession = Depends(get_db
 
 
 @cash_register_router.put("/api/cash-register")
-async def put_cash_register(body: CashRegisterUpdate, auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
+async def put_cash_register(body: CashRegisterUpdate, auth: CurrentAuth):
+    """Antigo interruptor aberto/fechado. Abrir e fechar agora passam por /api/cash/open e /api/cash/close
+    (fundo de troco e dinheiro contado); uma tela antiga que ainda chame isto recebe o motivo."""
     if auth.role_key not in MANAGER_ROLES:
         return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
-
-    user = (await db.execute(
-        select(User).where(User.id == auth.user_id, User.tenant_id == auth.tenant_id)
-    )).scalar_one_or_none()
-    who = user.name if user else "Operador"
-    now = datetime.now(timezone.utc)
-
-    row = await db.get(CashRegister, auth.tenant_id)
-    if row is None:
-        row = CashRegister(tenant_id=auth.tenant_id, is_open=False)
-        db.add(row)
-    row.is_open = body.isOpen
-    if body.isOpen:
-        row.opened_at, row.opened_by = now, who
-    else:
-        row.closed_at, row.closed_by = now, who
-    await db.flush()
-    return _state(row)
+    return JSONResponse({"ok": False, "error": "use_cash_open" if body.isOpen else "use_cash_close"}, status_code=409)
 
 
 @public_cash_register_router.get("/api/public/{tenant_id}/cash-register")

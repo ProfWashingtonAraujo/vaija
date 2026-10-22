@@ -9,6 +9,7 @@ from .cash_register import cash_register_router, public_cash_register_router
 from .settings import settings_router, public_settings_router
 from .delivery import delivery_router, courier_router, public_delivery_router
 from .couriers import couriers_router
+from .cash import cash_router
 
 __all__ = [
     "auth_router",
@@ -27,4 +28,5 @@ __all__ = [
     "courier_router",
     "public_delivery_router",
     "couriers_router",
+    "cash_router",
 ]

@@ -1,6 +1,7 @@
 import asyncio
 import re
 import secrets
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header
 from fastapi.responses import JSONResponse
@@ -17,6 +18,7 @@ from .catalog import blocked_items
 from schemas import ALLOWED_STATUSES, OrderIn, OrderPaidUpdate, OrderStatusUpdate, OrdersPayload
 
 orders_router = APIRouter(tags=["orders"])
+TERMINAL_STATUSES = ("Entregue", "Cancelado")
 public_orders_router = APIRouter(tags=["public"])
 settings = get_settings()
 
@@ -114,6 +116,11 @@ async def put_orders(payload: OrdersPayload, auth: CurrentAuth, db: AsyncSession
         if old_status is None or old_status != order.status:
             changed.append(order)
         values = _order_values(order, auth.tenant_id, index)
+        # carimba o fim do pedido: é isso que o caixa usa para saber em que turno a venda aconteceu
+        if order.status in TERMINAL_STATUSES and old_status not in TERMINAL_STATUSES:
+            values["finished_at"] = datetime.now(timezone.utc)
+        elif order.status not in TERMINAL_STATUSES and old_status in TERMINAL_STATUSES:
+            values["finished_at"] = None
         await db.execute(
             insert(Order).values(**values).on_conflict_do_update(
                 index_elements=[Order.id, Order.tenant_id],
@@ -170,6 +177,8 @@ async def update_order_status(
     if not order:
         return _error(404, "order_not_found")
 
+    if body.status in TERMINAL_STATUSES and order.status not in TERMINAL_STATUSES:
+        order.finished_at = datetime.now(timezone.utc)
     order.status = body.status
     await db.commit()
     data = _order_to_dict(order)

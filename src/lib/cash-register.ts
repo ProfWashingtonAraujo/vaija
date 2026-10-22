@@ -25,30 +25,6 @@ export function saveCashRegister(cashRegister: CashRegisterState) {
   window.dispatchEvent(new CustomEvent(cashRegisterUpdatedEvent, { detail: cashRegister }))
 }
 
-export function openCashRegister(userName: string) {
-  const nextCashRegister: CashRegisterState = {
-    isOpen: true,
-    openedAt: new Date().toISOString(),
-    openedBy: userName,
-  }
-
-  saveCashRegister(nextCashRegister)
-  return nextCashRegister
-}
-
-export function closeCashRegister(userName: string) {
-  const currentCashRegister = readCashRegister()
-  const nextCashRegister: CashRegisterState = {
-    ...currentCashRegister,
-    isOpen: false,
-    closedAt: new Date().toISOString(),
-    closedBy: userName,
-  }
-
-  saveCashRegister(nextCashRegister)
-  return nextCashRegister
-}
-
 const offlineMode = import.meta.env.VITE_OFFLINE_MODE === 'true'
 
 /**
@@ -59,19 +35,6 @@ export async function fetchCashRegister(): Promise<CashRegisterState> {
   if (offlineMode) return readCashRegister()
   const response = await apiFetch('/api/cash-register', { headers: { 'X-Tenant-Id': getTenantId() } })
   if (!response.ok) throw new Error(`failed_to_fetch_cash_register:${response.status}`)
-  const state = await response.json() as CashRegisterState
-  saveCashRegister(state)
-  return state
-}
-
-export async function setCashRegisterOpen(isOpen: boolean, userName: string): Promise<CashRegisterState> {
-  if (offlineMode) return isOpen ? openCashRegister(userName) : closeCashRegister(userName)
-  const response = await apiFetch('/api/cash-register', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Id': getTenantId() },
-    body: JSON.stringify({ isOpen }),
-  })
-  if (!response.ok) throw new Error(`failed_to_update_cash_register:${response.status}`)
   const state = await response.json() as CashRegisterState
   saveCashRegister(state)
   return state

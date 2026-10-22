@@ -55,7 +55,7 @@ async def get_db():
 
 async def init_db():
     """Cria tabelas que ainda não existem (idempotente)."""
-    from models import User, AuthSession, Category, Product, IngredientStock, Order, CashRegister, RestaurantSettings, Delivery, Courier, CourierPayout  # noqa: F401
+    from models import User, AuthSession, Category, Product, IngredientStock, Order, CashRegister, RestaurantSettings, Delivery, Courier, CourierPayout, CashSession, CashMovement  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # create_all não altera tabelas existentes: colunas novas entram aqui.
@@ -65,6 +65,7 @@ async def init_db():
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS finished_by TEXT"))
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS courier_pay NUMERIC(10,2)"))
         await conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS paid BOOLEAN NOT NULL DEFAULT FALSE"))
+        await conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS finished_at TIMESTAMPTZ"))
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS payout_id BIGINT"))
         await conn.execute(text("ALTER TABLE couriers ADD COLUMN IF NOT EXISTS pay_percent NUMERIC(5,2)"))
         await _migrate_users_to_username(conn)

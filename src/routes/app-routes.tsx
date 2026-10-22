@@ -18,6 +18,7 @@ const ActivationPage = lazy(() => import('@/pages/activation/activation-page').t
 const CustomerOrderPage = lazy(() => import('@/pages/customer-order/customer-order-page').then((module) => ({ default: module.CustomerOrderPage })))
 const CustomerCheckoutPage = lazy(() => import('@/pages/customer-order/customer-checkout-page').then((module) => ({ default: module.CustomerCheckoutPage })))
 const CustomerTrackingPage = lazy(() => import('@/pages/customer-order/customer-tracking-page').then((module) => ({ default: module.CustomerTrackingPage })))
+const CashPage = lazy(() => import('@/pages/cash/cash-page').then((module) => ({ default: module.CashPage })))
 const DeliveriesPage = lazy(() => import('@/pages/deliveries/deliveries-page').then((module) => ({ default: module.DeliveriesPage })))
 const CourierPage = lazy(() => import('@/pages/courier/courier-page').then((module) => ({ default: module.CourierPage })))
 
@@ -50,6 +51,7 @@ export function AppRoutes() {
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} allowedPlans={['Free', 'Start', 'Pro', 'Premium']} />}>
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/cash" element={<CashPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['admin']} allowedPlans={['Free', 'Start', 'Pro', 'Premium']} />}>
           <Route path="/activation" element={<Navigate to="/saas" replace />} />

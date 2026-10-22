@@ -118,6 +118,8 @@ class Order(Base):
     notes: Mapped[str] = mapped_column(String, nullable=False, default="")
     # pagamento confirmado pelo restaurante (ex.: Pix conferido no app do banco); só muda pelo endpoint próprio
     paid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # quando o pedido chegou ao fim (Entregue ou Cancelado): é por ele que a venda cai na sessão de caixa certa
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sort_index: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -204,3 +206,40 @@ class CourierPayout(Base):
     period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     paid_by: Mapped[str | None] = mapped_column(String, nullable=True)
     paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CashSession(Base):
+    """Um turno de caixa: da abertura (com fundo de troco) ao fechamento (com o dinheiro contado)."""
+    __tablename__ = "cash_sessions"
+    __table_args__ = (Index("cash_sessions_tenant_idx", "tenant_id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String, nullable=False)
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    opened_by: Mapped[str] = mapped_column(String, nullable=False)
+    opening_float: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
+    opening_note: Mapped[str | None] = mapped_column(String, nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    closing_note: Mapped[str | None] = mapped_column(String, nullable=True)
+    counted_cash: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    expected_cash: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    difference: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # relatório completo congelado no fechamento: o histórico não muda se pedidos forem editados depois
+    summary: Mapped[Any] = mapped_column(JSONB, nullable=True)
+
+
+class CashMovement(Base):
+    """Sangria (dinheiro que sai do caixa) ou suprimento (dinheiro que entra) dentro de uma sessão."""
+    __tablename__ = "cash_movements"
+    __table_args__ = (Index("cash_movements_session_idx", "tenant_id", "session_id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String, nullable=False)
+    session_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    kind: Mapped[str] = mapped_column(String, nullable=False)  # sangria | suprimento
+    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    reason: Mapped[str] = mapped_column(String, nullable=False)
+    note: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_by: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

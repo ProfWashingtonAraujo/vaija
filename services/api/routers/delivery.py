@@ -418,6 +418,7 @@ async def finish_delivery_manually(order_id: int, auth: CurrentAuth, db: AsyncSe
     delivery.latitude = delivery.longitude = delivery.accuracy = None  # não guarda a última posição
     delivery.courier_pay = _pay(order.delivery_fee, await _courier_percent(db, auth.tenant_id, delivery.courier_name))
     order.status = "Entregue"
+    order.finished_at = _now()
     await db.commit()
     await notify_order(_order_to_dict(order))
     return {"ok": True}
@@ -486,6 +487,7 @@ async def finish_delivery(token: str, db: AsyncSession = Depends(get_db)):
     changed = order.status not in ("Entregue", "Cancelado")
     if changed:
         order.status = "Entregue"
+        order.finished_at = _now()
     await db.commit()
     if changed:
         await notify_order(_order_to_dict(order))

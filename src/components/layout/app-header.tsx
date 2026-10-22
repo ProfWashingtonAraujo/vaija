@@ -1,7 +1,6 @@
 import { Bell, ChevronRight, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import { Button } from '@/components/ui/button'
@@ -9,7 +8,8 @@ import { checkNewOrders, clearAlerts, markAlertsRead, setAlertSound, useOrderAle
 import { orderSourceIcons, orderSourceLabel, resolveOrderSource } from '@/lib/order-source'
 import { formatCurrency } from '@/lib/formatters'
 import { usePolling } from '@/lib/use-polling'
-import { cashRegisterUpdatedEvent, fetchCashRegister, readCashRegister, setCashRegisterOpen, type CashRegisterState } from '@/lib/cash-register'
+import { OpenCashDialog } from '@/components/cash/cash-dialogs'
+import { cashRegisterUpdatedEvent, fetchCashRegister, readCashRegister, type CashRegisterState } from '@/lib/cash-register'
 
 const routeLabels: Record<string, string> = {
   '/dashboard': 'Painel Geral',
@@ -104,7 +104,9 @@ function NotificationBell() {
 export function AppHeader({ title }: { title: string; description?: string }) {
   const { user } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [cashRegister, setCashRegister] = useState(() => readCashRegister())
+  const [openCashDialog, setOpenCashDialog] = useState(false)
   const watchOrders = Boolean(user && !user.isPlatformAdmin)
   const canManageCashRegister = user?.roleKey === 'admin' || user?.roleKey === 'manager'
   const pageLabel = routeLabels[location.pathname] ?? title
@@ -124,15 +126,10 @@ export function AppHeader({ title }: { title: string; description?: string }) {
   }, [watchOrders])
   usePolling(() => { if (watchOrders) return checkNewOrders() })
 
-  const toggleCashRegister = async () => {
-    if (!user) return
-    const wantOpen = !cashRegister.isOpen
-    try {
-      setCashRegister(await setCashRegisterOpen(wantOpen, user.name))
-      toast.success(wantOpen ? 'Caixa aberto com sucesso.' : 'Caixa fechado com sucesso.')
-    } catch {
-      toast.error('Não foi possível alterar o caixa. Tente novamente.')
-    }
+  // abrir pede o fundo de troco aqui mesmo; fechar exige contar o dinheiro, então leva à tela do caixa
+  const toggleCashRegister = () => {
+    if (cashRegister.isOpen) navigate('/cash', { state: { close: true } })
+    else setOpenCashDialog(true)
   }
 
   return (
@@ -165,6 +162,8 @@ export function AppHeader({ title }: { title: string; description?: string }) {
             </Button>
           </div>
         )}
+
+        {canManageCashRegister ? <OpenCashDialog open={openCashDialog} onOpenChange={setOpenCashDialog} onOpened={() => navigate('/cash')} /> : null}
 
         {watchOrders ? <NotificationBell /> : null}
 
