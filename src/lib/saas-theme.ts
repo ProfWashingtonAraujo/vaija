@@ -20,8 +20,9 @@ export function useSaasTheme() {
 
   useEffect(() => {
     const root = document.documentElement
+    root.classList.add('saas-active')
     root.classList.toggle('saas-dark', theme === 'dark')
-    return () => root.classList.remove('saas-dark')
+    return () => root.classList.remove('saas-active', 'saas-dark')
   }, [theme])
 
   const setAndStore = useCallback((next: SaasTheme) => {

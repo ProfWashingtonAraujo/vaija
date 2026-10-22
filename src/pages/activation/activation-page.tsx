@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { AlertTriangle, ArrowUpRight, Building2, CheckCircle2, CircleDollarSign, Clock3, CreditCard, ExternalLink, Eye, EyeOff, KeyRound, Pencil, Search, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowUpRight, Building2, CheckCircle2, CircleDollarSign, Clock3, CreditCard, Eye, EyeOff, Info, KeyRound, LogIn, MessageCircle, Pencil, ReceiptText, Search, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { SaasLayout } from '@/components/layout/saas-layout'
@@ -13,10 +13,11 @@ import { platformTenantId } from '@/lib/tenant-storage'
 import { createPlatformUser, createTenantAdminUser, deleteTenantAccess, fetchAllUsers, impersonateUser, platformPermissionLabels, updatePlatformUser, updatePlatformUserPermissions, updateTenantAccess, type AppUser } from '@/lib/users-api'
 import { formatCurrency } from '@/lib/formatters'
 import { addAuditLog, readAuditLogs, readPlanConfigs, savePlanConfigs, type PlanConfig } from '@/lib/saas-admin-api'
-import { billingTypeLabels, cancelTenantSubscription, fetchAdminBilling, invoiceStatusLabels, subscriptionStatusLabels, type AdminSubscription, type BillingInvoice } from '@/lib/billing-api'
+import { billingTypeLabels, cancelTenantSubscription, fetchAdminBilling, subscriptionStatusLabels, type AdminSubscription, type BillingInvoice, type SubscriptionStatus } from '@/lib/billing-api'
 import { usePolling } from '@/lib/use-polling'
 import { useAuth } from '@/contexts/auth-context'
 import { cn } from '@/lib/utils'
+import { ActionMenu, Avatar, EmptyBlock, FilterPills, FormField, Pill, SearchBox, type PillTone } from '@/components/saas/saas-ui'
 import { FeaturedStat, InvoiceTable, RevenueChart, SaasCard, StatTile, SubscriptionMix, type SubscriptionMixCounts } from '@/components/saas/dashboard-parts'
 import { fetchAllTickets, updateTicket, type SupportTicket } from '@/lib/support-api'
 import { businessTypeLabels, businessTypeOptions, type BusinessType } from '@/lib/business-types'
@@ -31,9 +32,10 @@ const defaultPlanPrices: Record<PlanKey, number> = {
 
 const planOrder: PlanKey[] = ['Free', 'Start', 'Pro', 'Premium']
 
+const subscriptionTones: Record<SubscriptionStatus, PillTone> = { none: 'neutral', trialing: 'info', active: 'ok', past_due: 'bad', cancelled: 'neutral' }
+
 function SubscriptionBadge({ subscription }: { subscription?: AdminSubscription }) {
-  const info = subscriptionStatusLabels[subscription?.status ?? 'none']
-  return <span className={`rounded-full px-3 py-1 text-xs font-semibold ${info.style}`}>{subscription ? `Cobrança: ${info.label}` : 'Sem cobrança'}</span>
+  return <Pill tone={subscriptionTones[subscription?.status ?? 'none']}>{subscription ? subscriptionStatusLabels[subscription.status].label : 'Sem cobrança'}</Pill>
 }
 
 function PasswordInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
@@ -64,6 +66,9 @@ export function ActivationPage() {
   const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([])
   const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'open' | 'overdue' | 'paid' | 'cancelled'>('all')
   const [invoiceQuery, setInvoiceQuery] = useState('')
+  const [clientQuery, setClientQuery] = useState('')
+  const [accessQuery, setAccessQuery] = useState('')
+  const [ticketFilter, setTicketFilter] = useState<'all' | SupportTicket['status']>('all')
   const { user: currentUser } = useAuth()
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([])
   const [auditLogs, setAuditLogs] = useState(() => readAuditLogs())
@@ -147,6 +152,12 @@ export function ActivationPage() {
   const invoiceFilters: { value: typeof invoiceFilter; label: string }[] = [
     { value: 'all', label: 'Todas' }, { value: 'open', label: 'Em aberto' }, { value: 'overdue', label: 'Em atraso' }, { value: 'paid', label: 'Pagas' }, { value: 'cancelled', label: 'Canceladas' },
   ]
+  const clientQueryText = clientQuery.trim().toLowerCase()
+  const searchedClientTenants = filteredClientTenants.filter((tenant) => !clientQueryText || [tenant.restaurantName, tenant.ownerName, tenant.email, tenant.city].some((value) => value.toLowerCase().includes(clientQueryText)))
+  const accessQueryText = accessQuery.trim().toLowerCase()
+  const tenantNameFor = (tenantId?: string) => clientTenants.find((item) => item.id === tenantId)?.restaurantName ?? ''
+  const searchedUsers = activeUsers.filter((user) => !accessQueryText || [user.name, user.username, user.email ?? '', tenantNameFor(user.restaurantId)].some((value) => value.toLowerCase().includes(accessQueryText)))
+  const selectedSubscription = selectedTenant ? subscriptionByTenant.get(selectedTenant.id) : undefined
   const openClient = (tenantId: string) => {
     if (clientTenants.some((item) => item.id === tenantId)) navigate(`/saas/clientes/${tenantId}`)
   }
@@ -160,19 +171,23 @@ export function ActivationPage() {
     })
     .catch(() => undefined)
 
+  const loadTickets = () => fetchAllTickets().then(setSupportTickets).catch(() => undefined)
+
   const refreshData = () => {
     setTenants(readTenants())
     void fetchAllUsers().then((result) => setUsers(result.users))
     void loadBilling()
-    void fetchAllTickets().then(setSupportTickets).catch(() => undefined)
+    void loadTickets()
     setAuditLogs(readAuditLogs())
   }
 
   useEffect(() => {
     void loadBilling()
+    void loadTickets()
   }, [])
 
   usePolling(loadBilling, 60_000)
+  usePolling(loadTickets, 30_000)
 
   const logAction = (action: string, target: string) => {
     addAuditLog({ action, target, actor: 'Administrador SaaS' })
@@ -485,184 +500,196 @@ export function ActivationPage() {
     </div>
   )
 
+  const clientGrid = 'lg:grid-cols-[minmax(200px,2fr)_104px_130px_72px_84px_auto]'
   const clientsSection = (
-    <section className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><Building2 className="h-5 w-5" /></div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Clientes</p>
-          <h2 className="font-heading text-2xl font-bold text-slate-900">Carteira SaaS</h2>
+    <SaasCard>
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterPills<'all' | TenantStatus> value={clientFilter} onChange={setClientFilter} options={[{ value: 'all', label: 'Todos' }, { value: 'active', label: 'Ativos' }, { value: 'inactive', label: 'Inativos' }]} />
+          <select value={planOrder.includes(clientFilter as PlanKey) ? clientFilter : ''} onChange={(event) => setClientFilter((event.target.value || 'all') as 'all' | PlanKey)} aria-label="Filtrar por plano" className="h-9 rounded-full border px-3 text-xs font-semibold outline-none">
+            <option value="">Todos os planos</option>
+            {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]}</option>)}
+          </select>
         </div>
-        <Button type="button" variant="outline" onClick={exportClients}>Exportar CSV</Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <SearchBox value={clientQuery} onChange={setClientQuery} placeholder="Buscar cliente" />
+          <Button type="button" variant="outline" className="h-10 py-0" onClick={exportClients}>Exportar CSV</Button>
+        </div>
       </div>
-      <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,240px)_1fr] md:items-center">
-        <select value={clientFilter} onChange={(event) => setClientFilter(event.target.value as 'all' | PlanKey | TenantStatus)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-          <option value="all">Todos os clientes</option>
-          <option value="active">Ativos</option>
-          <option value="inactive">Inativos</option>
-          {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]}</option>)}
-        </select>
-        <p className="text-sm text-slate-500">{filteredClientTenants.length} cliente(s) encontrado(s).</p>
-      </div>
-      <div className="mt-6 space-y-3">
-        {filteredClientTenants.map((tenant) => {
-          const tenantUsers = usersByTenant.get(tenant.id) ?? []
-          return (
-            <div key={tenant.id} className="rounded-[24px] border border-orange-100 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-              {editingTenantId === tenant.id ? (
-                <form onSubmit={(event) => saveTenant(event, tenant)} className="grid gap-3 md:grid-cols-2">
-                  <Input value={editingRestaurantName} onChange={(event) => setEditingRestaurantName(event.target.value)} placeholder="Nome do restaurante" />
-                  <Input value={editingOwnerName} onChange={(event) => setEditingOwnerName(event.target.value)} placeholder="Responsável" />
-                  <Input value={editingTenantEmail} onChange={(event) => setEditingTenantEmail(event.target.value)} placeholder="E-mail" type="email" />
-                  <Input value={editingTenantPhone} onChange={(event) => setEditingTenantPhone(event.target.value)} placeholder="Telefone" />
-                  <Input value={editingTenantCity} onChange={(event) => setEditingTenantCity(event.target.value)} placeholder="Cidade/UF" className="md:col-span-2" />
-                  <div className="flex gap-2 md:col-span-2">
-                    <Button type="submit">Salvar alterações</Button>
-                    <Button type="button" variant="outline" onClick={cancelEditingTenant}>Cancelar</Button>
-                  </div>
-                </form>
-              ) : (
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <p className="font-heading text-xl font-bold text-slate-900">{tenant.restaurantName}</p>
-                    <p className="mt-1 text-sm text-slate-500">{tenant.ownerName} · {tenant.email}</p>
-                    <p className="mt-1 text-sm text-slate-500">{tenant.city} · {tenant.phone}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{planLabels[tenant.plan]}</span>
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">{businessTypeLabels[tenant.businessType]}</span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{tenant.status === 'active' ? 'Ativo' : 'Inativo'}</span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{tenantUsers.length} acesso(s)</span>
-                    <SubscriptionBadge subscription={subscriptionByTenant.get(tenant.id)} />
-                  </div>
-                </div>
-              )}
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <select value={tenant.plan} onChange={(event) => updateClient(tenant, { plan: event.target.value as PlanKey })} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-                  {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]}</option>)}
-                </select>
-                <select value={tenant.status} onChange={(event) => updateClient(tenant, { status: event.target.value as TenantStatus })} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-                  <option value="active">Ativo</option>
-                  <option value="inactive">Inativo</option>
-                </select>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => navigate(`/saas/clientes/${tenant.id}`)}>Ver detalhe</Button>
-                <Button type="button" variant="outline" onClick={() => accessClient(tenant)}>Acessar como cliente</Button>
-                <Button type="button" variant="outline" onClick={() => updateClient(tenant, { status: tenant.status === 'active' ? 'inactive' : 'active' })}>{tenant.status === 'active' ? 'Suspender assinatura' : 'Reativar assinatura'}</Button>
-                <Button type="button" variant="outline" onClick={() => startEditingTenant(tenant)}><Pencil className="mr-2 h-4 w-4" />Editar</Button>
-                <ConfirmDialog
-                  trigger={<Button type="button" variant="outline" className="border-rose-200 text-rose-600 hover:border-rose-300 hover:text-rose-700"><Trash2 className="mr-2 h-4 w-4" />Excluir</Button>}
-                  title="Excluir cliente?"
-                  description={`O restaurante ${tenant.restaurantName}, seus acessos e cobranças serão removidos. Esta ação não pode ser desfeita.`}
-                  confirmLabel="Excluir cliente"
-                  onConfirm={() => { void removeTenant(tenant, tenantUsers) }}
-                />
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </section>
+      <p className="mb-3 text-sm text-sa-muted">{searchedClientTenants.length} cliente(s) encontrado(s)</p>
+      {searchedClientTenants.length === 0 ? <EmptyBlock icon={<Building2 className="h-5 w-5" />} text="Nenhum cliente com esse filtro." /> : (
+        <div className="overflow-hidden rounded-xl border border-sa-border">
+          <div className={cn('hidden gap-4 border-b border-sa-border bg-sa-surface-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-sa-soft lg:grid', clientGrid)}>
+            <span>Cliente</span><span>Plano</span><span>Cobrança</span><span>Acessos</span><span>Status</span><span className="w-[148px]" />
+          </div>
+          <ul className="divide-y divide-sa-border">
+            {searchedClientTenants.map((tenant) => {
+              const tenantUsers = usersByTenant.get(tenant.id) ?? []
+              return (
+                <li key={tenant.id} className="px-4 py-4 transition-colors hover:bg-sa-hover">
+                  {editingTenantId === tenant.id ? (
+                    <form onSubmit={(event) => saveTenant(event, tenant)} className="grid gap-3 md:grid-cols-2">
+                      <Input value={editingRestaurantName} onChange={(event) => setEditingRestaurantName(event.target.value)} placeholder="Nome do restaurante" />
+                      <Input value={editingOwnerName} onChange={(event) => setEditingOwnerName(event.target.value)} placeholder="Responsável" />
+                      <Input value={editingTenantEmail} onChange={(event) => setEditingTenantEmail(event.target.value)} placeholder="E-mail" type="email" />
+                      <Input value={editingTenantPhone} onChange={(event) => setEditingTenantPhone(event.target.value)} placeholder="Telefone" />
+                      <Input value={editingTenantCity} onChange={(event) => setEditingTenantCity(event.target.value)} placeholder="Cidade/UF" className="md:col-span-2" />
+                      <div className="flex gap-2 md:col-span-2">
+                        <Button type="submit">Salvar alterações</Button>
+                        <Button type="button" variant="outline" onClick={cancelEditingTenant}>Cancelar</Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className={cn('grid gap-3 lg:items-center lg:gap-4', clientGrid)}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar name={tenant.restaurantName} />
+                        <div className="min-w-0">
+                          <button type="button" onClick={() => navigate(`/saas/clientes/${tenant.id}`)} className="block max-w-full truncate text-left text-sm font-semibold text-sa-text hover:text-sa-accent-text">{tenant.restaurantName}</button>
+                          <p className="truncate text-xs text-sa-muted">{tenant.ownerName} · {tenant.email}</p>
+                          <p className="truncate text-xs text-sa-soft">{tenant.city}</p>
+                        </div>
+                      </div>
+                      <Pill tone="accent">{tenant.plan}</Pill>
+                      <SubscriptionBadge subscription={subscriptionByTenant.get(tenant.id)} />
+                      <p className="text-sm text-sa-text-2"><span className="mr-1 text-xs text-sa-soft lg:hidden">Acessos</span>{tenantUsers.length}</p>
+                      <Pill tone={tenant.status === 'active' ? 'ok' : 'neutral'}>{tenant.status === 'active' ? 'Ativo' : 'Inativo'}</Pill>
+                      <div className="flex items-center gap-1 lg:justify-end">
+                        <Button type="button" variant="outline" className="h-9 px-3 py-0 text-xs" onClick={() => navigate(`/saas/clientes/${tenant.id}`)}>Ver detalhe</Button>
+                        <ActionMenu
+                          label={`Mais ações para ${tenant.restaurantName}`}
+                          items={[
+                            { label: 'Acessar como cliente', icon: <LogIn className="h-4 w-4" />, onClick: () => accessClient(tenant) },
+                            { label: 'Editar dados', icon: <Pencil className="h-4 w-4" />, onClick: () => startEditingTenant(tenant) },
+                            { label: tenant.status === 'active' ? 'Suspender acesso' : 'Reativar acesso', icon: tenant.status === 'active' ? <X className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />, onClick: () => updateClient(tenant, { status: tenant.status === 'active' ? 'inactive' : 'active' }) },
+                          ]}
+                        />
+                        <ConfirmDialog
+                          trigger={<button type="button" aria-label={`Excluir ${tenant.restaurantName}`} title="Excluir cliente" className="flex h-9 w-9 items-center justify-center rounded-lg text-sa-bad transition-colors hover:bg-sa-bad-soft"><Trash2 className="h-4 w-4" /></button>}
+                          title="Excluir cliente?"
+                          description={`O restaurante ${tenant.restaurantName}, seus acessos e cobranças serão removidos. Esta ação não pode ser desfeita.`}
+                          confirmLabel="Excluir cliente"
+                          onConfirm={() => { void removeTenant(tenant, tenantUsers) }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+    </SaasCard>
   )
 
   const activationForm = (
-    <form onSubmit={createClient} className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><UserPlus className="h-5 w-5" /></div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Ativação</p>
-          <h2 className="font-heading text-2xl font-bold text-slate-900">Novo cliente</h2>
+    <form onSubmit={createClient}>
+      <SaasCard title="Novo cliente" description="O acesso e as categorias iniciais são configurados para o nicho escolhido.">
+        <div className="grid gap-3">
+          <Input value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} placeholder="Nome do restaurante" />
+          <Input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} placeholder="Responsável" />
+          <Input value={adminUsername} onChange={(event) => setAdminUsername(event.target.value)} placeholder="Usuário de login do admin (ex.: pizzaria.admin)" autoCapitalize="none" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-mail de contato" type="email" />
+            <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="WhatsApp" inputMode="tel" />
+          </div>
+          <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Cidade/UF" />
+          <FormField label="Nicho do negócio" hint={businessTypeOptions.find((option) => option.value === businessType)?.description}>
+            <select value={businessType} onChange={(event) => setBusinessType(event.target.value as BusinessType)} className="h-11 w-full border px-4 text-sm outline-none">
+              {businessTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Plano">
+            <select value={plan} onChange={(event) => setPlan(event.target.value as PlanKey)} className="h-11 w-full border px-4 text-sm outline-none">
+              {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]} · {formatCurrency(planPrices[item])}/mês</option>)}
+            </select>
+          </FormField>
+          <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Senha inicial" type="password" />
         </div>
-      </div>
-      <div className="mt-6 grid gap-3">
-        <Input value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} placeholder="Nome do restaurante" />
-        <Input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} placeholder="Responsável" />
-        <Input value={adminUsername} onChange={(event) => setAdminUsername(event.target.value)} placeholder="Usuário de login do admin (ex.: pizzaria.admin)" autoCapitalize="none" />
-        <Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="E-mail de contato" type="email" />
-        <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="WhatsApp" inputMode="tel" />
-        <Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Cidade/UF" />
-        <label className="grid gap-2 text-sm font-semibold text-slate-700">
-          Nicho do negócio
-          <select value={businessType} onChange={(event) => setBusinessType(event.target.value as BusinessType)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-            {businessTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-          <span className="text-xs font-normal leading-5 text-slate-500">{businessTypeOptions.find((option) => option.value === businessType)?.description}</span>
-        </label>
-        <select value={plan} onChange={(event) => setPlan(event.target.value as PlanKey)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-          {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]} · {formatCurrency(planPrices[item])}/mês</option>)}
-        </select>
-        <Input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Senha inicial" type="password" />
-      </div>
-      <Button type="submit" className="mt-5 w-full"><CheckCircle2 className="mr-2 h-4 w-4" />Ativar plano e criar acesso</Button>
-      <p className="mt-4 text-center text-xs leading-5 text-slate-500">O acesso e as categorias iniciais serão configurados automaticamente para o nicho escolhido.</p>
+        <Button type="submit" className="mt-5 w-full"><CheckCircle2 className="mr-2 h-4 w-4" />Ativar plano e criar acesso</Button>
+      </SaasCard>
     </form>
   )
 
   const clientDetailSection = selectedTenant ? (
-    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-        <button type="button" onClick={() => navigate('/saas/clientes')} className="text-sm font-semibold text-orange-700">Voltar para clientes</button>
-        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Cliente</p>
-            <h2 className="font-heading text-3xl font-bold text-slate-900">{selectedTenant.restaurantName}</h2>
-            <p className="mt-2 text-sm text-slate-500">{selectedTenant.ownerName} · {selectedTenant.email}</p>
-            <p className="mt-1 text-sm text-slate-500">{selectedTenant.city} · {selectedTenant.phone}</p>
-            <p className="mt-1 text-sm font-semibold text-orange-600">{businessTypeLabels[selectedTenant.businessType]}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{planLabels[selectedTenant.plan]}</span>
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">{selectedTenant.status === 'active' ? 'Ativo' : 'Inativo'}</span>
-            <SubscriptionBadge subscription={subscriptionByTenant.get(selectedTenant.id)} />
-          </div>
-        </div>
-        <div className="mt-6 grid gap-3 md:grid-cols-2">
-          <select value={selectedTenant.plan} onChange={(event) => updateClient(selectedTenant, { plan: event.target.value as PlanKey })} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-            {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]}</option>)}
-          </select>
-          <select value={selectedTenant.status} onChange={(event) => updateClient(selectedTenant, { status: event.target.value as TenantStatus })} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-            <option value="active">Ativo</option>
-            <option value="inactive">Inativo</option>
-          </select>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={() => accessClient(selectedTenant)}>Acessar como cliente</Button>
-          <Button type="button" variant="outline" onClick={() => updateClient(selectedTenant, { status: selectedTenant.status === 'active' ? 'inactive' : 'active' })}>{selectedTenant.status === 'active' ? 'Suspender assinatura' : 'Reativar assinatura'}</Button>
-        </div>
-      </section>
-
-      <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-        <h2 className="font-heading text-2xl font-bold text-slate-900">Acessos</h2>
-        <div className="mt-5 space-y-3">
-          {selectedTenantUsers.map((user) => <div key={user.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4"><p className="font-semibold text-slate-900">{user.name}</p><p className="mt-1 text-sm text-slate-500">{user.username} · {user.role}</p></div>)}
-          {selectedTenantUsers.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhum acesso criado.</p> : null}
-        </div>
-      </section>
-
-      <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)] xl:col-span-2">
-        <h2 className="font-heading text-2xl font-bold text-slate-900">Cobranças</h2>
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          {selectedTenantInvoices.map((invoice) => (
-            <div key={invoice.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-slate-900">{formatCurrency(invoice.amount)}{invoice.billingType ? ` · ${billingTypeLabels[invoice.billingType]}` : ''}</p>
-                  <p className="mt-1 text-sm text-slate-500">Vencimento {new Date(invoice.dueDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}{invoice.paidAt ? ` · paga em ${new Date(invoice.paidAt).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}` : ''}</p>
+    <div className="space-y-6">
+      <button type="button" onClick={() => navigate('/saas/clientes')} className="inline-flex items-center gap-1.5 text-sm font-semibold text-sa-muted transition-colors hover:text-sa-accent-text"><ArrowLeft className="h-4 w-4" />Voltar para clientes</button>
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-6">
+          <SaasCard>
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-center gap-4">
+                <Avatar name={selectedTenant.restaurantName} size="lg" />
+                <div className="min-w-0">
+                  <h2 className="font-heading text-2xl font-bold text-sa-text">{selectedTenant.restaurantName}</h2>
+                  <p className="mt-1 text-sm text-sa-muted">{selectedTenant.ownerName} · {selectedTenant.email}</p>
+                  <p className="text-sm text-sa-muted">{selectedTenant.city} · {selectedTenant.phone}</p>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${invoiceStatusLabels[invoice.status].style}`}>{invoiceStatusLabels[invoice.status].label}</span>
               </div>
-              {invoice.invoiceUrl ? <a href={invoice.invoiceUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:text-orange-700">Abrir fatura<ExternalLink className="h-3.5 w-3.5" /></a> : null}
+              <div className="flex flex-wrap gap-2">
+                <Pill tone="accent">{planLabels[selectedTenant.plan]}</Pill>
+                <Pill>{businessTypeLabels[selectedTenant.businessType]}</Pill>
+                <Pill tone={selectedTenant.status === 'active' ? 'ok' : 'neutral'}>{selectedTenant.status === 'active' ? 'Ativo' : 'Inativo'}</Pill>
+              </div>
             </div>
-          ))}
+            <div className="mt-6 grid gap-3 border-t border-sa-border pt-5 md:grid-cols-2">
+              <FormField label="Plano">
+                <select value={selectedTenant.plan} onChange={(event) => updateClient(selectedTenant, { plan: event.target.value as PlanKey })} className="h-11 w-full border px-4 text-sm outline-none">
+                  {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]}</option>)}
+                </select>
+              </FormField>
+              <FormField label="Situação do cadastro">
+                <select value={selectedTenant.status} onChange={(event) => updateClient(selectedTenant, { status: event.target.value as TenantStatus })} className="h-11 w-full border px-4 text-sm outline-none">
+                  <option value="active">Ativo</option>
+                  <option value="inactive">Inativo</option>
+                </select>
+              </FormField>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={() => accessClient(selectedTenant)}><LogIn className="mr-2 h-4 w-4" />Acessar como cliente</Button>
+              <Button type="button" variant="outline" onClick={() => updateClient(selectedTenant, { status: selectedTenant.status === 'active' ? 'inactive' : 'active' })}>{selectedTenant.status === 'active' ? 'Suspender acesso' : 'Reativar acesso'}</Button>
+            </div>
+          </SaasCard>
+
+          <SaasCard title="Cobranças" description={`${selectedTenantInvoices.length} registro(s)`}>
+            <InvoiceTable invoices={selectedTenantInvoices} describe={describeInvoice} emptyText="Este cliente ainda não tem cobranças." />
+          </SaasCard>
         </div>
-      </section>
+
+        <div className="space-y-6">
+          <SaasCard title="Assinatura">
+            <dl className="space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-3"><dt className="text-sa-muted">Situação</dt><dd><SubscriptionBadge subscription={selectedSubscription} /></dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-sa-muted">Plano cobrado</dt><dd className="font-semibold text-sa-text">{selectedSubscription?.plan ?? '—'}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-sa-muted">Forma de pagamento</dt><dd className="font-semibold text-sa-text">{selectedSubscription?.billingType ? billingTypeLabels[selectedSubscription.billingType] : '—'}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-sa-muted">Fim do teste grátis</dt><dd className="font-semibold text-sa-text">{selectedSubscription?.trialEndsAt ? new Date(selectedSubscription.trialEndsAt).toLocaleDateString('pt-BR') : '—'}</dd></div>
+              <div className="flex items-center justify-between gap-3"><dt className="text-sa-muted">Próxima cobrança</dt><dd className="font-semibold text-sa-text">{selectedSubscription?.currentPeriodEnd ? new Date(selectedSubscription.currentPeriodEnd).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '—'}</dd></div>
+            </dl>
+          </SaasCard>
+
+          <SaasCard title="Acessos" description={`${selectedTenantUsers.length} usuário(s)`}>
+            <ul className="space-y-2.5">
+              {selectedTenantUsers.map((user) => (
+                <li key={user.id} className="flex items-center gap-3 rounded-xl border border-sa-border bg-sa-surface-2 p-3">
+                  <Avatar name={user.name} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-sa-text">{user.name}</p>
+                    <p className="truncate text-xs text-sa-muted">{user.username}</p>
+                  </div>
+                  <Pill tone="accent">{user.role}</Pill>
+                </li>
+              ))}
+            </ul>
+            {selectedTenantUsers.length === 0 ? <EmptyBlock icon={<KeyRound className="h-5 w-5" />} text="Nenhum acesso criado." /> : null}
+          </SaasCard>
+        </div>
+      </div>
     </div>
   ) : (
-    <section className="rounded-[30px] border border-dashed border-orange-200 bg-orange-50/60 p-8 text-center">
-      <h2 className="font-heading text-2xl font-bold text-slate-900">Cliente não encontrado</h2>
-      <Button type="button" className="mt-4" onClick={() => navigate('/saas/clientes')}>Voltar para clientes</Button>
-    </section>
+    <SaasCard>
+      <EmptyBlock icon={<Building2 className="h-5 w-5" />} text="Cliente não encontrado." />
+      <div className="mt-4 flex justify-center"><Button type="button" onClick={() => navigate('/saas/clientes')}>Voltar para clientes</Button></div>
+    </SaasCard>
   )
 
   const financialSection = (
@@ -711,130 +738,195 @@ export function ActivationPage() {
     </div>
   )
 
+  const accessGrid = 'lg:grid-cols-[minmax(220px,2fr)_minmax(140px,1.2fr)_140px_auto]'
   const accessSection = (
-    <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center gap-3"><Users className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Acessos</h2></div>
-      <div className="mt-5 grid gap-3 lg:grid-cols-2">
-        {activeUsers.map((user) => {
-          const tenant = clientTenants.find((item) => item.id === user.restaurantId)
-          return (
-            <div key={user.id} className="rounded-2xl border border-orange-100 bg-white p-4">
-              {editingAccessId === user.id ? (
-                <form onSubmit={(event) => { void saveAccess(event, user) }} className="grid gap-3">
-                  <Input value={editingAccessName} onChange={(event) => setEditingAccessName(event.target.value)} placeholder="Nome" />
-                  <Input value={editingAccessUsername} onChange={(event) => setEditingAccessUsername(event.target.value)} placeholder="Usuário de login" autoCapitalize="none" />
-                  <Input value={editingAccessEmail} onChange={(event) => setEditingAccessEmail(event.target.value)} placeholder="E-mail (opcional)" type="email" />
-                  <select value={editingAccessRole} onChange={(event) => setEditingAccessRole(event.target.value)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-                    <option value="admin">Administrador</option>
-                    <option value="manager">Gerente</option>
-                    <option value="operator">Operador</option>
-                  </select>
-                  <Input value={editingAccessShift} onChange={(event) => setEditingAccessShift(event.target.value)} placeholder="Turno ou função" />
-                  <PasswordInput value={editingAccessPassword} onChange={setEditingAccessPassword} placeholder="Nova senha (opcional)" />
-                  <PasswordInput value={editingAccessPasswordConfirm} onChange={setEditingAccessPasswordConfirm} placeholder="Confirmar nova senha" />
-                  <div className="flex gap-2">
-                    <Button type="submit" className="flex-1">Salvar</Button>
-                    <Button type="button" variant="outline" onClick={cancelEditingAccess} aria-label="Cancelar edição"><X className="h-4 w-4" /></Button>
-                  </div>
-                </form>
-              ) : (
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-slate-900">{user.name}</p>
-                    <p className="mt-1 text-xs text-slate-500">{user.username}{user.email ? ` · ${user.email}` : ''}</p>
-                    <p className="mt-1 text-xs text-slate-500">{tenant?.restaurantName ?? 'Cliente não identificado'}</p>
-                    <span className="mt-2 inline-flex rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{user.role}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => startEditingAccess(user)} className="rounded-xl border border-orange-200 p-2 text-orange-700 transition hover:bg-orange-50" aria-label={`Editar ${user.name}`}><Pencil className="h-4 w-4" /></button>
-                    <ConfirmDialog
-                      trigger={<button type="button" className="rounded-xl border border-rose-200 p-2 text-rose-600 transition hover:bg-rose-50" aria-label={`Excluir ${user.name}`}><Trash2 className="h-4 w-4" /></button>}
-                      title="Excluir acesso?"
-                      description={`O usuário ${user.name} perderá imediatamente o acesso ao restaurante. Esta ação não pode ser desfeita.`}
-                      confirmLabel="Excluir acesso"
-                      onConfirm={() => { void removeAccess(user) }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        })}
-        {activeUsers.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhum acesso de cliente criado.</p> : null}
+    <SaasCard>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-sa-muted">{searchedUsers.length} acesso(s) de clientes</p>
+        <SearchBox value={accessQuery} onChange={setAccessQuery} placeholder="Buscar acesso" />
       </div>
-    </section>
+      {searchedUsers.length === 0 ? <EmptyBlock icon={<Users className="h-5 w-5" />} text={activeUsers.length ? 'Nenhum acesso com essa busca.' : 'Nenhum acesso de cliente criado.'} /> : (
+        <div className="overflow-hidden rounded-xl border border-sa-border">
+          <div className={cn('hidden gap-4 border-b border-sa-border bg-sa-surface-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-sa-soft lg:grid', accessGrid)}>
+            <span>Usuário</span><span>Restaurante</span><span>Função</span><span className="w-[84px]" />
+          </div>
+          <ul className="divide-y divide-sa-border">
+            {searchedUsers.map((user) => (
+              <li key={user.id} className="px-4 py-3.5 transition-colors hover:bg-sa-hover">
+                {editingAccessId === user.id ? (
+                  <form onSubmit={(event) => { void saveAccess(event, user) }} className="grid gap-3 md:grid-cols-2">
+                    <Input value={editingAccessName} onChange={(event) => setEditingAccessName(event.target.value)} placeholder="Nome" />
+                    <Input value={editingAccessUsername} onChange={(event) => setEditingAccessUsername(event.target.value)} placeholder="Usuário de login" autoCapitalize="none" />
+                    <Input value={editingAccessEmail} onChange={(event) => setEditingAccessEmail(event.target.value)} placeholder="E-mail (opcional)" type="email" />
+                    <select value={editingAccessRole} onChange={(event) => setEditingAccessRole(event.target.value)} className="h-11 w-full border px-4 text-sm outline-none">
+                      <option value="admin">Administrador</option>
+                      <option value="manager">Gerente</option>
+                      <option value="operator">Operador</option>
+                    </select>
+                    <Input value={editingAccessShift} onChange={(event) => setEditingAccessShift(event.target.value)} placeholder="Turno ou função" className="md:col-span-2" />
+                    <PasswordInput value={editingAccessPassword} onChange={setEditingAccessPassword} placeholder="Nova senha (opcional)" />
+                    <PasswordInput value={editingAccessPasswordConfirm} onChange={setEditingAccessPasswordConfirm} placeholder="Confirmar nova senha" />
+                    <div className="flex gap-2 md:col-span-2">
+                      <Button type="submit" className="flex-1">Salvar</Button>
+                      <Button type="button" variant="outline" onClick={cancelEditingAccess} aria-label="Cancelar edição"><X className="h-4 w-4" /></Button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className={cn('grid gap-2 lg:items-center lg:gap-4', accessGrid)}>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar name={user.name} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-sa-text">{user.name}</p>
+                        <p className="truncate text-xs text-sa-muted">{user.username}{user.email ? ` · ${user.email}` : ''}</p>
+                      </div>
+                    </div>
+                    <p className="truncate text-sm text-sa-text-2">{tenantNameFor(user.restaurantId) || 'Cliente não identificado'}</p>
+                    <Pill tone="accent">{user.role}</Pill>
+                    <div className="flex items-center gap-1 lg:justify-end">
+                      <button type="button" onClick={() => startEditingAccess(user)} aria-label={`Editar ${user.name}`} title="Editar" className="flex h-9 w-9 items-center justify-center rounded-lg text-sa-muted transition-colors hover:bg-sa-hover hover:text-sa-text"><Pencil className="h-4 w-4" /></button>
+                      <ConfirmDialog
+                        trigger={<button type="button" aria-label={`Excluir ${user.name}`} title="Excluir" className="flex h-9 w-9 items-center justify-center rounded-lg text-sa-bad transition-colors hover:bg-sa-bad-soft"><Trash2 className="h-4 w-4" /></button>}
+                        title="Excluir acesso?"
+                        description={`O usuário ${user.name} perderá imediatamente o acesso ao restaurante. Esta ação não pode ser desfeita.`}
+                        confirmLabel="Excluir acesso"
+                        onConfirm={() => { void removeAccess(user) }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </SaasCard>
   )
 
   const plansSection = (
-    <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3"><CreditCard className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Planos</h2></div>
-        <Button type="button" onClick={savePlansConfiguration}>Salvar alterações</Button>
+    <SaasCard
+      title="Tabela de planos"
+      description="Preço, descrição e disponibilidade de cada plano na página de vendas."
+      action={<Button type="button" onClick={savePlansConfiguration}>Salvar alterações</Button>}
+    >
+      <div className="mb-5 flex items-start gap-3 rounded-xl border border-sa-border-strong bg-sa-accent-soft p-4 text-sm leading-6 text-sa-text-2">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-sa-accent-text" />
+        <p>Os valores desta tela mudam só o que aparece na página de vendas. O valor realmente cobrado no checkout é definido no servidor e não muda por aqui.</p>
       </div>
-      <div className="mt-5 grid gap-4 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {planConfigs.map((config) => (
-          <div key={config.key} className="rounded-[24px] border border-orange-100 bg-orange-50/30 p-4">
-            <p className="font-heading text-xl font-bold text-slate-900">{planLabels[config.key]}</p>
-            <label className="mt-4 grid gap-2 text-sm font-semibold text-slate-700">Preço mensal<Input value={String(config.price)} onChange={(event) => updatePlanConfig(config.key, { price: Number(event.target.value) || 0 })} inputMode="numeric" /></label>
-            <label className="mt-3 grid gap-2 text-sm font-semibold text-slate-700">Descrição<textarea value={config.description} onChange={(event) => updatePlanConfig(config.key, { description: event.target.value })} className="min-h-24 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100" /></label>
-            <label className="mt-3 flex items-center justify-between rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm font-semibold text-slate-700">Plano ativo<input type="checkbox" checked={config.active} onChange={(event) => updatePlanConfig(config.key, { active: event.target.checked })} className="h-4 w-4 accent-orange-500" /></label>
+          <div key={config.key} className="rounded-xl border border-sa-border bg-sa-surface-2 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-heading text-lg font-bold text-sa-text">{planLabels[config.key]}</p>
+              <Pill tone={config.active ? 'ok' : 'neutral'}>{config.active ? 'Ativo' : 'Oculto'}</Pill>
+            </div>
+            <div className="mt-4 grid gap-3">
+              <FormField label="Preço mensal (R$)"><Input value={String(config.price)} onChange={(event) => updatePlanConfig(config.key, { price: Number(event.target.value) || 0 })} inputMode="numeric" /></FormField>
+              <FormField label="Descrição"><textarea value={config.description} onChange={(event) => updatePlanConfig(config.key, { description: event.target.value })} className="min-h-24 w-full border px-4 py-3 text-sm outline-none" /></FormField>
+              <label className="flex items-center justify-between rounded-xl border border-sa-border bg-sa-surface px-4 py-3 text-sm font-semibold text-sa-text-2">Mostrar na página de vendas<input type="checkbox" checked={config.active} onChange={(event) => updatePlanConfig(config.key, { active: event.target.checked })} className="h-4 w-4" /></label>
+            </div>
           </div>
         ))}
       </div>
-    </section>
+    </SaasCard>
   )
 
   const activationsSection = (
-    <div className="grid items-start gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]">
       {activationForm}
-      {clientsSection}
+      <SaasCard title="Clientes recentes" description="Os últimos restaurantes cadastrados.">
+        <ul className="space-y-2.5">
+          {clientTenants.slice(0, 8).map((tenant) => (
+            <li key={tenant.id}>
+              <button type="button" onClick={() => navigate(`/saas/clientes/${tenant.id}`)} className="flex w-full items-center gap-3 rounded-xl border border-sa-border bg-sa-surface-2 p-3 text-left transition-colors hover:border-sa-accent hover:bg-sa-hover">
+                <Avatar name={tenant.restaurantName} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-sa-text">{tenant.restaurantName}</span>
+                  <span className="block truncate text-xs text-sa-muted">{tenant.city}</span>
+                </span>
+                <Pill tone="accent">{tenant.plan}</Pill>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {clientTenants.length === 0 ? <EmptyBlock icon={<Building2 className="h-5 w-5" />} text="Nenhum cliente cadastrado." /> : null}
+      </SaasCard>
     </div>
   )
 
   const leads = JSON.parse(localStorage.getItem('vaija.planLeads') ?? '[]') as Array<{ id: number; plan: string; restaurantName: string; ownerName: string; phone: string; email: string; city: string; createdAt: string; status: string }>
   const leadsSection = (
-    <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <div className="flex items-center gap-3"><TrendingUp className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Leads da landing</h2></div>
-      <div className="mt-5 grid gap-3 lg:grid-cols-2">
-        {leads.map((lead) => (
-          <div key={lead.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4">
-            <div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-slate-900">{lead.restaurantName}</p><p className="mt-1 text-sm text-slate-500">{lead.ownerName} · {lead.city}</p><p className="mt-1 text-xs text-slate-500">{lead.email} · {lead.phone}</p></div><span className="rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-semibold text-orange-700">{lead.plan}</span></div>
-          </div>
-        ))}
-        {leads.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhum lead capturado ainda.</p> : null}
+    <SaasCard title="Leads da página de vendas" description={`${leads.length} contato(s) de quem pediu para contratar`}>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {leads.map((lead) => {
+          const digits = lead.phone.replace(/\D/g, '')
+          const whatsapp = digits ? `https://wa.me/${digits.startsWith('55') ? digits : `55${digits}`}` : ''
+          return (
+            <div key={lead.id} className="flex items-start gap-3 rounded-xl border border-sa-border bg-sa-surface-2 p-4">
+              <Avatar name={lead.restaurantName} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="truncate text-sm font-semibold text-sa-text">{lead.restaurantName}</p>
+                  <Pill tone="accent">{lead.plan}</Pill>
+                </div>
+                <p className="mt-0.5 text-sm text-sa-muted">{lead.ownerName} · {lead.city}</p>
+                <p className="mt-0.5 truncate text-xs text-sa-soft">{lead.email} · {lead.phone}</p>
+                {whatsapp ? <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-sa-accent-text hover:underline"><MessageCircle className="h-3.5 w-3.5" />Chamar no WhatsApp</a> : null}
+              </div>
+            </div>
+          )
+        })}
       </div>
-    </section>
+      {leads.length === 0 ? <EmptyBlock icon={<TrendingUp className="h-5 w-5" />} text="Nenhum lead capturado ainda." /> : null}
+    </SaasCard>
   )
 
+  const ticketTones: Record<SupportTicket['status'], PillTone> = { Aberto: 'warn', 'Em atendimento': 'info', Resolvido: 'ok' }
+  const priorityTones: Record<SupportTicket['priority'], PillTone> = { Alta: 'bad', Média: 'warn', Baixa: 'neutral' }
+  const visibleTickets = supportTickets.filter((ticket) => ticketFilter === 'all' || ticket.status === ticketFilter)
   const supportSection = (
-    <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <h2 className="font-heading text-2xl font-bold text-slate-900">Tickets dos clientes</h2>
-      <div className="mt-5 space-y-3">
-        {supportTickets.map((ticket) => {
+    <SaasCard title="Chamados dos clientes" description="Responda e acompanhe os chamados abertos pelos lojistas.">
+      <div className="mb-5">
+        <FilterPills<'all' | SupportTicket['status']>
+          value={ticketFilter}
+          onChange={setTicketFilter}
+          options={[
+            { value: 'all', label: 'Todos', count: supportTickets.length },
+            { value: 'Aberto', label: 'Abertos', count: supportTickets.filter((ticket) => ticket.status === 'Aberto').length },
+            { value: 'Em atendimento', label: 'Em atendimento', count: supportTickets.filter((ticket) => ticket.status === 'Em atendimento').length },
+            { value: 'Resolvido', label: 'Resolvidos', count: supportTickets.filter((ticket) => ticket.status === 'Resolvido').length },
+          ]}
+        />
+      </div>
+      <div className="space-y-3">
+        {visibleTickets.map((ticket) => {
           const tenant = clientTenants.find((item) => item.id === ticket.tenantId)
           const draft = replyDrafts[ticket.id] ?? ticket.reply
-          const selectClass = 'h-10 rounded-2xl border border-orange-100 bg-white px-3 text-sm outline-none'
+          const selectClass = 'h-9 border px-3 text-xs font-semibold outline-none'
           return (
-            <div key={ticket.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4">
+            <div key={ticket.id} className="rounded-xl border border-sa-border bg-sa-surface-2 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-900">{ticket.subject}</p>
-                  <p className="mt-1 text-sm text-slate-500">{tenant?.restaurantName ?? ticket.tenantId}{ticket.createdBy ? ` · ${ticket.createdBy}` : ''} · {new Date(ticket.createdAt).toLocaleString('pt-BR')}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-sa-text">{ticket.subject}</p>
+                    <Pill tone={ticketTones[ticket.status]}>{ticket.status}</Pill>
+                    <Pill tone={priorityTones[ticket.priority]}>Prioridade {ticket.priority.toLowerCase()}</Pill>
+                  </div>
+                  <p className="mt-1 text-xs text-sa-muted">{tenant?.restaurantName ?? ticket.tenantId}{ticket.createdBy ? ` · ${ticket.createdBy}` : ''} · {new Date(ticket.createdAt).toLocaleString('pt-BR')}</p>
                 </div>
                 <div className="flex gap-2">
                   <select value={ticket.priority} onChange={(event) => void saveTicket(ticket, { priority: event.target.value as SupportTicket['priority'] })} aria-label="Prioridade" className={selectClass}><option>Baixa</option><option>Média</option><option>Alta</option></select>
                   <select value={ticket.status} onChange={(event) => void saveTicket(ticket, { status: event.target.value as SupportTicket['status'] })} aria-label="Status" className={selectClass}><option>Aberto</option><option>Em atendimento</option><option>Resolvido</option></select>
                 </div>
               </div>
-              {ticket.message ? <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">{ticket.message}</p> : null}
-              <textarea value={draft} onChange={(event) => setReplyDrafts((current) => ({ ...current, [ticket.id]: event.target.value }))} placeholder="Resposta para o cliente" rows={2} maxLength={2000} className="mt-3 w-full resize-none rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100" />
+              {ticket.message ? <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-sa-text-2">{ticket.message}</p> : null}
+              <textarea value={draft} onChange={(event) => setReplyDrafts((current) => ({ ...current, [ticket.id]: event.target.value }))} placeholder="Resposta para o cliente" rows={2} maxLength={2000} className="mt-3 w-full resize-none border px-4 py-3 text-sm outline-none" />
               {draft !== ticket.reply ? <Button type="button" className="mt-2" onClick={() => void saveTicket(ticket, { reply: draft })}>Enviar resposta</Button> : null}
             </div>
           )
         })}
-        {supportTickets.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhum ticket aberto.</p> : null}
       </div>
-    </section>
+      {visibleTickets.length === 0 ? <EmptyBlock icon={<MessageCircle className="h-5 w-5" />} text={supportTickets.length ? 'Nenhum chamado com esse filtro.' : 'Nenhum chamado aberto.'} /> : null}
+    </SaasCard>
   )
 
   const overviewSection = (
@@ -898,32 +990,40 @@ export function ActivationPage() {
   )
 
   const auditSection = (
-    <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <h2 className="font-heading text-2xl font-bold text-slate-900">Auditoria</h2>
-      <div className="mt-5 space-y-3">
-        {auditLogs.map((log) => <div key={log.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4"><p className="font-semibold text-slate-900">{log.action}</p><p className="mt-1 text-sm text-slate-500">{log.target} · {log.actor}</p><p className="mt-1 text-xs text-slate-400">{new Date(log.createdAt).toLocaleString('pt-BR')}</p></div>)}
-        {auditLogs.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhuma ação registrada.</p> : null}
-      </div>
-    </section>
+    <SaasCard title="Registro de ações" description="O que foi feito no painel, do mais recente para o mais antigo.">
+      {auditLogs.length === 0 ? <EmptyBlock icon={<ReceiptText className="h-5 w-5" />} text="Nenhuma ação registrada." /> : (
+        <ul className="divide-y divide-sa-border overflow-hidden rounded-xl border border-sa-border">
+          {auditLogs.map((log) => (
+            <li key={log.id} className="flex flex-col gap-1 px-4 py-3.5 transition-colors hover:bg-sa-hover sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-sa-text">{log.action}</p>
+                <p className="truncate text-xs text-sa-muted">{log.target} · {log.actor}</p>
+              </div>
+              <p className="shrink-0 text-xs text-sa-soft">{new Date(log.createdAt).toLocaleString('pt-BR')}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </SaasCard>
   )
 
   const settingsSection = (
-    <div className="grid items-start gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-      <form onSubmit={createSaasUser} className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-        <div className="flex items-center gap-3"><UserCog className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold text-slate-900">Criar usuário SaaS</h2></div>
-        <div className="mt-5 grid gap-3">
-          <Input value={platformUserName} onChange={(event) => setPlatformUserName(event.target.value)} placeholder="Nome do usuário" />
-          <Input value={platformUserUsername} onChange={(event) => setPlatformUserUsername(event.target.value)} placeholder="Usuário de login" autoCapitalize="none" />
-          <Input value={platformUserEmail} onChange={(event) => setPlatformUserEmail(event.target.value)} placeholder="E-mail (opcional)" type="email" />
-          <PasswordInput value={platformUserPassword} onChange={setPlatformUserPassword} placeholder="Senha inicial" />
-        </div>
-        <Button type="submit" className="mt-5 w-full">Criar usuário do SaaS</Button>
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+      <form onSubmit={createSaasUser}>
+        <SaasCard title="Criar usuário SaaS" description="Pessoa da equipe com acesso a este painel.">
+          <div className="grid gap-3">
+            <Input value={platformUserName} onChange={(event) => setPlatformUserName(event.target.value)} placeholder="Nome do usuário" />
+            <Input value={platformUserUsername} onChange={(event) => setPlatformUserUsername(event.target.value)} placeholder="Usuário de login" autoCapitalize="none" />
+            <Input value={platformUserEmail} onChange={(event) => setPlatformUserEmail(event.target.value)} placeholder="E-mail (opcional)" type="email" />
+            <PasswordInput value={platformUserPassword} onChange={setPlatformUserPassword} placeholder="Senha inicial" />
+          </div>
+          <Button type="submit" className="mt-5 w-full"><UserCog className="mr-2 h-4 w-4" />Criar usuário do SaaS</Button>
+        </SaasCard>
       </form>
-      <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-        <h2 className="font-heading text-2xl font-bold text-slate-900">Usuários do SaaS</h2>
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
+      <SaasCard title="Usuários do SaaS" description={`${platformUsers.length} usuário(s) com acesso ao painel`}>
+        <div className="grid gap-3 md:grid-cols-2">
           {platformUsers.map((user) => (
-            <div key={user.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4">
+            <div key={user.id} className="rounded-xl border border-sa-border bg-sa-surface-2 p-4">
               {editingPlatformUserId === user.id ? (
                 <form onSubmit={(event) => { void savePlatformUser(event, user) }} className="grid gap-3">
                   <Input value={editingPlatformUserName} onChange={(event) => setEditingPlatformUserName(event.target.value)} placeholder="Nome do usuário" />
@@ -937,27 +1037,30 @@ export function ActivationPage() {
                 </form>
               ) : (
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-slate-900">{user.name}</p>
-                    <p className="mt-1 text-sm text-slate-500">{user.username}{user.email ? ` · ${user.email}` : ''}</p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar name={user.name} />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-sa-text">{user.name}</p>
+                      <p className="truncate text-xs text-sa-muted">{user.username}{user.email ? ` · ${user.email}` : ''}</p>
+                    </div>
                   </div>
-                  <button type="button" onClick={() => startEditingPlatformUser(user)} className="inline-flex items-center gap-1 rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs font-semibold text-orange-700 transition-colors hover:bg-orange-50">
-                    <Pencil className="h-3.5 w-3.5" /> Editar
+                  <button type="button" onClick={() => startEditingPlatformUser(user)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-sa-border px-2.5 py-1.5 text-xs font-semibold text-sa-text-2 transition-colors hover:bg-sa-hover">
+                    <Pencil className="h-3.5 w-3.5" />Editar
                   </button>
                 </div>
               )}
               <div className="mt-4 grid gap-2">
                 {Object.entries(platformPermissionLabels).map(([permission, label]) => (
-                  <label key={permission} className="flex items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                  <label key={permission} className="flex items-center justify-between gap-3 rounded-lg border border-sa-border bg-sa-surface px-3 py-2 text-xs font-semibold text-sa-text-2">
                     {label}
-                    <input type="checkbox" checked={user.permissions.includes(permission)} onChange={() => { void togglePlatformPermission(user, permission) }} className="h-4 w-4 accent-orange-500" />
+                    <input type="checkbox" checked={user.permissions.includes(permission)} onChange={() => { void togglePlatformPermission(user, permission) }} className="h-4 w-4" />
                   </label>
                 ))}
               </div>
             </div>
           ))}
         </div>
-      </section>
+      </SaasCard>
     </div>
   )
 
@@ -968,7 +1071,7 @@ export function ActivationPage() {
     financeiro: ['Financeiro', 'Recebimentos, assinaturas e a saúde da carteira.'],
     clientes: ['Clientes', 'Restaurantes da carteira e os planos contratados.'],
     'cliente-detalhe': [selectedTenant?.restaurantName ?? 'Cliente', 'Dados, acessos, assinatura e cobranças.'],
-    acessos: ['Acessos', 'Usuários da plataforma e dos clientes.'],
+    acessos: ['Acessos', 'Usuários dos restaurantes clientes.'],
     planos: ['Planos', 'Tabela de planos exibida na página de vendas.'],
     ativacoes: ['Ativações', 'Cadastre um novo restaurante e crie o primeiro acesso.'],
     leads: ['Leads', 'Interessados que pediram contratação.'],
@@ -980,7 +1083,7 @@ export function ActivationPage() {
 
   return (
     <SaasLayout title={pageTitle} description={pageDescription}>
-      {currentView && currentView !== 'financeiro' ? summaryCards : null}
+      {currentView === 'clientes' ? summaryCards : null}
 
       {currentView === 'cliente-detalhe' ? <div>{clientDetailSection}</div> : null}
       {currentView === 'financeiro' ? <div>{financialSection}</div> : null}

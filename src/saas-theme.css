@@ -130,3 +130,25 @@ html.saas-dark .ring-orange-200 { --tw-ring-color: color-mix(in srgb, var(--sa-a
 /* Os botões primários e o que fica sobre laranja continuam com texto branco. */
 html.saas-dark .bg-orange-500,
 html.saas-dark .bg-orange-600 { color: #fff; }
+
+/*
+ * Campos de formulário do painel (inclusive dentro dos diálogos, que ficam fora do .saas-shell):
+ * mesma aparência nos dois temas.
+ */
+html.saas-active input:not([type='checkbox']):not([type='radio']),
+html.saas-active select,
+html.saas-active textarea {
+  background-color: var(--sa-surface-2);
+  border-color: var(--sa-border);
+  color: var(--sa-text);
+  border-radius: 0.75rem;
+}
+html.saas-active input:not([type='checkbox']):not([type='radio']):focus,
+html.saas-active select:focus,
+html.saas-active textarea:focus {
+  border-color: var(--sa-accent);
+  --tw-ring-color: color-mix(in srgb, var(--sa-accent) 22%, transparent);
+}
+html.saas-active input::placeholder,
+html.saas-active textarea::placeholder { color: var(--sa-soft); }
+html.saas-active input[type='checkbox'] { accent-color: var(--sa-accent); }
