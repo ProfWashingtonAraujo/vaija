@@ -52,7 +52,7 @@ export function OrderSearch({ orders, onSelect }: { orders: Order[]; onSelect: (
   }, [orders, query, filter, searching])
 
   return (
-    <section className="mb-6 rounded-[30px] border border-orange-100 bg-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+    <section className="mb-6 rounded-2xl border border-sa-border bg-sa-surface p-4 shadow-sa">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="min-w-0 flex-1">
           <SearchInput type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar pedido por número, cliente, telefone, item ou data (ex.: 19/10)" aria-label="Buscar pedidos" />
@@ -66,7 +66,7 @@ export function OrderSearch({ orders, onSelect }: { orders: Order[]; onSelect: (
               aria-pressed={filter === key}
               className={cn(
                 'rounded-full border px-3 py-1.5 text-sm font-semibold transition',
-                filter === key ? 'border-orange-500 bg-orange-500 text-white' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-300',
+                filter === key ? 'border-sa-accent bg-sa-accent text-white' : 'border-sa-border bg-sa-surface text-sa-text-2 hover:border-sa-border-strong',
               )}
             >
               {label}
@@ -78,30 +78,30 @@ export function OrderSearch({ orders, onSelect }: { orders: Order[]; onSelect: (
       {searching ? (
         <div className="mt-4">
           {results.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/50 p-4 text-center text-sm text-slate-500">Nenhum pedido encontrado.</p>
+            <p className="rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-4 text-center text-sm text-sa-muted">Nenhum pedido encontrado.</p>
           ) : (
             <>
-              <ul className="max-h-96 divide-y divide-orange-50 overflow-y-auto rounded-2xl border border-orange-100">
+              <ul className="max-h-96 divide-y divide-sa-border overflow-y-auto rounded-2xl border border-sa-border">
                 {results.slice(0, MAX_RESULTS).map((order) => (
                   <li key={order.id}>
-                    <button type="button" onClick={() => onSelect(order)} className="flex w-full flex-col gap-1 px-4 py-3 text-left transition hover:bg-orange-50/60 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <button type="button" onClick={() => onSelect(order)} className="flex w-full flex-col gap-1 px-4 py-3 text-left transition hover:bg-sa-hover sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                       <div className="min-w-0">
                         <p className="flex flex-wrap items-center gap-2 text-sm">
-                          <span className="font-mono font-semibold text-slate-900">#{order.id}</span>
-                          <span className="font-semibold text-slate-900">{order.customer}</span>
+                          <span className="font-mono font-semibold text-sa-text">#{order.id}</span>
+                          <span className="font-semibold text-sa-text">{order.customer}</span>
                           <StatusBadge status={order.status} />
                         </p>
-                        <p className="mt-1 truncate text-xs text-slate-500">{order.items.join(' • ')}</p>
+                        <p className="mt-1 truncate text-xs text-sa-muted">{order.items.join(' • ')}</p>
                       </div>
-                      <div className="shrink-0 text-xs text-slate-500 sm:text-right">
-                        <p className="font-mono text-sm font-semibold text-slate-900">{formatCurrency(order.value)}</p>
+                      <div className="shrink-0 text-xs text-sa-muted sm:text-right">
+                        <p className="font-mono text-sm font-semibold text-sa-text">{formatCurrency(order.value)}</p>
                         <p>{formatCreatedAt(order)}</p>
                       </div>
                     </button>
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-xs text-slate-400">
+              <p className="mt-2 text-xs text-sa-soft">
                 {results.length > MAX_RESULTS ? `Mostrando os ${MAX_RESULTS} mais recentes de ${results.length}. Refine a busca para ver os outros.` : `${results.length} pedido(s) encontrado(s).`} Toque em um pedido para ver os detalhes.
               </p>
             </>

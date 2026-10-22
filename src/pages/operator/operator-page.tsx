@@ -9,7 +9,7 @@ import { formatCurrency } from '@/lib/formatters'
 import type { Order } from '@/data/mock-orders'
 import { cn } from '@/lib/utils'
 
-const actionLinkClass = 'inline-flex items-center justify-center rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-orange-200'
+const actionLinkClass = 'inline-flex items-center justify-center rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-sa-accent/20'
 
 export function OperatorPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -40,56 +40,56 @@ export function OperatorPage() {
           { label: 'Em produção', value: productionOrders.length, icon: ListChecks },
           { label: 'Valor em fila', value: formatCurrency(activeTotal), icon: CreditCard },
         ].map(({ label, value, icon: Icon }) => (
-          <div key={label} className="rounded-[28px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+          <div key={label} className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-500">{label}</p>
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
+              <p className="text-sm font-semibold text-sa-muted">{label}</p>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sa-accent-soft text-sa-accent-text">
                 <Icon className="h-5 w-5" />
               </div>
             </div>
-            <p className="mt-4 font-heading text-3xl font-bold text-slate-900">{value}</p>
+            <p className="mt-4 font-heading text-3xl font-bold text-sa-text">{value}</p>
           </div>
         ))}
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+        <section className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Fila do turno</p>
-              <h2 className="mt-1 font-heading text-2xl font-bold text-slate-900">Próximos pedidos</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft">Fila do turno</p>
+              <h2 className="mt-1 font-heading text-2xl font-bold text-sa-text">Próximos pedidos</h2>
             </div>
-            <Link to="/orders" className={cn(actionLinkClass, 'border-orange-200 bg-white text-slate-800 hover:border-orange-400 hover:text-orange-700')}>Ver todos</Link>
+            <Link to="/orders" className={cn(actionLinkClass, 'border-sa-border bg-sa-surface text-sa-text hover:border-sa-border-strong hover:text-sa-accent-text')}>Ver todos</Link>
           </div>
           <div className="mt-5 space-y-3">
             {nextOrders.map((order) => (
-              <Link key={order.id} to="/orders" className="block rounded-2xl border border-orange-100 bg-white p-4 transition hover:border-orange-300 hover:bg-orange-50/40">
+              <Link key={order.id} to="/orders" className="block rounded-2xl border border-sa-border bg-sa-surface p-4 transition hover:border-sa-border-strong hover:bg-sa-hover">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-slate-900">#{order.id} · {order.customer}</p>
-                    <p className="mt-1 text-sm text-slate-500">{order.items.join(', ')}</p>
+                    <p className="font-semibold text-sa-text">#{order.id} · {order.customer}</p>
+                    <p className="mt-1 text-sm text-sa-muted">{order.items.join(', ')}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono text-sm font-semibold text-slate-900">{formatCurrency(order.value)}</p>
-                    <p className="mt-1 text-xs font-semibold text-orange-700">{order.status}</p>
+                    <p className="font-mono text-sm font-semibold text-sa-text">{formatCurrency(order.value)}</p>
+                    <p className="mt-1 text-xs font-semibold text-sa-accent-text">{order.status}</p>
                   </div>
                 </div>
               </Link>
             ))}
-            {nextOrders.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhum pedido ativo no momento.</p> : null}
+            {nextOrders.length === 0 ? <p className="rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-6 text-center text-sm font-semibold text-sa-muted">Nenhum pedido ativo no momento.</p> : null}
           </div>
         </section>
 
-        <aside className="space-y-4 rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+        <aside className="space-y-4 rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Ações rápidas</p>
-            <h2 className="mt-1 font-heading text-2xl font-bold text-slate-900">Operação</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft">Ações rápidas</p>
+            <h2 className="mt-1 font-heading text-2xl font-bold text-sa-text">Operação</h2>
           </div>
-          <Link to="/pos" className={cn(actionLinkClass, 'w-full border-orange-500 bg-orange-500 text-white shadow-[0_10px_30px_rgba(255,107,0,0.24)] hover:-translate-y-0.5 hover:bg-orange-600')}>Abrir PDV</Link>
-          <Link to="/orders" className={cn(actionLinkClass, 'w-full border-orange-200 bg-white text-slate-800 hover:border-orange-400 hover:text-orange-700')}>Gerenciar pedidos</Link>
-          <div className="rounded-2xl border border-orange-100 bg-orange-50/50 p-4">
-            <p className="text-sm font-semibold text-slate-900">Resumo da fila</p>
-            <div className="mt-3 space-y-2 text-sm text-slate-600">
+          <Link to="/pos" className={cn(actionLinkClass, 'w-full border-sa-accent bg-sa-accent text-white shadow-sa hover:-translate-y-0.5 hover:opacity-90')}>Abrir PDV</Link>
+          <Link to="/orders" className={cn(actionLinkClass, 'w-full border-sa-border bg-sa-surface text-sa-text hover:border-sa-border-strong hover:text-sa-accent-text')}>Gerenciar pedidos</Link>
+          <div className="rounded-2xl border border-sa-border bg-sa-surface-2 p-4">
+            <p className="text-sm font-semibold text-sa-text">Resumo da fila</p>
+            <div className="mt-3 space-y-2 text-sm text-sa-text-2">
               <div className="flex justify-between"><span>Pendentes</span><span className="font-mono font-semibold">{pendingOrders.length}</span></div>
               <div className="flex justify-between"><span>Em produção</span><span className="font-mono font-semibold">{productionOrders.length}</span></div>
               <div className="flex justify-between"><span>Prontos</span><span className="font-mono font-semibold">{readyOrders.length}</span></div>

@@ -65,25 +65,25 @@ function CupomPreview({ order, onPrint, onClose }: { order: Order; onPrint: () =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.15)]" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-sa-border bg-sa-surface p-6 shadow-sa" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-heading text-xl font-bold text-slate-900">Preview do Cupom</h3>
-          <button onClick={onClose} className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+          <h3 className="font-heading text-xl font-bold text-sa-text">Preview do Cupom</h3>
+          <button onClick={onClose} className="rounded-full p-1 text-sa-soft hover:bg-sa-hover hover:text-sa-text">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        <div className="rounded-2xl border border-orange-100 bg-[#fffdf9] p-5 shadow-inner">
+        <div className="rounded-2xl border border-sa-border bg-sa-surface-2 p-5 shadow-inner">
           {settings.logo && (
             <div className="mb-2 flex justify-center">
               <img src={settings.logo} alt={settings.name} className="max-h-20 object-contain" />
             </div>
           )}
-          <div className="font-mono text-xs leading-relaxed text-slate-700" dangerouslySetInnerHTML={{ __html: cupomHtml }} />
+          <div className="font-mono text-xs leading-relaxed text-sa-text-2" dangerouslySetInnerHTML={{ __html: cupomHtml }} />
         </div>
 
         <div className="mt-5 flex gap-3">
-          <Button variant="outline" className="flex-1 border-orange-200" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" className="flex-1 border-sa-border" onClick={onClose}>Cancelar</Button>
           <Button className="flex-1" onClick={onPrint}>Imprimir</Button>
         </div>
       </div>
@@ -129,45 +129,45 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, on
 
   return (
     <>
-      <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+      <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-sm font-semibold text-slate-500">Pedido #{order.id}</p>
-            <h3 className="mt-2 font-heading text-2xl font-bold text-slate-900">{order.customer}</h3>
+            <p className="font-mono text-sm font-semibold text-sa-muted">Pedido #{order.id}</p>
+            <h3 className="mt-2 font-heading text-2xl font-bold text-sa-text">{order.customer}</h3>
           </div>
           <StatusBadge status={order.status} />
         </div>
-        <div className="mt-6 space-y-4 text-sm text-slate-600">
-          <p><span className="font-semibold text-slate-900">Telefone:</span> {order.phone}</p>
-          <p className="flex items-center gap-1.5"><span className="font-semibold text-slate-900">Tipo:</span> {(() => { const Icon = orderSourceIcons[source]; return <Icon className="h-4 w-4 text-orange-600" /> })()}{source}</p>
+        <div className="mt-6 space-y-4 text-sm text-sa-text-2">
+          <p><span className="font-semibold text-sa-text">Telefone:</span> {order.phone}</p>
+          <p className="flex items-center gap-1.5"><span className="font-semibold text-sa-text">Tipo:</span> {(() => { const Icon = orderSourceIcons[source]; return <Icon className="h-4 w-4 text-sa-accent-text" /> })()}{source}</p>
           {source === 'Mesa' ? (
-            <p><span className="font-semibold text-slate-900">Mesa:</span> {order.tableNumber ?? 'Não informada'}</p>
+            <p><span className="font-semibold text-sa-text">Mesa:</span> {order.tableNumber ?? 'Não informada'}</p>
           ) : source === 'Online' ? (
-            <p><span className="font-semibold text-slate-900">Endereço:</span> {order.address}</p>
+            <p><span className="font-semibold text-sa-text">Endereço:</span> {order.address}</p>
           ) : null}
           <div>
-            <p className="font-semibold text-slate-900">Itens</p>
+            <p className="font-semibold text-sa-text">Itens</p>
             <ul className="mt-2 space-y-2">
-              {order.items.map((item) => <li key={item} className="rounded-2xl border border-orange-100 bg-white/90 px-3 py-2">{item}</li>)}
+              {order.items.map((item) => <li key={item} className="rounded-2xl border border-sa-border bg-sa-surface px-3 py-2">{item}</li>)}
             </ul>
           </div>
           {order.notes ? (
-            <div className="rounded-[24px] border border-amber-200 bg-amber-50/70 p-4 text-amber-800">
+            <div className="rounded-xl border border-sa-border bg-sa-warn-soft p-4 text-sa-warn">
               <p className="font-semibold">Observação do cliente</p>
               <p className="mt-2 leading-6">{order.notes}</p>
             </div>
           ) : null}
-          <div className="space-y-2 rounded-[24px] border border-orange-100 bg-white/80 p-4 shadow-[0_10px_24px_rgba(255,107,0,0.05)]">
+          <div className="space-y-2 rounded-xl border border-sa-border bg-sa-surface p-4 shadow-sa">
             <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
             <div className="flex justify-between"><span>{source === 'Online' ? 'Taxa de entrega' : 'Taxa'}</span><span className="font-mono">{formatCurrency(deliveryFee)}</span></div>
-            <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(order.value)}</span></div>
+            <div className="flex justify-between text-base font-semibold text-sa-text"><span>Total</span><span className="font-mono">{formatCurrency(order.value)}</span></div>
             <div className="flex justify-between"><span>Pagamento</span><span>{order.payment}{order.payment === 'Pix' ? (order.paid ? ' · Pago' : ' · Aguardando') : ''}</span></div>
           </div>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {canManageOrder ? <Button variant="outline" className="gap-2 border-orange-200 bg-white/90" onClick={onEdit}><Pencil className="h-4 w-4 shrink-0" />Editar pedido</Button> : null}
+          {canManageOrder ? <Button variant="outline" className="gap-2 border-sa-border bg-sa-surface" onClick={onEdit}><Pencil className="h-4 w-4 shrink-0" />Editar pedido</Button> : null}
           <Button variant="secondary" className="gap-2" onClick={onOpenWhatsapp}><MessageCircle className="h-4 w-4 shrink-0" />Enviar link do pedido</Button>
-          <Button variant="outline" className="gap-2 border-orange-200 bg-white/90" onClick={() => setShowPreview(true)}><Printer className="h-4 w-4 shrink-0" />Imprimir Cupom</Button>
+          <Button variant="outline" className="gap-2 border-sa-border bg-sa-surface" onClick={() => setShowPreview(true)}><Printer className="h-4 w-4 shrink-0" />Imprimir Cupom</Button>
           {canSendCourier ? <Button variant="secondary" className="gap-2" onClick={onSendCourier}><Truck className="h-4 w-4 shrink-0" />{order.status === 'Saiu para entrega' ? 'Novo link do entregador' : 'Enviar para entregador'}</Button> : null}
           {onTogglePaid && order.payment === 'Pix' && order.status !== 'Cancelado' ? (
             <Button variant={order.paid ? 'outline' : 'secondary'} className="gap-2" onClick={onTogglePaid}>
@@ -177,7 +177,7 @@ export function OrderDetailsPanel({ order, onAdvance, onEdit, onOpenWhatsapp, on
           ) : null}
           {canAdvance ? <Button className="gap-2 sm:col-span-2" onClick={onAdvance}><AdvanceIcon className="h-4 w-4 shrink-0" />{nextStepLabel}</Button> : null}
         </div>
-        {isOnRoute ? <p className="mt-3 text-xs leading-5 text-slate-500">O pedido será finalizado quando o entregador confirmar a entrega. Se ele perdeu o link, use &quot;Novo link do entregador&quot;.</p> : null}
+        {isOnRoute ? <p className="mt-3 text-xs leading-5 text-sa-muted">O pedido será finalizado quando o entregador confirmar a entrega. Se ele perdeu o link, use &quot;Novo link do entregador&quot;.</p> : null}
       </div>
 
       {showPreview && (

@@ -24,31 +24,31 @@ export function CartPanel({ items, paymentMethod, orderSource, tableNumber, cust
   const total = subtotal + delivery
 
   return (
-    <div className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+    <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
       <div className="flex items-center justify-between">
-        <h3 className="font-heading text-xl font-bold text-slate-900">Carrinho</h3>
+        <h3 className="font-heading text-xl font-bold text-sa-text">Carrinho</h3>
         {items.length > 0 ? (
           <ConfirmDialog
-            trigger={<button className="text-sm font-semibold text-orange-700">Limpar</button>}
+            trigger={<button className="text-sm font-semibold text-sa-accent-text">Limpar</button>}
             title="Limpar carrinho?"
             description="Todos os itens adicionados serão removidos deste pedido em andamento."
             confirmLabel="Limpar carrinho"
             onConfirm={onClear}
           />
         ) : (
-          <span className="text-sm font-semibold text-slate-300">Limpar</span>
+          <span className="text-sm font-semibold text-sa-soft">Limpar</span>
         )}
       </div>
       <div className="mt-5 space-y-3">
         {items.length === 0 ? <EmptyState title="Carrinho vazio" description="Adicione produtos para montar o pedido e seguir para o fechamento." icon={<Trash2 className="h-5 w-5" />} /> : null}
         {items.map((item) => (
-          <div key={item.id} className="rounded-[24px] border border-orange-100 bg-white/90 p-4 shadow-[0_10px_24px_rgba(255,107,0,0.05)]">
+          <div key={item.id} className="rounded-xl border border-sa-border bg-sa-surface p-4 shadow-sa">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-semibold text-slate-900">{item.name}</p>
-                <p className="mt-1 font-mono text-sm text-slate-500">{formatCurrency(item.price)} un. · {formatCurrency(item.price * item.quantity)}</p>
+                <p className="font-semibold text-sa-text">{item.name}</p>
+                <p className="mt-1 font-mono text-sm text-sa-muted">{formatCurrency(item.price)} un. · {formatCurrency(item.price * item.quantity)}</p>
               </div>
-              <button onClick={() => onRemove(item.id)} className="rounded-full p-2 text-slate-400 hover:bg-orange-50 hover:text-orange-600"><Trash2 className="h-4 w-4" /></button>
+              <button onClick={() => onRemove(item.id)} className="rounded-full p-2 text-sa-soft hover:bg-sa-hover hover:text-sa-accent-text"><Trash2 className="h-4 w-4" /></button>
             </div>
             <div className="mt-4 flex items-center gap-2">
               <Button variant="outline" className="h-9 w-9 px-0" onClick={() => onUpdateQuantity(item.id, -1)}>-</Button>
@@ -58,18 +58,18 @@ export function CartPanel({ items, paymentMethod, orderSource, tableNumber, cust
           </div>
         ))}
       </div>
-      <div className="mt-6 space-y-3 rounded-[24px] border border-orange-100 bg-white/80 p-4 text-sm text-slate-600 shadow-[0_10px_24px_rgba(255,107,0,0.05)]">
+      <div className="mt-6 space-y-3 rounded-xl border border-sa-border bg-sa-surface p-4 text-sm text-sa-text-2 shadow-sa">
         <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
         <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{formatCurrency(delivery)}</span></div>
-        <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(total)}</span></div>
+        <div className="flex justify-between text-base font-semibold text-sa-text"><span>Total</span><span className="font-mono">{formatCurrency(total)}</span></div>
       </div>
       <div className="mt-6">
-        <p className="mb-3 text-sm font-semibold text-slate-900">Tipo do pedido</p>
-        <div className="grid grid-cols-3 gap-2 rounded-[24px] border border-orange-100 bg-white/80 p-2">
+        <p className="mb-3 text-sm font-semibold text-sa-text">Tipo do pedido</p>
+        <div className="grid grid-cols-3 gap-2 rounded-xl border border-sa-border bg-sa-surface p-2">
           {orderSources.map((source) => {
             const Icon = orderSourceIcons[source]
             return (
-            <button key={source} onClick={() => onOrderSourceChange(source)} className={cn('flex flex-col items-center gap-1 rounded-2xl border px-2 py-2.5 text-sm font-semibold transition-all duration-200', orderSource === source ? 'border-orange-300 bg-orange-50 text-orange-700 shadow-[0_8px_18px_rgba(255,107,0,0.08)]' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-200')}>
+            <button key={source} onClick={() => onOrderSourceChange(source)} className={cn('flex flex-col items-center gap-1 rounded-2xl border px-2 py-2.5 text-sm font-semibold transition-all duration-200', orderSource === source ? 'border-sa-border-strong bg-sa-accent-soft text-sa-accent-text shadow-sa' : 'border-sa-border bg-sa-surface text-sa-text-2 hover:border-sa-border-strong')}>
               <Icon className="h-5 w-5" />
               {source}
             </button>
@@ -81,7 +81,7 @@ export function CartPanel({ items, paymentMethod, orderSource, tableNumber, cust
             <Input value={tableNumber} onChange={(event) => onTableNumberChange(event.target.value)} placeholder="Número da mesa" />
             {tables.length > 0 ? (
               <div className="grid grid-cols-4 gap-2">
-                {tables.map((name) => <button key={name} type="button" onClick={() => onTableNumberChange(name)} className={cn('rounded-2xl border px-2 py-2 text-sm font-semibold transition hover:border-orange-300 hover:bg-orange-50', tableNumber === name ? 'border-orange-300 bg-orange-50 text-orange-700' : 'border-orange-100 bg-white text-slate-600')}>{tableLabel(name)}</button>)}
+                {tables.map((name) => <button key={name} type="button" onClick={() => onTableNumberChange(name)} className={cn('rounded-2xl border px-2 py-2 text-sm font-semibold transition hover:border-sa-border-strong hover:bg-sa-hover', tableNumber === name ? 'border-sa-border-strong bg-sa-accent-soft text-sa-accent-text' : 'border-sa-border bg-sa-surface text-sa-text-2')}>{tableLabel(name)}</button>)}
               </div>
             ) : null}
           </div>
@@ -92,15 +92,15 @@ export function CartPanel({ items, paymentMethod, orderSource, tableNumber, cust
           </div>
         )}
       </div>
-      <label className="mt-6 grid gap-2 text-sm font-semibold text-slate-900">
+      <label className="mt-6 grid gap-2 text-sm font-semibold text-sa-text">
         Observação do pedido
-        <textarea value={notes} onChange={(event) => onNotesChange(event.target.value)} placeholder="Ex: sem cebola, troco para R$ 100, entregar no balcão" className="min-h-20 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100" />
+        <textarea value={notes} onChange={(event) => onNotesChange(event.target.value)} placeholder="Ex: sem cebola, troco para R$ 100, entregar no balcão" className="min-h-20 rounded-2xl border border-sa-border bg-sa-surface px-4 py-3 text-sm text-sa-text outline-none transition-all duration-200 placeholder:text-sa-soft focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20" />
       </label>
       <div className="mt-6">
-        <p className="mb-3 text-sm font-semibold text-slate-900">Método de pagamento</p>
+        <p className="mb-3 text-sm font-semibold text-sa-text">Método de pagamento</p>
         <PaymentMethodSelector value={paymentMethod} onChange={onPaymentChange} />
       </div>
-      <Button className="mt-6 w-full shadow-[0_14px_30px_rgba(255,107,0,0.22)]" onClick={onCheckout}>Finalizar Pedido</Button>
+      <Button className="mt-6 w-full shadow-sa" onClick={onCheckout}>Finalizar Pedido</Button>
     </div>
   )
 }

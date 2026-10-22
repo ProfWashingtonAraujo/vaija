@@ -57,8 +57,8 @@ function sangriasByReason(movements: CashMovement[]) {
 
 function Line({ label, value, strong, tone, muted }: { label: string; value: string; strong?: boolean; tone?: 'plus' | 'minus'; muted?: boolean }) {
   return (
-    <div className={cn('flex justify-between gap-3', strong && 'text-base font-semibold text-slate-900', muted && 'text-xs text-slate-400')}>
-      <span className={cn(tone === 'minus' && 'text-rose-700', tone === 'plus' && 'text-emerald-700')}>{label}</span>
+    <div className={cn('flex justify-between gap-3', strong && 'text-base font-semibold text-sa-text', muted && 'text-xs text-sa-soft')}>
+      <span className={cn(tone === 'minus' && 'text-sa-bad', tone === 'plus' && 'text-sa-ok')}>{label}</span>
       <span className="font-mono">{value}</span>
     </div>
   )
@@ -72,64 +72,64 @@ export function CashReportView({ report, onVoid }: { report: CashReport; onVoid?
   const reasons = sangriasByReason(movements)
 
   return (
-    <div className="space-y-5 text-sm text-slate-600">
-      <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
-        <p className="font-semibold text-slate-900">{reportTitle(report)}</p>
+    <div className="space-y-5 text-sm text-sa-text-2">
+      <div className="rounded-2xl border border-sa-border bg-sa-surface-2 p-4">
+        <p className="font-semibold text-sa-text">{reportTitle(report)}</p>
         <p className="mt-1">Aberto por {session.openedBy} em {formatDateTime(session.openedAt)}</p>
         {closed ? <p>Fechado por {session.closedBy} em {formatDateTime(session.closedAt)}</p> : <p>Emitido em {formatDateTime(report.period.end)}</p>}
-        {session.openingNote ? <p className="mt-1 text-slate-500">Obs. da abertura: {session.openingNote}</p> : null}
+        {session.openingNote ? <p className="mt-1 text-sa-muted">Obs. da abertura: {session.openingNote}</p> : null}
       </div>
 
       {pix.unconfirmedCount > 0 ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
+        <div className="flex items-start gap-3 rounded-2xl border border-sa-border bg-sa-warn-soft p-3 text-sa-warn">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>{pix.unconfirmedCount} {pix.unconfirmedCount === 1 ? 'pedido Pix' : 'pedidos Pix'} ({formatCurrency(pix.unconfirmedTotal)}) finalizado{pix.unconfirmedCount === 1 ? '' : 's'} sem confirmação de pagamento. Confira no app do banco.</p>
         </div>
       ) : null}
 
       {figures.outstanding > 0 && report.couriers ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
+        <div className="flex items-start gap-3 rounded-2xl border border-sa-border bg-sa-warn-soft p-3 text-sa-warn">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>{formatCurrency(figures.outstanding)} em dinheiro ainda com entregadores ({report.couriers.outstanding.map((courier) => `${courier.name || 'sem nome'} ${formatCurrency(courier.total)}`).join(', ')}). Não conta no dinheiro esperado até o acerto.</p>
         </div>
       ) : null}
 
       <section>
-        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Vendas por forma de pagamento</h4>
-        <div className="space-y-1.5 rounded-2xl border border-orange-100 bg-white p-4">
+        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-sa-soft">Vendas por forma de pagamento</h4>
+        <div className="space-y-1.5 rounded-2xl border border-sa-border bg-sa-surface p-4">
           {sales.byPayment.map((row) => <Line key={row.method} label={`${row.method} · ${row.count} ${row.count === 1 ? 'pedido' : 'pedidos'}`} value={formatCurrency(row.total)} />)}
-          <div className="border-t border-orange-100 pt-2">
+          <div className="border-t border-sa-border pt-2">
             <Line label={`Total vendido · ${sales.count} ${sales.count === 1 ? 'pedido' : 'pedidos'}`} value={formatCurrency(sales.gross)} strong />
           </div>
-          <p className="pt-1 text-xs text-slate-500">Produtos {formatCurrency(sales.products)} + taxas de entrega {formatCurrency(sales.deliveryFees)}</p>
+          <p className="pt-1 text-xs text-sa-muted">Produtos {formatCurrency(sales.products)} + taxas de entrega {formatCurrency(sales.deliveryFees)}</p>
         </div>
       </section>
 
       <section>
-        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Por tipo de pedido</h4>
-        <div className="space-y-1.5 rounded-2xl border border-orange-100 bg-white p-4">
+        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-sa-soft">Por tipo de pedido</h4>
+        <div className="space-y-1.5 rounded-2xl border border-sa-border bg-sa-surface p-4">
           {sales.bySource.map((row) => <Line key={row.source} label={`${row.source} · ${row.count}`} value={formatCurrency(row.total)} />)}
-          {cancelled.count > 0 ? <div className="border-t border-orange-100 pt-2"><Line label={`Cancelados (não entram no total) · ${cancelled.count}`} value={formatCurrency(cancelled.total)} /></div> : null}
+          {cancelled.count > 0 ? <div className="border-t border-sa-border pt-2"><Line label={`Cancelados (não entram no total) · ${cancelled.count}`} value={formatCurrency(cancelled.total)} /></div> : null}
         </div>
       </section>
 
       <section>
-        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Dinheiro no caixa</h4>
-        <div className="space-y-1.5 rounded-2xl border border-orange-100 bg-white p-4">
+        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-sa-soft">Dinheiro no caixa</h4>
+        <div className="space-y-1.5 rounded-2xl border border-sa-border bg-sa-surface p-4">
           <Line label="Fundo de troco" value={formatCurrency(cash.openingFloat)} />
           <Line label="Vendas em dinheiro na gaveta" value={`+ ${formatCurrency(figures.drawerSales)}`} tone="plus" />
           {figures.courierSales > 0 ? <Line label="Vendas em dinheiro com entregadores (só contam no acerto)" value={formatCurrency(figures.courierSales)} muted /> : null}
           {figures.acertos > 0 || figures.courierSales > 0 ? <Line label="Acertos de entregadores" value={`+ ${formatCurrency(figures.acertos)}`} tone="plus" /> : null}
           <Line label="Suprimentos" value={`+ ${formatCurrency(cash.suprimentos)}`} tone="plus" />
           <Line label="Sangrias" value={`− ${formatCurrency(cash.sangrias)}`} tone="minus" />
-          <div className="border-t border-orange-100 pt-2">
+          <div className="border-t border-sa-border pt-2">
             <Line label="Esperado no caixa" value={formatCurrency(cash.expected)} strong />
           </div>
           {closed && session.countedCash !== null && session.difference !== null ? (
             <>
               <Line label="Contado" value={formatCurrency(session.countedCash)} />
-              <p className={cn('rounded-xl px-3 py-2 text-center font-semibold', Math.abs(session.difference) < 0.005 ? 'bg-emerald-50 text-emerald-700' : session.difference > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700')}>{differenceLabel(session.difference)}</p>
-              {session.closingNote ? <p className="text-xs text-slate-500">Obs. do fechamento: {session.closingNote}</p> : null}
+              <p className={cn('rounded-xl px-3 py-2 text-center font-semibold', Math.abs(session.difference) < 0.005 ? 'bg-sa-ok-soft text-sa-ok' : session.difference > 0 ? 'bg-sa-info-soft text-sa-info' : 'bg-sa-bad-soft text-sa-bad')}>{differenceLabel(session.difference)}</p>
+              {session.closingNote ? <p className="text-xs text-sa-muted">Obs. do fechamento: {session.closingNote}</p> : null}
             </>
           ) : null}
         </div>
@@ -137,26 +137,26 @@ export function CashReportView({ report, onVoid }: { report: CashReport; onVoid?
 
       {reasons.length > 0 ? (
         <section>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Sangrias por motivo</h4>
-          <div className="space-y-1.5 rounded-2xl border border-orange-100 bg-white p-4">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-sa-soft">Sangrias por motivo</h4>
+          <div className="space-y-1.5 rounded-2xl border border-sa-border bg-sa-surface p-4">
             {reasons.map(([label, total]) => <Line key={label} label={label} value={formatCurrency(total)} />)}
           </div>
         </section>
       ) : null}
 
       <section>
-        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Movimentações do caixa</h4>
-        {movements.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/50 p-3 text-center">Nenhuma movimentação neste caixa.</p> : (
-          <ul className="divide-y divide-orange-50 rounded-2xl border border-orange-100 bg-white">
+        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-sa-soft">Movimentações do caixa</h4>
+        {movements.length === 0 ? <p className="rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-3 text-center">Nenhuma movimentação neste caixa.</p> : (
+          <ul className="divide-y divide-sa-border rounded-2xl border border-sa-border bg-sa-surface">
             {movements.map((movement) => (
               <li key={movement.id} className="flex items-start justify-between gap-3 p-3">
                 <div className="min-w-0">
-                  <p className={cn('font-semibold', movement.voided ? 'text-slate-400 line-through' : 'text-slate-900')}>{movementTitle(movement)}</p>
-                  <p className="text-xs text-slate-500">{formatDateTime(movement.createdAt)} · {movement.createdBy}{movement.note ? ` · ${movement.note}` : ''}</p>
-                  {movement.voided ? <p className="text-xs font-semibold text-amber-700">Estornada{movement.voidedBy ? ` por ${movement.voidedBy}` : ''}</p> : null}
+                  <p className={cn('font-semibold', movement.voided ? 'text-sa-soft line-through' : 'text-sa-text')}>{movementTitle(movement)}</p>
+                  <p className="text-xs text-sa-muted">{formatDateTime(movement.createdAt)} · {movement.createdBy}{movement.note ? ` · ${movement.note}` : ''}</p>
+                  {movement.voided ? <p className="text-xs font-semibold text-sa-warn">Estornada{movement.voidedBy ? ` por ${movement.voidedBy}` : ''}</p> : null}
                   {onVoid && !movement.voided ? (
                     <ConfirmDialog
-                      trigger={<button type="button" className="mt-1 text-xs font-semibold text-slate-500 hover:text-slate-800">Estornar</button>}
+                      trigger={<button type="button" className="mt-1 text-xs font-semibold text-sa-muted hover:text-sa-text">Estornar</button>}
                       title="Estornar movimentação"
                       description={`Estornar "${movementTitle(movement)}" de ${formatCurrency(movement.amount)}? Ela continua na lista, riscada, e deixa de contar no caixa.${movement.kind === 'acerto' ? ' Os pedidos voltam a aparecer como dinheiro com o entregador.' : ''}`}
                       confirmLabel="Estornar"
@@ -164,7 +164,7 @@ export function CashReportView({ report, onVoid }: { report: CashReport; onVoid?
                     />
                   ) : null}
                 </div>
-                <span className={cn('shrink-0 font-mono font-semibold', movement.voided ? 'text-slate-400 line-through' : movement.kind === 'sangria' ? 'text-rose-700' : 'text-emerald-700')}>{movementSign(movement)} {formatCurrency(movement.amount)}</span>
+                <span className={cn('shrink-0 font-mono font-semibold', movement.voided ? 'text-sa-soft line-through' : movement.kind === 'sangria' ? 'text-sa-bad' : 'text-sa-ok')}>{movementSign(movement)} {formatCurrency(movement.amount)}</span>
               </li>
             ))}
           </ul>

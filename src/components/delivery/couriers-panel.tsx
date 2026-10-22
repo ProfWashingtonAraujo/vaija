@@ -18,7 +18,7 @@ function parsePercent(value: string): number | null | undefined {
   const number = Number(text)
   return Number.isFinite(number) && number >= 0 && number <= 100 ? number : undefined
 }
-const fieldClass = 'h-10 rounded-lg border-slate-200 focus:translate-y-0 focus:ring-2'
+const fieldClass = 'h-10 rounded-lg border-sa-border focus:translate-y-0 focus:ring-2'
 
 /** Cadastro de entregadores: nome e WhatsApp. O acesso do entregador continua sendo o link de cada entrega. */
 export function CouriersPanel({ canEdit }: { canEdit: boolean }) {
@@ -83,25 +83,25 @@ export function CouriersPanel({ canEdit }: { canEdit: boolean }) {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 py-4">
-        <p className="max-w-md text-sm text-slate-500">Cadastre quem faz as entregas. Ao despachar um pedido, você escolhe o entregador na lista e o link vai direto para o WhatsApp dele.</p>
-        {canEdit && form === null ? <Button type="button" variant="outline" className="rounded-lg border-slate-200" onClick={() => setForm(emptyForm)}>Adicionar entregador</Button> : null}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sa-border py-4">
+        <p className="max-w-md text-sm text-sa-muted">Cadastre quem faz as entregas. Ao despachar um pedido, você escolhe o entregador na lista e o link vai direto para o WhatsApp dele.</p>
+        {canEdit && form === null ? <Button type="button" variant="outline" className="rounded-lg border-sa-border" onClick={() => setForm(emptyForm)}>Adicionar entregador</Button> : null}
       </div>
 
       {form !== null ? (
-        <form onSubmit={save} className="grid gap-3 border-b border-slate-100 py-4 sm:grid-cols-2">
-          <label className="grid gap-1.5 text-sm font-medium text-slate-700">
+        <form onSubmit={save} className="grid gap-3 border-b border-sa-border py-4 sm:grid-cols-2">
+          <label className="grid gap-1.5 text-sm font-medium text-sa-text-2">
             Nome
             <Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} maxLength={60} placeholder="Ex: João Silva" className={fieldClass} autoFocus />
           </label>
-          <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-            WhatsApp <span className="font-normal text-slate-400">(opcional)</span>
+          <label className="grid gap-1.5 text-sm font-medium text-sa-text-2">
+            WhatsApp <span className="font-normal text-sa-soft">(opcional)</span>
             <Input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} maxLength={30} placeholder="(88) 99999-9999" inputMode="tel" className={fieldClass} />
           </label>
-          <label className="grid gap-1.5 text-sm font-medium text-slate-700 sm:col-span-2">
-            Repasse próprio (%) <span className="font-normal text-slate-400">(opcional)</span>
+          <label className="grid gap-1.5 text-sm font-medium text-sa-text-2 sm:col-span-2">
+            Repasse próprio (%) <span className="font-normal text-sa-soft">(opcional)</span>
             <Input value={form.payPercent} onChange={(event) => setForm({ ...form, payPercent: event.target.value })} maxLength={6} placeholder="Vazio = usa o padrão da loja" inputMode="decimal" className={cn(fieldClass, 'sm:max-w-xs')} />
-            <span className="text-xs font-normal text-slate-500">Parte da taxa de entrega que este entregador recebe. Vale para as próximas entregas dele.</span>
+            <span className="text-xs font-normal text-sa-muted">Parte da taxa de entrega que este entregador recebe. Vale para as próximas entregas dele.</span>
           </label>
           <div className="flex gap-2 sm:col-span-2">
             <Button type="submit" disabled={saving} className="rounded-lg shadow-none hover:translate-y-0">{saving ? 'Salvando...' : form.id === null ? 'Cadastrar' : 'Salvar'}</Button>
@@ -110,22 +110,22 @@ export function CouriersPanel({ canEdit }: { canEdit: boolean }) {
         </form>
       ) : null}
 
-      {!loaded ? <div className="my-4 h-16 animate-pulse rounded-xl bg-slate-100" /> : couriers.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-500">Nenhum entregador cadastrado ainda.</p>
+      {!loaded ? <div className="my-4 h-16 animate-pulse rounded-xl bg-sa-hover" /> : couriers.length === 0 ? (
+        <p className="py-8 text-center text-sm text-sa-muted">Nenhum entregador cadastrado ainda.</p>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-sa-border">
           {couriers.map((courier) => (
             <li key={courier.id} className="flex flex-wrap items-center gap-3 py-3">
               <div className="min-w-0 flex-1">
-                <p className={cn('truncate text-sm font-semibold', courier.active ? 'text-slate-900' : 'text-slate-400')}>{courier.name}</p>
-                <p className="text-xs text-slate-500">{courier.phone ? formatPhone(courier.phone) : 'Sem WhatsApp'}{courier.payPercent !== null ? ` · Repasse ${String(courier.payPercent).replace('.', ',')}%` : ''}{courier.active ? '' : ' · Inativo'}</p>
+                <p className={cn('truncate text-sm font-semibold', courier.active ? 'text-sa-text' : 'text-sa-soft')}>{courier.name}</p>
+                <p className="text-xs text-sa-muted">{courier.phone ? formatPhone(courier.phone) : 'Sem WhatsApp'}{courier.payPercent !== null ? ` · Repasse ${String(courier.payPercent).replace('.', ',')}%` : ''}{courier.active ? '' : ' · Inativo'}</p>
               </div>
               {canEdit ? (
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => void toggleActive(courier)} className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100">{courier.active ? 'Desativar' : 'Ativar'}</button>
-                  <button type="button" onClick={() => setForm({ id: courier.id, name: courier.name, phone: courier.phone, active: courier.active, payPercent: courier.payPercent === null ? '' : String(courier.payPercent).replace('.', ',') })} aria-label={`Editar ${courier.name}`} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-orange-600"><Pencil className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => void toggleActive(courier)} className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-sa-text-2 hover:bg-sa-hover">{courier.active ? 'Desativar' : 'Ativar'}</button>
+                  <button type="button" onClick={() => setForm({ id: courier.id, name: courier.name, phone: courier.phone, active: courier.active, payPercent: courier.payPercent === null ? '' : String(courier.payPercent).replace('.', ',') })} aria-label={`Editar ${courier.name}`} className="rounded-lg p-2 text-sa-soft hover:bg-sa-hover hover:text-sa-accent-text"><Pencil className="h-4 w-4" /></button>
                   <ConfirmDialog
-                    trigger={<button type="button" aria-label={`Remover ${courier.name}`} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-orange-600"><Trash2 className="h-4 w-4" /></button>}
+                    trigger={<button type="button" aria-label={`Remover ${courier.name}`} className="rounded-lg p-2 text-sa-soft hover:bg-sa-hover hover:text-sa-accent-text"><Trash2 className="h-4 w-4" /></button>}
                     title="Remover entregador"
                     description={`${courier.name} sai da lista de entregadores. As entregas já feitas continuam com o nome dele. Se for só uma pausa, use Desativar.`}
                     confirmLabel="Remover"

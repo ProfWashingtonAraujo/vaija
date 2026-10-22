@@ -75,18 +75,18 @@ const themeDescriptions: Record<string, string> = {
   'Alto Contraste': 'Leitura máxima para ambientes claros ou monitores distantes.',
 }
 
-const panelClass = 'rounded-xl border border-slate-200 bg-white px-5 sm:px-6'
-const fieldClass = 'h-10 rounded-lg border-slate-200 focus:translate-y-0 focus:ring-2'
-const selectClass = 'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100'
+const panelClass = 'rounded-xl border border-sa-border bg-sa-surface px-5 sm:px-6'
+const fieldClass = 'h-10 rounded-lg border-sa-border focus:translate-y-0 focus:ring-2'
+const selectClass = 'h-10 w-full rounded-lg border border-sa-border bg-sa-surface px-3 text-sm text-sa-text outline-none focus:border-sa-accent focus:ring-2 focus:ring-sa-accent/20'
 const primaryButtonClass = 'rounded-lg shadow-none hover:translate-y-0'
-const outlineButtonClass = 'rounded-lg border-slate-200 hover:border-slate-300 hover:text-slate-900'
+const outlineButtonClass = 'rounded-lg border-sa-border hover:border-sa-border-strong hover:text-sa-text'
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
-    <div className="grid gap-2 border-b border-slate-100 py-4 last:border-b-0 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center sm:gap-8">
+    <div className="grid gap-2 border-b border-sa-border py-4 last:border-b-0 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center sm:gap-8">
       <div>
-        <p className="text-sm font-medium text-slate-800">{label}</p>
-        {hint ? <p className="mt-0.5 text-xs text-slate-500">{hint}</p> : null}
+        <p className="text-sm font-medium text-sa-text">{label}</p>
+        {hint ? <p className="mt-0.5 text-xs text-sa-muted">{hint}</p> : null}
       </div>
       <div className="min-w-0 sm:max-w-md">{children}</div>
     </div>
@@ -94,15 +94,15 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 function GroupTitle({ children }: { children: ReactNode }) {
-  return <h3 className="pb-1 pt-6 text-xs font-semibold uppercase tracking-wide text-slate-400 first:pt-5">{children}</h3>
+  return <h3 className="pb-1 pt-6 text-xs font-semibold uppercase tracking-wide text-sa-soft first:pt-5">{children}</h3>
 }
 
 function Toggle({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <span className={cn('relative inline-flex h-5 w-9 shrink-0', className)}>
       <input type="checkbox" role="switch" className="peer absolute inset-0 z-10 m-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0 disabled:cursor-not-allowed" {...props} />
-      <span className="pointer-events-none h-5 w-9 rounded-full bg-slate-200 transition-colors peer-checked:bg-orange-500 peer-focus-visible:ring-2 peer-focus-visible:ring-orange-200 peer-disabled:opacity-50" />
-      <span className="pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-4" />
+      <span className="pointer-events-none h-5 w-9 rounded-full bg-sa-border-strong transition-colors peer-checked:bg-sa-accent peer-focus-visible:ring-2 peer-focus-visible:ring-sa-accent/30 peer-disabled:opacity-50" />
+      <span className="pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-sa-surface shadow-sm transition-transform peer-checked:translate-x-4" />
     </span>
   )
 }
@@ -116,7 +116,7 @@ export function SettingsPage() {
   }, [])
 
   if (!synced) {
-    return <AdminLayout title="Configurações" description="Carregando configurações do restaurante..."><div className="h-40 animate-pulse rounded-xl bg-slate-100" /></AdminLayout>
+    return <AdminLayout title="Configurações" description="Carregando configurações do restaurante..."><div className="h-40 animate-pulse rounded-xl bg-sa-hover" /></AdminLayout>
   }
 
   return <SettingsForm />
@@ -287,7 +287,7 @@ function SettingsForm() {
               aria-current={section === key ? 'page' : undefined}
               className={cn(
                 'whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors',
-                section === key ? 'bg-orange-50 text-orange-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                section === key ? 'bg-sa-accent-soft text-sa-accent-text' : 'text-sa-text-2 hover:bg-sa-hover hover:text-sa-text',
               )}
             >
               {label}
@@ -351,10 +351,10 @@ function SettingsForm() {
             <div hidden={section !== 'restaurante'} className={panelClass}>
               <Row label="Logotipo" hint="PNG, JPG ou WebP até 1 MB.">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-slate-400">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-sa-border bg-sa-surface-2 text-sa-soft">
                     {restaurantLogo ? <img src={restaurantLogo} alt="Logotipo do restaurante" className="h-full w-full object-cover" /> : <span className="font-heading text-lg font-bold">V</span>}
                   </div>
-                  <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900">
+                  <label className="inline-flex cursor-pointer items-center rounded-lg border border-sa-border bg-sa-surface px-3 py-1.5 text-sm font-medium text-sa-text-2 transition hover:border-sa-border-strong hover:text-sa-text">
                     Enviar logo
                     <input type="file" accept="image/*" className="hidden" onChange={(event) => {
                       const file = event.target.files?.[0]
@@ -364,14 +364,14 @@ function SettingsForm() {
                       event.target.value = ''
                     }} />
                   </label>
-                  {restaurantLogo ? <button type="button" className="text-sm font-medium text-rose-600 hover:text-rose-700" onClick={() => setRestaurantLogo('')}>Remover</button> : null}
+                  {restaurantLogo ? <button type="button" className="text-sm font-medium text-sa-bad hover:opacity-80" onClick={() => setRestaurantLogo('')}>Remover</button> : null}
                 </div>
               </Row>
               <Row label="Cor da marca" hint="Colore o app do cliente (botões, destaques e tela inicial).">
                 <div className="flex items-center gap-3">
-                  <input type="color" value={brandColor} onChange={(event) => setBrandColor(event.target.value)} className="h-10 w-14 cursor-pointer rounded-lg border border-slate-200 bg-white p-1" aria-label="Cor da marca" />
-                  <span className="font-mono text-sm text-slate-600">{brandColor.toUpperCase()}</span>
-                  {brandColor !== defaultBrandColor ? <button type="button" className="text-sm font-medium text-slate-600 hover:text-slate-900" onClick={() => setBrandColor(defaultBrandColor)}>Restaurar padrão</button> : null}
+                  <input type="color" value={brandColor} onChange={(event) => setBrandColor(event.target.value)} className="h-10 w-14 cursor-pointer rounded-lg border border-sa-border bg-sa-surface p-1" aria-label="Cor da marca" />
+                  <span className="font-mono text-sm text-sa-text-2">{brandColor.toUpperCase()}</span>
+                  {brandColor !== defaultBrandColor ? <button type="button" className="text-sm font-medium text-sa-text-2 hover:text-sa-text" onClick={() => setBrandColor(defaultBrandColor)}>Restaurar padrão</button> : null}
                 </div>
               </Row>
               <Row label="Nome do restaurante">
@@ -382,7 +382,7 @@ function SettingsForm() {
               </Row>
               {!user?.isPlatformAdmin ? (
                 <Row label="Link público" hint="Endereço do cardápio para seus clientes fazerem pedidos.">
-                  <Input value={publicOrderUrl} readOnly aria-label="Link público do restaurante" className={cn(fieldClass, 'bg-slate-50 font-mono text-xs')} />
+                  <Input value={publicOrderUrl} readOnly aria-label="Link público do restaurante" className={cn(fieldClass, 'bg-sa-surface-2 font-mono text-xs')} />
                   <div className="mt-2 flex gap-2">
                     <Button type="button" variant="outline" className={cn(outlineButtonClass, 'px-3 py-1.5')} onClick={() => void copyPublicOrderUrl()}>Copiar link</Button>
                     <Button type="button" variant="outline" className={cn(outlineButtonClass, 'px-3 py-1.5')} onClick={() => window.open(publicOrderUrl, '_blank', 'noopener,noreferrer')}>Abrir página</Button>
@@ -390,30 +390,30 @@ function SettingsForm() {
                 </Row>
               ) : null}
               <Row label="Plano" hint="A troca de plano é feita em Assinatura.">
-                <p className="flex items-center gap-2 text-sm text-slate-800">
-                  <span className={cn('h-2 w-2 rounded-full', tenant.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300')} />
+                <p className="flex items-center gap-2 text-sm text-sa-text">
+                  <span className={cn('h-2 w-2 rounded-full', tenant.status === 'active' ? 'bg-emerald-500' : 'bg-sa-soft')} />
                   {planLabels[tenant.plan]} · {tenant.status === 'active' ? 'assinatura ativa' : 'assinatura inativa'}
                 </p>
               </Row>
             </div>
 
             <div hidden={section !== 'horarios'} className={panelClass}>
-              <div className="flex items-center justify-between gap-3 border-b border-slate-100 py-4">
-                <p className="text-sm text-slate-500">Dias e horários em que o restaurante recebe pedidos.</p>
-                <button type="button" onClick={applyHoursToAll} className="shrink-0 text-sm font-medium text-orange-700 hover:text-orange-800">Aplicar a todos</button>
+              <div className="flex items-center justify-between gap-3 border-b border-sa-border py-4">
+                <p className="text-sm text-sa-muted">Dias e horários em que o restaurante recebe pedidos.</p>
+                <button type="button" onClick={applyHoursToAll} className="shrink-0 text-sm font-medium text-sa-accent-text hover:text-sa-accent-text">Aplicar a todos</button>
               </div>
               {businessHours.map((item, index) => (
-                <div key={item.day} className="flex items-center gap-4 border-b border-slate-100 py-3 last:border-b-0">
+                <div key={item.day} className="flex items-center gap-4 border-b border-sa-border py-3 last:border-b-0">
                   <Toggle checked={item.enabled} onChange={(event) => updateBusinessHour(index, { enabled: event.target.checked })} aria-label={`${item.day}: ${item.enabled ? 'aberto' : 'fechado'}`} />
-                  <p className={cn('w-28 shrink-0 text-sm font-medium', item.enabled ? 'text-slate-800' : 'text-slate-400')}>{item.day}</p>
+                  <p className={cn('w-28 shrink-0 text-sm font-medium', item.enabled ? 'text-sa-text' : 'text-sa-soft')}>{item.day}</p>
                   {item.enabled ? (
                     <div className="flex items-center gap-2">
                       <Input value={item.openTime} onChange={(event) => updateBusinessHour(index, { openTime: event.target.value })} type="time" aria-label={`${item.day}: abre`} className={cn(fieldClass, 'h-9 w-28')} />
-                      <span className="text-slate-300">–</span>
+                      <span className="text-sa-soft">–</span>
                       <Input value={item.closeTime} onChange={(event) => updateBusinessHour(index, { closeTime: event.target.value })} type="time" aria-label={`${item.day}: fecha`} className={cn(fieldClass, 'h-9 w-28')} />
                     </div>
                   ) : (
-                    <span className="text-sm text-slate-400">Fechado</span>
+                    <span className="text-sm text-sa-soft">Fechado</span>
                   )}
                 </div>
               ))}
@@ -444,7 +444,7 @@ function SettingsForm() {
                       <Input value={deliverySettings.originCep} onChange={(event) => updateDeliverySettings({ originCep: event.target.value })} placeholder="Ex: 01001-000" inputMode="numeric" className={fieldClass} />
                       <Button type="button" variant="outline" className={cn(outlineButtonClass, 'shrink-0')} onClick={validateOriginCep}>Verificar</Button>
                     </div>
-                    {cepStatus ? <p className="mt-2 text-xs font-medium text-emerald-700">CEP válido: {cepStatus}</p> : null}
+                    {cepStatus ? <p className="mt-2 text-xs font-medium text-sa-ok">CEP válido: {cepStatus}</p> : null}
                   </Row>
                 </>
               )}
@@ -491,16 +491,16 @@ function SettingsForm() {
                 </div>
               </Row>
               <GroupTitle>Nome de cada mesa</GroupTitle>
-              <p className="pb-3 text-xs text-slate-500">Use número ou apelido, como "Varanda" ou "Balcão". É isso que aparece no PDV.</p>
+              <p className="pb-3 text-xs text-sa-muted">Use número ou apelido, como "Varanda" ou "Balcão". É isso que aparece no PDV.</p>
               <div className="grid gap-2 pb-5 sm:grid-cols-2">
                 {tables.map((name, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Input value={name} onChange={(event) => updateTable(index, event.target.value)} maxLength={20} aria-label={`Nome da mesa ${index + 1}`} className={fieldClass} />
-                    <button type="button" onClick={() => removeTable(index)} aria-label={`Remover mesa ${name}`} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-orange-600"><X className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => removeTable(index)} aria-label={`Remover mesa ${name}`} className="rounded-lg p-2 text-sa-soft hover:bg-sa-hover hover:text-sa-accent-text"><X className="h-4 w-4" /></button>
                   </div>
                 ))}
               </div>
-              <div className="border-t border-slate-100 py-4">
+              <div className="border-t border-sa-border py-4">
                 <Button type="button" variant="outline" className={outlineButtonClass} onClick={addTable}><Plus className="mr-1.5 h-4 w-4" />Adicionar mesa</Button>
               </div>
             </div>
@@ -532,15 +532,15 @@ function SettingsForm() {
           </div>
 
           <div hidden={section !== 'equipe'} className={panelClass}>
-            <div className="divide-y divide-slate-100">
-              {users.length === 0 ? <p className="py-4 text-sm text-slate-500">Nenhum usuário carregado.</p> : null}
+            <div className="divide-y divide-sa-border">
+              {users.length === 0 ? <p className="py-4 text-sm text-sa-muted">Nenhum usuário carregado.</p> : null}
               {users.map((listedUser) => (
                 <div key={listedUser.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{listedUser.name}</p>
-                    <p className="text-xs text-slate-500">{listedUser.username}{listedUser.email ? ` · ${listedUser.email}` : ''}</p>
+                    <p className="text-sm font-medium text-sa-text">{listedUser.name}</p>
+                    <p className="text-xs text-sa-muted">{listedUser.username}{listedUser.email ? ` · ${listedUser.email}` : ''}</p>
                   </div>
-                  <p className="text-xs text-slate-500">{listedUser.role} · {listedUser.shift}</p>
+                  <p className="text-xs text-sa-muted">{listedUser.role} · {listedUser.shift}</p>
                 </div>
               ))}
             </div>
@@ -558,7 +558,7 @@ function SettingsForm() {
                       toast.error(userErrorMessage(error, 'Não foi possível criar o usuário.'))
                     }
                   })}
-                  className="border-t border-slate-200"
+                  className="border-t border-sa-border"
                 >
                   <GroupTitle>Novo usuário</GroupTitle>
                   <Row label="Nome">
@@ -566,7 +566,7 @@ function SettingsForm() {
                   </Row>
                   <Row label="Usuário de login" hint="Letras minúsculas, sem espaços.">
                     <Input {...usersForm.register('username')} placeholder="ex.: maria.caixa" autoCapitalize="none" className={fieldClass} />
-                    {usersForm.formState.errors.username ? <p className="mt-1 text-xs text-rose-600">{usersForm.formState.errors.username.message}</p> : null}
+                    {usersForm.formState.errors.username ? <p className="mt-1 text-xs text-sa-bad">{usersForm.formState.errors.username.message}</p> : null}
                   </Row>
                   <Row label="E-mail" hint="Opcional.">
                     <Input {...usersForm.register('email')} placeholder="E-mail" className={fieldClass} />
@@ -590,7 +590,7 @@ function SettingsForm() {
                   </div>
                 </form>
               ) : (
-                <div className="border-t border-slate-100 py-4">
+                <div className="border-t border-sa-border py-4">
                   <Button type="button" variant="outline" className={outlineButtonClass} onClick={() => setShowUserForm(true)}>Adicionar usuário</Button>
                 </div>
               )
@@ -622,8 +622,8 @@ function SettingsForm() {
           </div>
 
           {dirty ? (
-            <div className="sticky bottom-4 mt-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              <p className="text-sm text-slate-600">Você tem alterações não salvas.</p>
+            <div className="sticky bottom-4 mt-4 flex items-center justify-between gap-3 rounded-xl border border-sa-border bg-sa-surface px-4 py-3 shadow-sm">
+              <p className="text-sm text-sa-text-2">Você tem alterações não salvas.</p>
               <Button type="submit" form="settings-form" disabled={isSubmitting} className={primaryButtonClass}>Salvar</Button>
             </div>
           ) : null}

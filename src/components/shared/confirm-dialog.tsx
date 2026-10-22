@@ -7,8 +7,8 @@ export function ConfirmDialog({ trigger, title, description, onConfirm, confirmL
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
-        <DialogTitle className="pr-8 font-heading text-2xl font-bold text-slate-900">{title}</DialogTitle>
-        <DialogDescription className="mt-3 text-sm leading-7 text-slate-600">{description}</DialogDescription>
+        <DialogTitle className="pr-8 font-heading text-2xl font-bold text-sa-text">{title}</DialogTitle>
+        <DialogDescription className="mt-3 text-sm leading-7 text-sa-text-2">{description}</DialogDescription>
         <div className="mt-6 flex justify-end gap-3">
           <DialogClose asChild>
             <Button variant="outline">{cancelLabel}</Button>

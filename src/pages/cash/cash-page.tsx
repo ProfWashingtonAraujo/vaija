@@ -13,7 +13,7 @@ import { formatCurrency } from '@/lib/formatters'
 import { usePolling } from '@/lib/use-polling'
 import { cn } from '@/lib/utils'
 
-const cardClass = 'rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]'
+const cardClass = 'rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa'
 
 export function CashPage() {
   const location = useLocation()
@@ -103,20 +103,20 @@ export function CashPage() {
   return (
     <AdminLayout title="Fluxo de caixa" description="Abertura com fundo de troco, sangrias, leitura X e fechamento com o dinheiro contado.">
       {forgottenHours !== null ? (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-sa-border bg-sa-warn-soft p-4 text-sm text-sa-warn">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>Este caixa está aberto há {forgottenHours} horas. Se o turno já acabou, faça a contagem e feche, para o dinheiro de turnos diferentes não se misturar.</p>
         </div>
       ) : null}
 
       <section className={cardClass}>
-        {!loaded ? <div className="h-16 animate-pulse rounded-2xl bg-orange-50" /> : isOpen && report ? (
+        {!loaded ? <div className="h-16 animate-pulse rounded-2xl bg-sa-accent-soft" /> : isOpen && report ? (
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600"><LockOpen className="h-6 w-6" /></span>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sa-ok-soft text-sa-ok"><LockOpen className="h-6 w-6" /></span>
               <div>
-                <p className="font-heading text-2xl font-bold text-slate-900">Caixa aberto</p>
-                <p className="text-sm text-slate-500">Por {report.session.openedBy} desde {formatDateTime(report.session.openedAt)} · fundo de troco {formatCurrency(report.session.openingFloat)}</p>
+                <p className="font-heading text-2xl font-bold text-sa-text">Caixa aberto</p>
+                <p className="text-sm text-sa-muted">Por {report.session.openedBy} desde {formatDateTime(report.session.openedAt)} · fundo de troco {formatCurrency(report.session.openingFloat)}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -129,10 +129,10 @@ export function CashPage() {
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500"><Lock className="h-6 w-6" /></span>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sa-hover text-sa-muted"><Lock className="h-6 w-6" /></span>
               <div>
-                <p className="font-heading text-2xl font-bold text-slate-900">Caixa fechado</p>
-                <p className="text-sm text-slate-500">Abra o caixa para registrar as vendas do turno e receber pedidos online.</p>
+                <p className="font-heading text-2xl font-bold text-sa-text">Caixa fechado</p>
+                <p className="text-sm text-sa-muted">Abra o caixa para registrar as vendas do turno e receber pedidos online.</p>
               </div>
             </div>
             <Button className="gap-2" onClick={() => setOpenDialog(true)}><LockOpen className="h-4 w-4" />Abrir caixa</Button>
@@ -143,9 +143,9 @@ export function CashPage() {
       {isOpen && report ? (
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {tiles.map(({ label, value, highlight }) => (
-            <div key={label} className={cn('rounded-[28px] border bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]', highlight ? 'border-orange-300' : 'border-orange-100')}>
-              <p className="text-sm font-semibold text-slate-500">{label}</p>
-              <p className={cn('mt-4 font-heading text-2xl font-bold', highlight ? 'text-orange-600' : 'text-slate-900')}>{value}</p>
+            <div key={label} className={cn('rounded-2xl border bg-sa-surface p-5 shadow-sa', highlight ? 'border-sa-border-strong' : 'border-sa-border')}>
+              <p className="text-sm font-semibold text-sa-muted">{label}</p>
+              <p className={cn('mt-4 font-heading text-2xl font-bold', highlight ? 'text-sa-accent-text' : 'text-sa-text')}>{value}</p>
             </div>
           ))}
         </div>
@@ -154,23 +154,23 @@ export function CashPage() {
       {loaded && courierCash ? (
         <section className={cn(cardClass, 'mt-6')}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="flex items-center gap-2 font-heading text-xl font-bold text-slate-900"><Bike className="h-5 w-5 text-orange-500" />Dinheiro com entregadores</h3>
-            {courierCash.outstandingTotal > 0 ? <span className="font-mono text-lg font-bold text-orange-600">{formatCurrency(courierCash.outstandingTotal)}</span> : null}
+            <h3 className="flex items-center gap-2 font-heading text-xl font-bold text-sa-text"><Bike className="h-5 w-5 text-sa-accent-text" />Dinheiro com entregadores</h3>
+            {courierCash.outstandingTotal > 0 ? <span className="font-mono text-lg font-bold text-sa-accent-text">{formatCurrency(courierCash.outstandingTotal)}</span> : null}
           </div>
-          <p className="mt-1 text-sm text-slate-500">Pedidos pagos em dinheiro e entregues por entregador: o dinheiro só entra no caixa quando você recebe dele (acerto).</p>
+          <p className="mt-1 text-sm text-sa-muted">Pedidos pagos em dinheiro e entregues por entregador: o dinheiro só entra no caixa quando você recebe dele (acerto).</p>
           <div className="mt-4 space-y-3">
-            {courierCash.outstanding.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/50 p-4 text-center text-sm text-slate-500">Nenhum dinheiro pendente com entregadores.</p> : null}
+            {courierCash.outstanding.length === 0 ? <p className="rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-4 text-center text-sm text-sa-muted">Nenhum dinheiro pendente com entregadores.</p> : null}
             {courierCash.outstanding.map((courier) => (
-              <div key={courier.name || '__none__'} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-100 p-4">
+              <div key={courier.name || '__none__'} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sa-border p-4">
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-900">{courier.name || 'Sem entregador informado'}</p>
-                  <p className="text-sm text-slate-500">{courier.count} {courier.count === 1 ? 'pedido' : 'pedidos'}: {courier.orders.map((order) => `#${order.orderId}`).join(', ')}</p>
+                  <p className="font-semibold text-sa-text">{courier.name || 'Sem entregador informado'}</p>
+                  <p className="text-sm text-sa-muted">{courier.count} {courier.count === 1 ? 'pedido' : 'pedidos'}: {courier.orders.map((order) => `#${order.orderId}`).join(', ')}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-lg font-bold text-slate-900">{formatCurrency(courier.total)}</span>
+                  <span className="font-mono text-lg font-bold text-sa-text">{formatCurrency(courier.total)}</span>
                   {isOpen ? (
                     <Button className="h-9 rounded-full px-4 text-sm" onClick={() => setSettleTarget({ name: courier.name, count: courier.count, total: courier.total })}>Receber</Button>
-                  ) : <span className="text-xs text-slate-400">Abra o caixa para receber</span>}
+                  ) : <span className="text-xs text-sa-soft">Abra o caixa para receber</span>}
                 </div>
               </div>
             ))}
@@ -182,8 +182,8 @@ export function CashPage() {
         <section className={cn(cardClass, 'mt-6')}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 className="font-heading text-xl font-bold text-slate-900">Leitura X ao vivo</h3>
-              <p className="mt-1 text-sm text-slate-500">Atualiza sozinha. Mostra o turno até agora, sem fechar o caixa. A venda entra quando o pedido é finalizado.</p>
+              <h3 className="font-heading text-xl font-bold text-sa-text">Leitura X ao vivo</h3>
+              <p className="mt-1 text-sm text-sa-muted">Atualiza sozinha. Mostra o turno até agora, sem fechar o caixa. A venda entra quando o pedido é finalizado.</p>
             </div>
             <Button variant="outline" className="h-9 gap-2 rounded-full px-4 text-sm" onClick={() => downloadCashReportCsv(report)}><Download className="h-4 w-4" />Exportar planilha</Button>
           </div>
@@ -195,19 +195,19 @@ export function CashPage() {
 
       <section className={cn(cardClass, 'mt-6')}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-heading text-xl font-bold text-slate-900">Caixas anteriores</h3>
+          <h3 className="font-heading text-xl font-bold text-sa-text">Caixas anteriores</h3>
           <Button variant="outline" className="h-9 gap-2 rounded-full px-4 text-sm" disabled={sessions.length === 0} onClick={() => downloadCashHistoryCsv(sessions)}><Download className="h-4 w-4" />Exportar histórico</Button>
         </div>
         <div className="mt-4 space-y-3">
-          {loaded && sessions.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/50 p-4 text-center text-sm text-slate-500">Nenhum caixa fechado ainda. Os fechamentos aparecem aqui, com o relatório de cada um.</p> : null}
+          {loaded && sessions.length === 0 ? <p className="rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-4 text-center text-sm text-sa-muted">Nenhum caixa fechado ainda. Os fechamentos aparecem aqui, com o relatório de cada um.</p> : null}
           {sessions.map((session) => (
-            <button key={session.id} type="button" onClick={() => void viewSession(session.id)} className="flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-100 p-4 text-left transition hover:border-orange-300 hover:bg-orange-50/40">
+            <button key={session.id} type="button" onClick={() => void viewSession(session.id)} className="flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-sa-border p-4 text-left transition hover:border-sa-border-strong hover:bg-sa-hover">
               <div>
-                <p className="font-semibold text-slate-900">{formatDateTime(session.openedAt)} → {formatDateTime(session.closedAt)}</p>
-                <p className="text-sm text-slate-500">{session.openedBy}{session.closedBy && session.closedBy !== session.openedBy ? ` / ${session.closedBy}` : ''} · {session.salesCount} {session.salesCount === 1 ? 'pedido' : 'pedidos'} · {formatCurrency(session.gross)}</p>
+                <p className="font-semibold text-sa-text">{formatDateTime(session.openedAt)} → {formatDateTime(session.closedAt)}</p>
+                <p className="text-sm text-sa-muted">{session.openedBy}{session.closedBy && session.closedBy !== session.openedBy ? ` / ${session.closedBy}` : ''} · {session.salesCount} {session.salesCount === 1 ? 'pedido' : 'pedidos'} · {formatCurrency(session.gross)}</p>
               </div>
               {session.difference !== null ? (
-                <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', Math.abs(session.difference) < 0.005 ? 'bg-emerald-50 text-emerald-700' : session.difference > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700')}>{differenceLabel(session.difference)}</span>
+                <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', Math.abs(session.difference) < 0.005 ? 'bg-sa-ok-soft text-sa-ok' : session.difference > 0 ? 'bg-sa-info-soft text-sa-info' : 'bg-sa-bad-soft text-sa-bad')}>{differenceLabel(session.difference)}</span>
               ) : null}
             </button>
           ))}
@@ -230,7 +230,7 @@ export function CashPage() {
       />
       <Dialog open={viewing !== null} onOpenChange={(open) => { if (!open) setViewing(null) }}>
         <DialogContent className="max-h-[calc(100vh-2rem)] max-w-lg overflow-y-auto">
-          <DialogTitle className="pr-8 font-heading text-2xl font-bold text-slate-900">{viewing?.session.closedAt ? 'Relatório do caixa' : 'Leitura X'}</DialogTitle>
+          <DialogTitle className="pr-8 font-heading text-2xl font-bold text-sa-text">{viewing?.session.closedAt ? 'Relatório do caixa' : 'Leitura X'}</DialogTitle>
           <DialogDescription className="sr-only">Resumo das vendas, dinheiro esperado e movimentações do caixa.</DialogDescription>
           {viewing ? (
             <div className="mt-4 grid gap-5">

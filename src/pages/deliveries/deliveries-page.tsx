@@ -104,30 +104,30 @@ export function DeliveriesPage() {
 
   return (
     <AdminLayout title="Entregas" description="Acompanhe os entregadores em rota e o histórico de hoje.">
-      <div className="mb-6 inline-flex rounded-full border border-orange-100 bg-white p-1" role="tablist" aria-label="Visão das entregas">
+      <div className="mb-6 inline-flex rounded-full border border-sa-border bg-sa-surface p-1" role="tablist" aria-label="Visão das entregas">
         {([['live', 'Ao vivo'], ['earnings', 'Repasse aos entregadores']] as const).map(([key, label]) => (
-          <button key={key} type="button" role="tab" aria-selected={view === key} onClick={() => setView(key)} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${view === key ? 'bg-orange-500 text-white' : 'text-slate-600 hover:text-orange-700'}`}>{label}</button>
+          <button key={key} type="button" role="tab" aria-selected={view === key} onClick={() => setView(key)} className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${view === key ? 'bg-sa-accent text-white' : 'text-sa-text-2 hover:text-sa-accent-text'}`}>{label}</button>
         ))}
       </div>
 
       {view === 'earnings' ? <CourierEarningsPanel /> : (<>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="rounded-[28px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+          <div key={label} className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-slate-500">{label}</p>
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><Icon className="h-5 w-5" /></div>
+              <p className="text-sm font-semibold text-sa-muted">{label}</p>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sa-accent-soft text-sa-accent-text"><Icon className="h-5 w-5" /></div>
             </div>
-            <p className="mt-4 font-heading text-3xl font-bold text-slate-900">{value}</p>
+            <p className="mt-4 font-heading text-3xl font-bold text-sa-text">{value}</p>
           </div>
         ))}
       </div>
 
       {couriers.length > 0 ? (
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-slate-500">Entregador:</span>
+          <span className="text-sm font-semibold text-sa-muted">Entregador:</span>
           {['', ...couriers].map((name) => (
-            <button key={name || 'todos'} type="button" onClick={() => setCourierFilter(name)} className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${courierFilter === name ? 'border-orange-500 bg-orange-500 text-white' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-300'}`}>
+            <button key={name || 'todos'} type="button" onClick={() => setCourierFilter(name)} className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${courierFilter === name ? 'border-sa-accent bg-sa-accent text-white' : 'border-sa-border bg-sa-surface text-sa-text-2 hover:border-sa-border-strong'}`}>
               {name || 'Todos'}
             </button>
           ))}
@@ -135,42 +135,42 @@ export function DeliveriesPage() {
       ) : null}
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <section className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-          <h3 className="font-heading text-xl font-bold text-slate-900">Mapa ao vivo</h3>
+        <section className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
+          <h3 className="font-heading text-xl font-bold text-sa-text">Mapa ao vivo</h3>
           <div className="mt-4">
             {mapCouriers.length === 0 ? (
-              <div className="flex h-80 items-center justify-center rounded-[24px] border border-dashed border-orange-200 bg-orange-50/50 p-6 text-center text-sm text-slate-500 sm:h-[26rem]">
+              <div className="flex h-80 items-center justify-center rounded-xl border border-dashed border-sa-border bg-sa-surface-2 p-6 text-center text-sm text-sa-muted sm:h-[26rem]">
                 {loaded ? 'Nenhum entregador compartilhando a localização agora.' : 'Carregando...'}
               </div>
             ) : (
-              <Suspense fallback={<div className="h-80 animate-pulse rounded-[24px] bg-orange-50 sm:h-[26rem]" />}>
+              <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-sa-accent-soft sm:h-[26rem]" />}>
                 <DeliveriesMap couriers={mapCouriers} />
               </Suspense>
             )}
           </div>
-          <p className="mt-3 text-xs text-slate-400">Ponto laranja: sinal recente. Ponto âmbar: sem sinal há mais de 1 minuto (tela bloqueada ou sem internet).</p>
+          <p className="mt-3 text-xs text-sa-soft">Ponto laranja: sinal recente. Ponto âmbar: sem sinal há mais de 1 minuto (tela bloqueada ou sem internet).</p>
         </section>
 
         <section className="space-y-6">
-          <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <h3 className="font-heading text-xl font-bold text-slate-900">Em andamento</h3>
+          <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
+            <h3 className="font-heading text-xl font-bold text-sa-text">Em andamento</h3>
             <div className="mt-4 space-y-3">
-              {active.length === 0 && waiting.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/50 p-4 text-center text-sm text-slate-500">Nenhuma entrega em andamento.</p> : null}
+              {active.length === 0 && waiting.length === 0 ? <p className="rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-4 text-center text-sm text-sa-muted">Nenhuma entrega em andamento.</p> : null}
               {active.map((item) => {
                 const signal = secondsSince(item.location?.updatedAt, now)
                 const stale = signal === null || signal > STALE_AFTER_SECONDS
                 return (
-                  <div key={item.orderId} className="rounded-2xl border border-orange-100 p-3 text-sm">
+                  <div key={item.orderId} className="rounded-2xl border border-sa-border p-3 text-sm">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold text-slate-900">#{item.orderId} · {item.customer}</p>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${stale ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{signal === null ? 'sem sinal' : `sinal há ${formatDuration(signal)}`}</span>
+                      <p className="font-semibold text-sa-text">#{item.orderId} · {item.customer}</p>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${stale ? 'bg-sa-warn-soft text-sa-warn' : 'bg-sa-ok-soft text-sa-ok'}`}>{signal === null ? 'sem sinal' : `sinal há ${formatDuration(signal)}`}</span>
                     </div>
-                    <p className="mt-1 text-slate-500">{item.address}</p>
-                    <p className="mt-1 text-slate-500">{item.courierName ? `${item.courierName} · ` : ''}saiu às {formatTime(item.startedAt)} · há {formatDuration(secondsSince(item.startedAt, now))}</p>
+                    <p className="mt-1 text-sa-muted">{item.address}</p>
+                    <p className="mt-1 text-sa-muted">{item.courierName ? `${item.courierName} · ` : ''}saiu às {formatTime(item.startedAt)} · há {formatDuration(secondsSince(item.startedAt, now))}</p>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                      <button type="button" onClick={() => setLinkTarget(item)} className="text-sm font-semibold text-orange-700 hover:text-orange-800">Link do entregador</button>
+                      <button type="button" onClick={() => setLinkTarget(item)} className="text-sm font-semibold text-sa-accent-text hover:text-sa-accent-text">Link do entregador</button>
                       <ConfirmDialog
-                        trigger={<button type="button" className="text-sm font-semibold text-slate-500 hover:text-slate-800">Concluir manualmente</button>}
+                        trigger={<button type="button" className="text-sm font-semibold text-sa-muted hover:text-sa-text">Concluir manualmente</button>}
                         title={`Concluir o pedido #${item.orderId}?`}
                         description="Use só se o entregador não conseguir finalizar (por exemplo, celular sem bateria). O pedido vai para Entregue, o cliente é avisado e a entrega fica registrada como encerrada pelo restaurante."
                         confirmLabel="Marcar como entregue"
@@ -181,29 +181,29 @@ export function DeliveriesPage() {
                 )
               })}
               {waiting.map((item) => (
-                <div key={item.orderId} className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/40 p-3 text-sm">
-                  <p className="font-semibold text-slate-900">#{item.orderId} · {item.customer}</p>
-                  <p className="mt-1 text-slate-500">{item.courierName ? `${item.courierName} ` : 'Entregador '}ainda não iniciou · link gerado às {formatTime(item.createdAt)}</p>
-                  <button type="button" onClick={() => setLinkTarget(item)} className="mt-2 text-sm font-semibold text-orange-700 hover:text-orange-800">Link do entregador</button>
+                <div key={item.orderId} className="rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-3 text-sm">
+                  <p className="font-semibold text-sa-text">#{item.orderId} · {item.customer}</p>
+                  <p className="mt-1 text-sa-muted">{item.courierName ? `${item.courierName} ` : 'Entregador '}ainda não iniciou · link gerado às {formatTime(item.createdAt)}</p>
+                  <button type="button" onClick={() => setLinkTarget(item)} className="mt-2 text-sm font-semibold text-sa-accent-text hover:text-sa-accent-text">Link do entregador</button>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <h3 className="font-heading text-xl font-bold text-slate-900">Entregues hoje</h3>
+          <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
+            <h3 className="font-heading text-xl font-bold text-sa-text">Entregues hoje</h3>
             <div className="mt-4 space-y-3">
-              {finished.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/50 p-4 text-center text-sm text-slate-500">Nenhuma entrega finalizada hoje.</p> : null}
+              {finished.length === 0 ? <p className="rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-4 text-center text-sm text-sa-muted">Nenhuma entrega finalizada hoje.</p> : null}
               {finished.map((item) => (
-                <div key={item.orderId} className="flex items-start justify-between gap-3 rounded-2xl border border-orange-100 p-3 text-sm">
+                <div key={item.orderId} className="flex items-start justify-between gap-3 rounded-2xl border border-sa-border p-3 text-sm">
                   <div>
-                    <p className="font-semibold text-slate-900">#{item.orderId} · {item.customer}</p>
-                    <p className="mt-1 text-slate-500">{item.courierName ? `${item.courierName} · ` : ''}{formatTime(item.startedAt)} → {formatTime(item.finishedAt)}</p>
-                    {item.finishedBy ? <p className="mt-1 text-xs font-semibold text-amber-700">Encerrada pelo restaurante · {item.finishedBy}</p> : null}
+                    <p className="font-semibold text-sa-text">#{item.orderId} · {item.customer}</p>
+                    <p className="mt-1 text-sa-muted">{item.courierName ? `${item.courierName} · ` : ''}{formatTime(item.startedAt)} → {formatTime(item.finishedAt)}</p>
+                    {item.finishedBy ? <p className="mt-1 text-xs font-semibold text-sa-warn">Encerrada pelo restaurante · {item.finishedBy}</p> : null}
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-slate-900">{item.finishedBy ? 'manual' : formatDuration(item.startedAt && item.finishedAt ? Math.round((new Date(item.finishedAt).getTime() - new Date(item.startedAt).getTime()) / 1000) : null)}</p>
-                    <p className="font-mono text-xs text-slate-500">{formatCurrency(item.value)}</p>
+                    <p className="font-semibold text-sa-text">{item.finishedBy ? 'manual' : formatDuration(item.startedAt && item.finishedAt ? Math.round((new Date(item.finishedAt).getTime() - new Date(item.startedAt).getTime()) / 1000) : null)}</p>
+                    <p className="font-mono text-xs text-sa-muted">{formatCurrency(item.value)}</p>
                   </div>
                 </div>
               ))}

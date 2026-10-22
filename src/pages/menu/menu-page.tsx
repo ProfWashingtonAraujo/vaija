@@ -303,28 +303,28 @@ export function MenuPage() {
   return (
     <AdminLayout title="Cardápio Digital" description="Gerencie itens, disponibilidade e categorias com controle visual simples.">
       <div className="mb-6 grid gap-3 md:grid-cols-4">
-        <div className="rounded-[26px] border border-orange-100 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Itens</p>
-          <p className="mt-2 font-heading text-2xl font-bold text-slate-900">{products.length}</p>
+        <div className="rounded-2xl border border-sa-border bg-sa-surface p-4 shadow-sa">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft">Itens</p>
+          <p className="mt-2 font-heading text-2xl font-bold text-sa-text">{products.length}</p>
         </div>
-        <div className="rounded-[26px] border border-emerald-100 bg-emerald-50/60 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-600">Disponíveis</p>
-          <p className="mt-2 font-heading text-2xl font-bold text-emerald-800">{availableCount}</p>
+        <div className="rounded-2xl border border-sa-border bg-sa-ok-soft p-4 shadow-sa">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-ok">Disponíveis</p>
+          <p className="mt-2 font-heading text-2xl font-bold text-sa-ok">{availableCount}</p>
         </div>
-        <div className="rounded-[26px] border border-rose-100 bg-rose-50/60 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-600">Indisponíveis</p>
-          <p className="mt-2 font-heading text-2xl font-bold text-rose-800">{unavailableCount}</p>
+        <div className="rounded-2xl border border-sa-border bg-sa-bad-soft p-4 shadow-sa">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-bad">Indisponíveis</p>
+          <p className="mt-2 font-heading text-2xl font-bold text-sa-bad">{unavailableCount}</p>
         </div>
-        <div className="rounded-[26px] border border-orange-100 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Preço médio</p>
-          <p className="mt-2 font-heading text-2xl font-bold text-slate-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(averagePrice)}</p>
+        <div className="rounded-2xl border border-sa-border bg-sa-surface p-4 shadow-sa">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft">Preço médio</p>
+          <p className="mt-2 font-heading text-2xl font-bold text-sa-text">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(averagePrice)}</p>
         </div>
       </div>
-      <div className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+      <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex-1"><SearchInput placeholder="Buscar item" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <select value={availability} onChange={(event) => setAvailability(event.target.value as 'all' | 'available' | 'unavailable')} className="h-11 rounded-2xl border border-orange-200 bg-white px-4 text-sm text-slate-700 outline-none shadow-[0_10px_24px_rgba(255,107,0,0.05)] focus:border-orange-300">
+            <select value={availability} onChange={(event) => setAvailability(event.target.value as 'all' | 'available' | 'unavailable')} className="h-11 rounded-2xl border border-sa-border bg-sa-surface px-4 text-sm text-sa-text-2 outline-none shadow-sa focus:border-sa-accent">
               <option value="all">Todas as disponibilidades</option>
               <option value="available">Disponíveis</option>
               <option value="unavailable">Indisponíveis</option>
@@ -366,9 +366,9 @@ export function MenuPage() {
         }}
       >
         {filtered.length === 0 ? (
-          <div className="col-span-full rounded-[30px] border border-dashed border-orange-200 bg-orange-50/40 p-10 text-center">
-            <p className="font-heading text-2xl font-bold text-slate-900">Nenhum item encontrado</p>
-            <p className="mt-2 text-sm text-slate-500">Ajuste a busca, categoria ou disponibilidade para ver outros produtos.</p>
+          <div className="col-span-full rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-10 text-center">
+            <p className="font-heading text-2xl font-bold text-sa-text">Nenhum item encontrado</p>
+            <p className="mt-2 text-sm text-sa-muted">Ajuste a busca, categoria ou disponibilidade para ver outros produtos.</p>
           </div>
         ) : null}
         {filtered.map((product) => (
@@ -394,37 +394,37 @@ export function MenuPage() {
         <DialogContent className="max-w-2xl">
           <form onSubmit={handleSaveProduct} className="grid gap-4">
             <div>
-              <h3 className="font-heading text-2xl font-bold text-slate-900">{editingProductId ? 'Editar item' : 'Adicionar item'}</h3>
-              <p className="mt-2 text-sm text-slate-500">Personalize as informações do produto que aparece no cardápio.</p>
+              <h3 className="font-heading text-2xl font-bold text-sa-text">{editingProductId ? 'Editar item' : 'Adicionar item'}</h3>
+              <p className="mt-2 text-sm text-sa-muted">Personalize as informações do produto que aparece no cardápio.</p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-semibold text-slate-700">
+              <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
                 Nome
                 <Input value={productForm.name} onChange={(event) => setProductForm((current) => ({ ...current, name: event.target.value }))} placeholder="Ex: Pizza Portuguesa" />
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-slate-700">
+              <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
                 Categoria
-                <select value={productForm.category} onChange={(event) => setProductForm((current) => ({ ...current, category: event.target.value }))} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+                <select value={productForm.category} onChange={(event) => setProductForm((current) => ({ ...current, category: event.target.value }))} className="h-11 rounded-2xl border border-sa-border bg-sa-surface px-4 text-sm text-sa-text outline-none focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20">
                   {categories.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
                 </select>
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-slate-700">
+              <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
                 Preço
                 <Input value={productForm.price} onChange={(event) => setProductForm((current) => ({ ...current, price: event.target.value }))} placeholder="Ex: 49,90" inputMode="decimal" />
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-slate-700">
+              <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
                 URL da imagem
                 <Input value={productForm.image} onChange={(event) => setProductForm((current) => ({ ...current, image: event.target.value }))} placeholder="https://..." />
               </label>
             </div>
-            <label className="grid gap-2 text-sm font-semibold text-slate-700">
+            <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
               Descrição
-              <textarea value={productForm.description} onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))} placeholder="Descreva ingredientes e diferenciais do item" className="min-h-24 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100" />
+              <textarea value={productForm.description} onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))} placeholder="Descreva ingredientes e diferenciais do item" className="min-h-24 rounded-2xl border border-sa-border bg-sa-surface px-4 py-3 text-sm text-sa-text outline-none transition-all duration-200 placeholder:text-sa-soft focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20" />
             </label>
-            <label className="grid gap-2 text-sm font-semibold text-slate-700">
+            <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
               Ingredientes (separados por vírgula)
               <Input value={productForm.ingredients} onChange={(event) => setProductForm((current) => ({ ...current, ingredients: event.target.value }))} placeholder="Ex: Frango desfiado, Catupiry, Mussarela" />
-              <span className="text-xs font-normal text-slate-500">Se um ingrediente for marcado como em falta, este item sai do cardápio e do PDV automaticamente.</span>
+              <span className="text-xs font-normal text-sa-muted">Se um ingrediente for marcado como em falta, este item sai do cardápio e do PDV automaticamente.</span>
               {knownIngredients.length > 0 ? (
                 <div className="flex flex-wrap gap-2 pt-1">
                   {knownIngredients.map((name) => {
@@ -437,7 +437,7 @@ export function MenuPage() {
                         onClick={() => toggleFormIngredient(name)}
                         className={cn(
                           'rounded-full border px-3 py-1 text-xs font-semibold transition',
-                          selected ? 'border-orange-400 bg-orange-50 text-orange-700' : 'border-orange-100 bg-white text-slate-600 hover:border-orange-300',
+                          selected ? 'border-sa-border-strong bg-sa-accent-soft text-sa-accent-text' : 'border-sa-border bg-sa-surface text-sa-text-2 hover:border-sa-border-strong',
                         )}
                       >
                         {name}
@@ -447,9 +447,9 @@ export function MenuPage() {
                 </div>
               ) : null}
             </label>
-            <label className="flex items-center justify-between rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 text-sm font-semibold text-slate-700">
+            <label className="flex items-center justify-between rounded-2xl border border-sa-border bg-sa-surface-2 px-4 py-3 text-sm font-semibold text-sa-text-2">
               Item disponível
-              <input type="checkbox" checked={productForm.available} onChange={(event) => setProductForm((current) => ({ ...current, available: event.target.checked }))} className="h-4 w-4 accent-orange-500" />
+              <input type="checkbox" checked={productForm.available} onChange={(event) => setProductForm((current) => ({ ...current, available: event.target.checked }))} className="h-4 w-4 accent-sa-accent" />
             </label>
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
@@ -462,8 +462,8 @@ export function MenuPage() {
       <Dialog open={isCategoryFormOpen} onOpenChange={setIsCategoryFormOpen}>
         <DialogContent className="max-w-2xl">
           <div>
-            <h3 className="font-heading text-2xl font-bold text-slate-900">Categorias do cardápio</h3>
-            <p className="mt-2 text-sm text-slate-500">Organize as seções exibidas no cardápio digital e no PDV.</p>
+            <h3 className="font-heading text-2xl font-bold text-sa-text">Categorias do cardápio</h3>
+            <p className="mt-2 text-sm text-sa-muted">Organize as seções exibidas no cardápio digital e no PDV.</p>
           </div>
           <form onSubmit={handleCreateCategory} className="mt-5 flex flex-col gap-3 sm:flex-row">
             <Input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="Ex: Pratos executivos" className="flex-1" />
@@ -471,20 +471,20 @@ export function MenuPage() {
           </form>
           <div className="mt-5 max-h-[55vh] space-y-2 overflow-y-auto pr-1 scrollbar-thin">
             {categories.map((item, index) => (
-              <div key={item.name} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-3">
+              <div key={item.name} className="rounded-2xl border border-sa-border bg-sa-surface-2 p-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <p className="min-w-0 flex-1 truncate font-semibold text-slate-900">{item.name}</p>
+                  <p className="min-w-0 flex-1 truncate font-semibold text-sa-text">{item.name}</p>
                   <div className="flex flex-wrap items-center gap-2">
-                    <label className="flex items-center gap-2 rounded-xl bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600"><input type="checkbox" checked={item.menuEnabled} onChange={() => handleToggleCategory(item.name, 'menuEnabled')} className="accent-orange-500" />Cardápio</label>
-                    <label className="flex items-center gap-2 rounded-xl bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600"><input type="checkbox" checked={item.posEnabled} onChange={() => handleToggleCategory(item.name, 'posEnabled')} className="accent-orange-500" />PDV</label>
-                    <button type="button" aria-label={`Mover ${item.name} para cima`} disabled={index === 0} onClick={() => handleMoveCategory(index, -1)} className="rounded-xl border border-orange-100 bg-white p-2 text-slate-500 disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
-                    <button type="button" aria-label={`Mover ${item.name} para baixo`} disabled={index === categories.length - 1} onClick={() => handleMoveCategory(index, 1)} className="rounded-xl border border-orange-100 bg-white p-2 text-slate-500 disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
-                    <button type="button" aria-label={`Excluir ${item.name}`} onClick={() => handleDeleteCategory(item.name)} className="rounded-xl border border-rose-100 bg-white p-2 text-rose-500 hover:border-rose-300"><Trash2 className="h-4 w-4" /></button>
+                    <label className="flex items-center gap-2 rounded-xl bg-sa-surface px-2.5 py-1.5 text-xs font-semibold text-sa-text-2"><input type="checkbox" checked={item.menuEnabled} onChange={() => handleToggleCategory(item.name, 'menuEnabled')} className="accent-sa-accent" />Cardápio</label>
+                    <label className="flex items-center gap-2 rounded-xl bg-sa-surface px-2.5 py-1.5 text-xs font-semibold text-sa-text-2"><input type="checkbox" checked={item.posEnabled} onChange={() => handleToggleCategory(item.name, 'posEnabled')} className="accent-sa-accent" />PDV</label>
+                    <button type="button" aria-label={`Mover ${item.name} para cima`} disabled={index === 0} onClick={() => handleMoveCategory(index, -1)} className="rounded-xl border border-sa-border bg-sa-surface p-2 text-sa-muted disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
+                    <button type="button" aria-label={`Mover ${item.name} para baixo`} disabled={index === categories.length - 1} onClick={() => handleMoveCategory(index, 1)} className="rounded-xl border border-sa-border bg-sa-surface p-2 text-sa-muted disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
+                    <button type="button" aria-label={`Excluir ${item.name}`} onClick={() => handleDeleteCategory(item.name)} className="rounded-xl border border-sa-border bg-sa-surface p-2 text-sa-bad hover:border-sa-bad"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </div>
               </div>
             ))}
-            {categories.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 p-6 text-center text-sm text-slate-500">Nenhuma categoria cadastrada.</p> : null}
+            {categories.length === 0 ? <p className="rounded-2xl border border-dashed border-sa-border p-6 text-center text-sm text-sa-muted">Nenhuma categoria cadastrada.</p> : null}
           </div>
         </DialogContent>
       </Dialog>

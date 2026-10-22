@@ -28,7 +28,7 @@ function PieWithLegend({ data, unit }: { data: Array<{ name: string; value: numb
     </div>
   )
 }
-const emptyState = <div className="flex h-full items-center justify-center text-sm text-slate-500">Sem dados no período.</div>
+const emptyState = <div className="flex h-full items-center justify-center text-sm text-sa-muted">Sem dados no período.</div>
 
 export function ReportsPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -66,18 +66,18 @@ export function ReportsPage() {
 
   return (
     <AdminLayout title="Relatórios Inteligentes" description="Indicadores reais dos seus pedidos, com filtro de período e exportação.">
-      <div className="rounded-[30px] border border-orange-100 bg-gradient-to-r from-[#fffaf5] to-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+      <div className="rounded-2xl border border-sa-border bg-gradient-to-r   p-5 shadow-sa">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Insights</p>
-            <p className="mt-1 font-heading text-2xl font-bold text-slate-900">Exportações e leitura rápida dos indicadores</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft">Insights</p>
+            <p className="mt-1 font-heading text-2xl font-bold text-sa-text">Exportações e leitura rápida dos indicadores</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <select value={period} onChange={(event) => setPeriod(event.target.value as ReportPeriod)} aria-label="Período" className="h-11 rounded-2xl border border-orange-200 bg-white/90 px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+            <select value={period} onChange={(event) => setPeriod(event.target.value as ReportPeriod)} aria-label="Período" className="h-11 rounded-2xl border border-sa-border bg-sa-surface px-4 text-sm text-sa-text outline-none focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20">
               {(Object.keys(reportPeriodLabels) as ReportPeriod[]).map((key) => <option key={key} value={key}>{reportPeriodLabels[key]}</option>)}
             </select>
-            <Button variant="outline" className="border-orange-200 bg-white/90" onClick={exportPdf}>Exportar PDF</Button>
-            <Button variant="outline" className="border-orange-200 bg-white/90" onClick={exportCsv}>Exportar CSV</Button>
+            <Button variant="outline" className="border-sa-border bg-sa-surface" onClick={exportPdf}>Exportar PDF</Button>
+            <Button variant="outline" className="border-sa-border bg-sa-surface" onClick={exportCsv}>Exportar CSV</Button>
           </div>
         </div>
       </div>

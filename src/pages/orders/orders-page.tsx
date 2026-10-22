@@ -422,17 +422,17 @@ export function OrdersPage() {
 
   return (
     <AdminLayout title="Gestão de Pedidos" description="Acompanhe a fila operacional e avance a produção com poucos cliques.">
-      <div className="mb-6 rounded-[30px] border border-orange-100 bg-gradient-to-r from-[#fffaf5] to-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+      <div className="mb-6 rounded-2xl border border-sa-border bg-gradient-to-r   p-5 shadow-sa">
         <div className="flex flex-wrap items-center gap-3">
           {Object.entries(columns).map(([label, list]) => (
-            <div key={label} className="rounded-2xl border border-orange-200 bg-white/90 px-4 py-3 shadow-[0_8px_18px_rgba(255,107,0,0.06)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</p>
-              <p className="mt-1 font-heading text-2xl font-bold text-slate-900">{list.length}</p>
+            <div key={label} className="rounded-2xl border border-sa-border bg-sa-surface px-4 py-3 shadow-sa">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft">{label}</p>
+              <p className="mt-1 font-heading text-2xl font-bold text-sa-text">{list.length}</p>
             </div>
           ))}
-          <div className="rounded-2xl border border-sky-200 bg-white/90 px-4 py-3 shadow-[0_8px_18px_rgba(14,165,233,0.06)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Em rota</p>
-            <p className="mt-1 font-heading text-2xl font-bold text-slate-900">{enRoute.length}</p>
+          <div className="rounded-2xl border border-sa-border bg-sa-surface px-4 py-3 shadow-[0_8px_18px_rgba(14,165,233,0.06)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft">Em rota</p>
+            <p className="mt-1 font-heading text-2xl font-bold text-sa-text">{enRoute.length}</p>
           </div>
         </div>
       </div>
@@ -487,12 +487,12 @@ export function OrdersPage() {
           />
         </div>
         {enRoute.length > 0 ? (
-          <section className="rounded-[30px] border border-sky-100 bg-gradient-to-b from-sky-50/50 to-white p-4 shadow-[0_14px_36px_rgba(15,23,42,0.05)]">
+          <section className="rounded-2xl border border-sa-border bg-sa-info-soft  p-4 shadow-sa">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-heading text-lg font-bold text-slate-900">Em rota</h3>
-              <span className="rounded-full border border-sky-200 bg-white px-3 py-1 text-xs font-semibold text-sky-700">{enRoute.length}</span>
+              <h3 className="font-heading text-lg font-bold text-sa-text">Em rota</h3>
+              <span className="rounded-full border border-sa-border bg-sa-surface px-3 py-1 text-xs font-semibold text-sa-info">{enRoute.length}</span>
             </div>
-            <p className="mb-3 text-xs text-slate-500">Saíram para entrega. Quem finaliza é o entregador; pelo painel ao lado você pode gerar um novo link.</p>
+            <p className="mb-3 text-xs text-sa-muted">Saíram para entrega. Quem finaliza é o entregador; pelo painel ao lado você pode gerar um novo link.</p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {enRoute.map((order) => (
                 <OrderCard
@@ -515,19 +515,19 @@ export function OrdersPage() {
           {selected ? (
             <OrderDetailsPanel order={selected} onAdvance={handleAdvance} onEdit={openEditOrderForm} onOpenWhatsapp={handleOpenWhatsapp} onSendCourier={handleSendCourier} onTogglePaid={handleTogglePaid} />
           ) : (
-            <div className="rounded-[30px] border border-orange-100 bg-white p-6 text-center text-sm text-slate-500">Nenhum pedido em aberto. Os novos pedidos aparecem aqui; para ver os anteriores, use a busca.</div>
+            <div className="rounded-2xl border border-sa-border bg-sa-surface p-6 text-center text-sm text-sa-muted">Nenhum pedido em aberto. Os novos pedidos aparecem aqui; para ver os anteriores, use a busca.</div>
           )}
         </div>
       </div>
       <Dialog open={courierDialog !== null} onOpenChange={(open) => { if (!open) setCourierDialog(null) }}>
         <DialogContent className="max-w-md">
           <div className="grid gap-5">
-          <h3 className="pr-8 font-heading text-2xl font-bold text-slate-900">Entregador do pedido #{courierDialog?.orderId}</h3>
+          <h3 className="pr-8 font-heading text-2xl font-bold text-sa-text">Entregador do pedido #{courierDialog?.orderId}</h3>
           {courierDialog?.url === null ? (
             <>
-              <p className="text-sm leading-6 text-slate-500">Informe quem vai entregar (opcional) para acompanhar na tela de Entregas.</p>
+              <p className="text-sm leading-6 text-sa-muted">Informe quem vai entregar (opcional) para acompanhar na tela de Entregas.</p>
               {registeredCouriers.length > 0 ? (
-                <select value={courierDialog.choice} onChange={(event) => chooseCourier(event.target.value)} aria-label="Entregador" className="h-11 w-full rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+                <select value={courierDialog.choice} onChange={(event) => chooseCourier(event.target.value)} aria-label="Entregador" className="h-11 w-full rounded-2xl border border-sa-border bg-sa-surface px-4 text-sm text-sa-text outline-none focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20">
                   <option value="">Escolha o entregador</option>
                   {registeredCouriers.map((courier) => <option key={courier.id} value={courier.id}>{courier.name}</option>)}
                   <option value="other">Outro (digitar o nome)</option>
@@ -539,12 +539,12 @@ export function OrdersPage() {
                   <datalist id="known-couriers">{knownCouriers.map((name) => <option key={name} value={name} />)}</datalist>
                 </>
               ) : null}
-              {registeredCouriers.length === 0 ? <p className="-mt-2 text-xs text-slate-500">Dica: cadastre seus entregadores em Configurações → Entregadores para escolher da lista e enviar direto pelo WhatsApp.</p> : null}
+              {registeredCouriers.length === 0 ? <p className="-mt-2 text-xs text-sa-muted">Dica: cadastre seus entregadores em Configurações → Entregadores para escolher da lista e enviar direto pelo WhatsApp.</p> : null}
               <Button onClick={() => void generateCourierLink()} disabled={courierDialog.busy}>{courierDialog.busy ? 'Gerando...' : 'Gerar link'}</Button>
             </>
           ) : (
             <>
-              <p className="text-sm leading-6 text-slate-500">Envie ao entregador: ele abre o link no celular e toca em &quot;Iniciar entrega&quot;. Um novo link invalida o anterior.</p>
+              <p className="text-sm leading-6 text-sa-muted">Envie ao entregador: ele abre o link no celular e toca em &quot;Iniciar entrega&quot;. Um novo link invalida o anterior.</p>
               <Input readOnly value={courierDialog?.url ?? ''} onFocus={(event) => event.currentTarget.select()} />
               <div className="grid gap-3 sm:grid-cols-2">
                 <Button variant="outline" onClick={() => void copyCourierLink()}>Copiar link</Button>
@@ -559,32 +559,32 @@ export function OrdersPage() {
         <DialogContent className="max-h-[calc(100vh-2rem)] max-w-2xl overflow-y-auto">
           <form onSubmit={handleSaveOrder} className="grid gap-4">
             <div>
-              <h3 className="font-heading text-2xl font-bold text-slate-900">Editar pedido #{selected.id}</h3>
-              <p className="mt-2 text-sm text-slate-500">Atualize os dados principais antes de avançar o pedido na operação.</p>
+              <h3 className="font-heading text-2xl font-bold text-sa-text">Editar pedido #{selected.id}</h3>
+              <p className="mt-2 text-sm text-sa-muted">Atualize os dados principais antes de avançar o pedido na operação.</p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="grid gap-2 text-sm font-semibold text-slate-700">
+              <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
                 Cliente
                 <Input value={orderForm.customer} onChange={(event) => setOrderForm((current) => ({ ...current, customer: event.target.value }))} placeholder="Nome do cliente" />
               </label>
-              <label className="grid gap-2 text-sm font-semibold text-slate-700">
+              <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
                 Telefone
                 <Input value={orderForm.phone} onChange={(event) => setOrderForm((current) => ({ ...current, phone: event.target.value }))} placeholder="(11) 99999-9999" inputMode="tel" />
               </label>
               {resolveOrderSource(selected.source) === 'Mesa' ? (
-                <label className="grid gap-2 text-sm font-semibold text-slate-700">
+                <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
                   Mesa
                   <Input value={orderForm.tableNumber} onChange={(event) => setOrderForm((current) => ({ ...current, tableNumber: event.target.value }))} placeholder="Ex: 12" />
                 </label>
               ) : resolveOrderSource(selected.source) === 'Online' ? (
-                <label className="grid gap-2 text-sm font-semibold text-slate-700 md:col-span-2">
+                <label className="grid gap-2 text-sm font-semibold text-sa-text-2 md:col-span-2">
                   Endereço
                   <Input value={orderForm.address} onChange={(event) => setOrderForm((current) => ({ ...current, address: event.target.value }))} placeholder="Rua, número e complemento" />
                 </label>
               ) : null}
-              <label className="grid gap-2 text-sm font-semibold text-slate-700">
+              <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
                 Pagamento
-                <select value={orderForm.payment} onChange={(event) => setOrderForm((current) => ({ ...current, payment: event.target.value as Order['payment'] }))} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+                <select value={orderForm.payment} onChange={(event) => setOrderForm((current) => ({ ...current, payment: event.target.value as Order['payment'] }))} className="h-11 rounded-2xl border border-sa-border bg-sa-surface px-4 text-sm text-sa-text outline-none focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20">
                   <option value="Pix">Pix</option>
                   <option value="Cartão">Cartão</option>
                   <option value="Dinheiro">Dinheiro</option>
@@ -593,17 +593,17 @@ export function OrdersPage() {
             </div>
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
               <div>
-                <p className="text-sm font-semibold text-slate-700">Itens do pedido</p>
-                <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-[24px] border border-orange-100 bg-white/80 p-3">
-                  {orderItems.length === 0 ? <p className="py-4 text-center text-sm text-slate-400">Nenhum item selecionado.</p> : null}
+                <p className="text-sm font-semibold text-sa-text-2">Itens do pedido</p>
+                <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-xl border border-sa-border bg-sa-surface p-3">
+                  {orderItems.length === 0 ? <p className="py-4 text-center text-sm text-sa-soft">Nenhum item selecionado.</p> : null}
                   {orderItems.map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-orange-100 bg-white p-3">
+                    <div key={item.id} className="rounded-2xl border border-sa-border bg-sa-surface p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-slate-900">{item.name}</p>
-                          <p className="mt-1 font-mono text-sm text-slate-500">{formatCurrency(item.price)}</p>
+                          <p className="font-semibold text-sa-text">{item.name}</p>
+                          <p className="mt-1 font-mono text-sm text-sa-muted">{formatCurrency(item.price)}</p>
                         </div>
-                        <button type="button" onClick={() => removeOrderItem(item.id)} className="text-sm font-semibold text-orange-700">Remover</button>
+                        <button type="button" onClick={() => removeOrderItem(item.id)} className="text-sm font-semibold text-sa-accent-text">Remover</button>
                       </div>
                       <div className="mt-3 flex items-center gap-2">
                         <Button type="button" variant="outline" className="h-9 w-9 px-0" onClick={() => updateOrderItemQuantity(item.id, -1)}>-</Button>
@@ -613,29 +613,29 @@ export function OrdersPage() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 space-y-2 rounded-[24px] border border-orange-100 bg-orange-50/40 p-4 text-sm text-slate-600">
+                <div className="mt-3 space-y-2 rounded-xl border border-sa-border bg-sa-surface-2 p-4 text-sm text-sa-text-2">
                   <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(orderItemsSubtotal)}</span></div>
                   <div className="flex justify-between"><span>{resolveOrderSource(selected.source) === 'Online' ? 'Taxa de entrega' : 'Taxa'}</span><span className="font-mono">{formatCurrency(editDeliveryFee)}</span></div>
-                  <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(editTotal)}</span></div>
+                  <div className="flex justify-between text-base font-semibold text-sa-text"><span>Total</span><span className="font-mono">{formatCurrency(editTotal)}</span></div>
                 </div>
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-700">Cardápio</p>
-                <div className="mt-2 max-h-80 space-y-2 overflow-y-auto rounded-[24px] border border-orange-100 bg-white/80 p-3">
+                <p className="text-sm font-semibold text-sa-text-2">Cardápio</p>
+                <div className="mt-2 max-h-80 space-y-2 overflow-y-auto rounded-xl border border-sa-border bg-sa-surface p-3">
                   {products.filter((product) => product.available).map((product) => (
-                    <button key={product.id} type="button" onClick={() => addProductToOrder(product)} className="w-full rounded-2xl border border-orange-100 bg-white p-3 text-left transition hover:border-orange-300 hover:bg-orange-50/50">
-                      <span className="block font-semibold text-slate-900">{product.name}</span>
-                      <span className="mt-1 block font-mono text-sm text-slate-500">{formatCurrency(product.price)}</span>
+                    <button key={product.id} type="button" onClick={() => addProductToOrder(product)} className="w-full rounded-2xl border border-sa-border bg-sa-surface p-3 text-left transition hover:border-sa-border-strong hover:bg-sa-hover">
+                      <span className="block font-semibold text-sa-text">{product.name}</span>
+                      <span className="mt-1 block font-mono text-sm text-sa-muted">{formatCurrency(product.price)}</span>
                     </button>
                   ))}
                 </div>
               </div>
             </div>
-            <label className="grid gap-2 text-sm font-semibold text-slate-700">
+            <label className="grid gap-2 text-sm font-semibold text-sa-text-2">
               Observação
-              <textarea value={orderForm.notes} onChange={(event) => setOrderForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Ex: sem cebola, sem molho, sem salada" className="min-h-24 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100" />
+              <textarea value={orderForm.notes} onChange={(event) => setOrderForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Ex: sem cebola, sem molho, sem salada" className="min-h-24 rounded-2xl border border-sa-border bg-sa-surface px-4 py-3 text-sm text-sa-text outline-none transition-all duration-200 placeholder:text-sa-soft focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20" />
             </label>
-            <div className="sticky bottom-0 -mx-6 flex justify-end gap-3 border-t border-orange-100 bg-white px-6 py-4">
+            <div className="sticky bottom-0 -mx-6 flex justify-end gap-3 border-t border-sa-border bg-sa-surface px-6 py-4">
               <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancelar</Button>
               <Button type="submit">Salvar pedido</Button>
             </div>

@@ -11,12 +11,12 @@ import { createTicket, fetchMyTickets, supportWhatsappUrl, type SupportTicket, t
 import { usePolling } from '@/lib/use-polling'
 
 const statusStyles: Record<TicketStatus, string> = {
-  Aberto: 'bg-amber-50 text-amber-700',
-  'Em atendimento': 'bg-sky-50 text-sky-700',
-  Resolvido: 'bg-emerald-50 text-emerald-700',
+  Aberto: 'bg-sa-warn-soft text-sa-warn',
+  'Em atendimento': 'bg-sa-info-soft text-sa-info',
+  Resolvido: 'bg-sa-ok-soft text-sa-ok',
 }
 
-const fieldClass = 'rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100'
+const fieldClass = 'rounded-2xl border border-sa-border bg-sa-surface px-4 text-sm text-sa-text outline-none focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20'
 
 export function SupportPage() {
   const { user } = useAuth()
@@ -62,16 +62,16 @@ export function SupportPage() {
     <AdminLayout title="Suporte" description="Tire dúvidas, fale com a gente e acompanhe seus chamados.">
       <div className="grid items-start gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="space-y-6">
-          <section className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600"><MessageCircle className="h-5 w-5" /></div>
-            <h2 className="mt-4 font-heading text-xl font-bold text-slate-900">Fale com a gente no WhatsApp</h2>
-            <p className="mt-1 text-sm text-slate-500">Para dúvidas rápidas e problemas urgentes na operação.</p>
+          <section className="rounded-2xl border border-sa-border bg-sa-surface p-6 shadow-sa">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sa-ok-soft text-sa-ok"><MessageCircle className="h-5 w-5" /></div>
+            <h2 className="mt-4 font-heading text-xl font-bold text-sa-text">Fale com a gente no WhatsApp</h2>
+            <p className="mt-1 text-sm text-sa-muted">Para dúvidas rápidas e problemas urgentes na operação.</p>
             <Button type="button" className="mt-5 w-full" onClick={() => window.open(supportWhatsappUrl(whatsappText), '_blank', 'noopener,noreferrer')}>Abrir WhatsApp</Button>
           </section>
 
-          <form onSubmit={submit} className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <h2 className="font-heading text-xl font-bold text-slate-900">Abrir chamado</h2>
-            <p className="mt-1 text-sm text-slate-500">Para algo que precisa de acompanhamento.</p>
+          <form onSubmit={submit} className="rounded-2xl border border-sa-border bg-sa-surface p-6 shadow-sa">
+            <h2 className="font-heading text-xl font-bold text-sa-text">Abrir chamado</h2>
+            <p className="mt-1 text-sm text-sa-muted">Para algo que precisa de acompanhamento.</p>
             <div className="mt-5 grid gap-3">
               <Input value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Assunto" maxLength={120} />
               <textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Descreva o que aconteceu" maxLength={2000} rows={4} className={`${fieldClass} resize-none py-3`} />
@@ -86,41 +86,41 @@ export function SupportPage() {
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <h2 className="font-heading text-xl font-bold text-slate-900">Meus chamados</h2>
+          <section className="rounded-2xl border border-sa-border bg-sa-surface p-6 shadow-sa">
+            <h2 className="font-heading text-xl font-bold text-sa-text">Meus chamados</h2>
             <div className="mt-5 space-y-3">
               {tickets.map((ticket) => (
-                <div key={ticket.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4">
+                <div key={ticket.id} className="rounded-2xl border border-sa-border bg-sa-surface-2 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900">{ticket.subject}</p>
-                      <p className="mt-1 text-xs text-slate-500">{new Date(ticket.createdAt).toLocaleString('pt-BR')} · {ticket.priority}{ticket.createdBy ? ` · ${ticket.createdBy}` : ''}</p>
+                      <p className="font-semibold text-sa-text">{ticket.subject}</p>
+                      <p className="mt-1 text-xs text-sa-muted">{new Date(ticket.createdAt).toLocaleString('pt-BR')} · {ticket.priority}{ticket.createdBy ? ` · ${ticket.createdBy}` : ''}</p>
                     </div>
                     <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[ticket.status]}`}>{ticket.status}</span>
                   </div>
-                  {ticket.message ? <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">{ticket.message}</p> : null}
+                  {ticket.message ? <p className="mt-3 whitespace-pre-wrap text-sm text-sa-text-2">{ticket.message}</p> : null}
                   {ticket.reply ? (
-                    <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Resposta do suporte</p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{ticket.reply}</p>
+                    <div className="mt-3 rounded-xl border border-sa-border bg-sa-ok-soft p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-sa-ok">Resposta do suporte</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-sa-text-2">{ticket.reply}</p>
                     </div>
                   ) : null}
                 </div>
               ))}
               {tickets.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">
-                  <LifeBuoy className="h-5 w-5 text-orange-500" />
+                <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-6 text-center text-sm font-semibold text-sa-muted">
+                  <LifeBuoy className="h-5 w-5 text-sa-accent-text" />
                   Você ainda não abriu nenhum chamado.
                 </div>
               ) : null}
             </div>
           </section>
 
-          <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <h2 className="font-heading text-xl font-bold text-slate-900">Perguntas frequentes</h2>
+          <section className="rounded-2xl border border-sa-border bg-sa-surface p-6 shadow-sa">
+            <h2 className="font-heading text-xl font-bold text-sa-text">Perguntas frequentes</h2>
             <Accordion type="single" collapsible className="mt-3">
               {supportFaq.map((item, index) => (
-                <AccordionItem key={item.question} value={`item-${index}`} className="border-b border-orange-50 last:border-none">
+                <AccordionItem key={item.question} value={`item-${index}`} className="border-b border-sa-border last:border-none">
                   <AccordionTrigger>{item.question}</AccordionTrigger>
                   <AccordionContent>{item.answer}</AccordionContent>
                 </AccordionItem>

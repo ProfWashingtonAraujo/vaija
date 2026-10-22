@@ -166,25 +166,25 @@ export function PosPage() {
 
   return (
     <AdminLayout title="PDV Operacional" description="Busca rápida, categorias visíveis e carrinho pronto para atendimento ágil.">
-      <div className="mb-3 rounded-[22px] border border-orange-100 bg-gradient-to-r from-[#fffaf5] to-white p-3 shadow-[0_14px_36px_rgba(15,23,42,0.06)] sm:mb-6 sm:rounded-[30px] sm:p-5">
+      <div className="mb-3 rounded-xl border border-sa-border bg-gradient-to-r   p-3 shadow-sa sm:mb-6 sm:rounded-[30px] sm:p-5">
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
           <div className="col-span-2 mb-1 sm:mb-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Operação</p>
-            <p className="mt-1 font-heading text-xl font-bold text-slate-900 sm:text-2xl">Monte pedidos com agilidade</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft">Operação</p>
+            <p className="mt-1 font-heading text-xl font-bold text-sa-text sm:text-2xl">Monte pedidos com agilidade</p>
           </div>
-          <div className="rounded-2xl border border-orange-200 bg-white/90 px-3 py-2.5 shadow-[0_8px_18px_rgba(255,107,0,0.06)] sm:px-4 sm:py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 sm:text-xs sm:tracking-[0.16em]">Itens no carrinho</p>
-            <p className="mt-0.5 font-heading text-xl font-bold text-slate-900 sm:mt-1 sm:text-2xl">{cartQuantity}</p>
+          <div className="rounded-2xl border border-sa-border bg-sa-surface px-3 py-2.5 shadow-sa sm:px-4 sm:py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sa-soft sm:text-xs sm:tracking-[0.16em]">Itens no carrinho</p>
+            <p className="mt-0.5 font-heading text-xl font-bold text-sa-text sm:mt-1 sm:text-2xl">{cartQuantity}</p>
           </div>
-          <div className="min-w-0 rounded-2xl border border-orange-200 bg-white/90 px-3 py-2.5 shadow-[0_8px_18px_rgba(255,107,0,0.06)] sm:px-4 sm:py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 sm:text-xs sm:tracking-[0.16em]">Subtotal</p>
-            <p className="mt-0.5 truncate font-heading text-xl font-bold text-slate-900 sm:mt-1 sm:text-2xl">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartSubtotal)}</p>
+          <div className="min-w-0 rounded-2xl border border-sa-border bg-sa-surface px-3 py-2.5 shadow-sa sm:px-4 sm:py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sa-soft sm:text-xs sm:tracking-[0.16em]">Subtotal</p>
+            <p className="mt-0.5 truncate font-heading text-xl font-bold text-sa-text sm:mt-1 sm:text-2xl">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cartSubtotal)}</p>
           </div>
         </div>
       </div>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0">
-          <div className="sticky top-0 z-30 -mx-1 rounded-[22px] border border-orange-100 bg-background/95 p-3 shadow-[0_14px_36px_rgba(15,23,42,0.06)] backdrop-blur sm:static sm:mx-0 sm:rounded-[30px] sm:bg-gradient-to-br sm:from-white sm:to-[#fffaf5] sm:p-5">
+          <div className="sticky top-0 z-30 -mx-1 rounded-xl border border-sa-border bg-sa-bg/95 p-3 shadow-sa backdrop-blur sm:static sm:mx-0 sm:rounded-2xl sm:bg-sa-surface sm:p-5">
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1"><SearchInput placeholder="Buscar produto" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
               <Button type="button" variant="outline" aria-label="Ingredientes em falta" className="px-3 sm:px-4" onClick={() => setIngredientsOpen(true)}><PackageX className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Em falta</span></Button>
@@ -216,17 +216,17 @@ export function PosPage() {
             </div>
             <div className="mt-4"><CategoryTabs categories={categories} value={category} onChange={setCategory} /></div>
           </div>
-          <div className="mt-3 flex items-center justify-between gap-2 rounded-[20px] border border-orange-100 bg-white/80 p-2.5 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:mt-6 sm:rounded-[24px] sm:p-4">
-            <p className="min-w-0 text-xs font-semibold text-slate-600 sm:text-sm"><span className="sm:hidden">{paginatedProducts.length} de {filteredProducts.length} produtos</span><span className="hidden sm:inline">Mostrando {paginatedProducts.length} de {filteredProducts.length} produto(s)</span></p>
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-sa-border bg-sa-surface p-2.5 shadow-sa sm:mt-6 sm:rounded-xl sm:p-4">
+            <p className="min-w-0 text-xs font-semibold text-sa-text-2 sm:text-sm"><span className="sm:hidden">{paginatedProducts.length} de {filteredProducts.length} produtos</span><span className="hidden sm:inline">Mostrando {paginatedProducts.length} de {filteredProducts.length} produto(s)</span></p>
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <Button type="button" variant="outline" aria-label="Página anterior" className="h-10 px-3 sm:h-auto sm:px-4" disabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}><span className="sm:hidden">‹</span><span className="hidden sm:inline">Anterior</span></Button>
-              <span className="rounded-2xl border border-orange-100 bg-orange-50 px-2 py-2 text-xs font-semibold text-orange-700 sm:px-3 sm:text-sm">{currentPage} / {totalPages}</span>
+              <span className="rounded-2xl border border-sa-border bg-sa-accent-soft px-2 py-2 text-xs font-semibold text-sa-accent-text sm:px-3 sm:text-sm">{currentPage} / {totalPages}</span>
               <Button type="button" variant="outline" aria-label="Próxima página" className="h-10 px-3 sm:h-auto sm:px-4" disabled={currentPage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}><span className="sm:hidden">›</span><span className="hidden sm:inline">Próxima</span></Button>
             </div>
           </div>
           <div className="mt-6 grid grid-cols-[minmax(0,1fr)] items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {paginatedProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={(size, price) => addToCart(product, size, price)} onHalf={() => { setHalfProduct(product); setHalfOpen(true) }} />)}
-            {paginatedProducts.length === 0 ? <div className="col-span-full rounded-[28px] border border-dashed border-orange-200 bg-orange-50/60 p-8 text-center text-sm font-semibold text-slate-500">Nenhum produto encontrado.</div> : null}
+            {paginatedProducts.length === 0 ? <div className="col-span-full rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-8 text-center text-sm font-semibold text-sa-muted">Nenhum produto encontrado.</div> : null}
           </div>
         </div>
         <div className="hidden xl:block">

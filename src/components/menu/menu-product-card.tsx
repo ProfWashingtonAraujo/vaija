@@ -34,38 +34,38 @@ export function MenuProductCard({ product, dragging, dropTarget, onToggle, onEdi
         onDrop()
       }}
       className={cn(
-        'min-w-0 cursor-grab overflow-hidden rounded-[28px] border bg-gradient-to-br from-white to-[#fffaf5] shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition hover:-translate-y-1 hover:border-orange-300 hover:shadow-[0_18px_40px_rgba(255,107,0,0.1)] active:cursor-grabbing',
-        dragging ? 'scale-[0.98] opacity-70' : 'border-orange-100',
-        dropTarget ? 'border-orange-300 shadow-[0_18px_40px_rgba(255,107,0,0.14)]' : '',
+        'min-w-0 cursor-grab overflow-hidden rounded-2xl border bg-sa-surface shadow-sa transition hover:-translate-y-1 hover:border-sa-border-strong hover:shadow-sa active:cursor-grabbing',
+        dragging ? 'scale-[0.98] opacity-70' : 'border-sa-border',
+        dropTarget ? 'border-sa-border-strong shadow-sa' : '',
       )}
     >
       <img src={product.image} alt={product.name} className="h-32 w-full object-cover sm:h-36" />
       <div className="p-4">
         <div className="flex items-center justify-between gap-3">
-          <span className="min-w-0 truncate rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{product.category}</span>
-          <button type="button" role="switch" aria-checked={product.available} aria-label={`Marcar ${product.name} como ${product.available ? 'indisponível' : 'disponível'}`} onClick={onToggle} className={`relative h-7 w-12 shrink-0 rounded-full transition focus:outline-none focus:ring-2 focus:ring-orange-200 focus:ring-offset-2 ${product.available ? 'bg-orange-500 shadow-[0_8px_18px_rgba(255,107,0,0.2)]' : 'bg-slate-200'}`}>
-            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white transition ${product.available ? 'left-6' : 'left-1'}`} />
+          <span className="min-w-0 truncate rounded-full border border-sa-border bg-sa-accent-soft px-3 py-1 text-xs font-semibold text-sa-accent-text">{product.category}</span>
+          <button type="button" role="switch" aria-checked={product.available} aria-label={`Marcar ${product.name} como ${product.available ? 'indisponível' : 'disponível'}`} onClick={onToggle} className={`relative h-7 w-12 shrink-0 rounded-full transition focus:outline-none focus:ring-2 focus:ring-sa-accent/20 focus:ring-offset-2 ${product.available ? 'bg-sa-accent shadow-sa' : 'bg-sa-border-strong'}`}>
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-sa-surface transition ${product.available ? 'left-6' : 'left-1'}`} />
           </button>
         </div>
-        <h3 className="mt-3 font-heading text-xl font-bold text-slate-900">{product.name}</h3>
-        <p className="mt-2 text-sm leading-6 text-slate-500">{product.description}</p>
-        {product.blockedBy?.length ? <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Fora do cardápio: falta {product.blockedBy.join(', ')}</p> : null}
+        <h3 className="mt-3 font-heading text-xl font-bold text-sa-text">{product.name}</h3>
+        <p className="mt-2 text-sm leading-6 text-sa-muted">{product.description}</p>
+        {product.blockedBy?.length ? <p className="mt-2 rounded-xl bg-sa-bad-soft px-3 py-2 text-xs font-semibold text-sa-bad">Fora do cardápio: falta {product.blockedBy.join(', ')}</p> : null}
         {product.sizePrices?.length ? (
           <div className="mt-4 grid grid-cols-3 gap-2">
             {product.sizePrices.map((item) => (
-              <div key={item.size} className="rounded-2xl border border-orange-100 bg-white px-2 py-2 text-center text-sm font-semibold text-slate-700">
-                {item.size} <span className="block font-mono text-xs text-slate-500">{formatCurrency(item.price)}</span>
+              <div key={item.size} className="rounded-2xl border border-sa-border bg-sa-surface px-2 py-2 text-center text-sm font-semibold text-sa-text-2">
+                {item.size} <span className="block font-mono text-xs text-sa-muted">{formatCurrency(item.price)}</span>
               </div>
             ))}
           </div>
         ) : null}
         <div className="mt-4 flex items-center justify-between">
-          <span className="font-mono text-lg font-bold text-slate-900">{formatCurrency(product.price)}</span>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${product.blockedBy?.length ? 'bg-rose-50 text-rose-700' : product.available ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{product.blockedBy?.length ? 'Em falta' : product.available ? 'Disponível' : 'Indisponível'}</span>
+          <span className="font-mono text-lg font-bold text-sa-text">{formatCurrency(product.price)}</span>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${product.blockedBy?.length ? 'bg-sa-bad-soft text-sa-bad' : product.available ? 'bg-sa-ok-soft text-sa-ok' : 'bg-sa-hover text-sa-muted'}`}>{product.blockedBy?.length ? 'Em falta' : product.available ? 'Disponível' : 'Indisponível'}</span>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" onClick={onEdit}>Editar</Button>
-          <Button type="button" variant="outline" className="border-rose-200 text-rose-700 hover:border-rose-300 hover:text-rose-800" onClick={onDelete}>Excluir</Button>
+          <Button type="button" variant="outline" className="border-sa-border text-sa-bad hover:border-sa-bad hover:text-sa-bad" onClick={onDelete}>Excluir</Button>
         </div>
       </div>
     </div>

@@ -56,14 +56,14 @@ export function CourierLinkDialog({ orderId, courierName, started, onClose }: Co
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="max-w-md">
         <div className="grid gap-5">
-        <h3 className="pr-8 font-heading text-2xl font-bold text-slate-900">Link do pedido #{orderId}</h3>
+        <h3 className="pr-8 font-heading text-2xl font-bold text-sa-text">Link do pedido #{orderId}</h3>
         {url === null ? (
           <div className="grid gap-4">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-sa-muted">
               Por segurança o link antigo não pode ser exibido de novo. Vamos gerar um novo{courierName ? ` para ${courierName}` : ''}; o anterior deixa de funcionar.
             </p>
             {started ? (
-              <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <p className="rounded-2xl border border-sa-border bg-sa-warn-soft p-3 text-sm text-sa-warn">
                 A entrega já começou. Se o entregador ainda estiver com a página aberta, ela para de enviar a localização até ele abrir o link novo.
               </p>
             ) : null}
@@ -71,7 +71,7 @@ export function CourierLinkDialog({ orderId, courierName, started, onClose }: Co
           </div>
         ) : (
           <div className="grid gap-4">
-            <p className="text-sm text-slate-500">Envie ao entregador. Ele abre no celular{started ? ' e a entrega continua de onde parou' : ' e toca em "Iniciar entrega"'}.</p>
+            <p className="text-sm text-sa-muted">Envie ao entregador. Ele abre no celular{started ? ' e a entrega continua de onde parou' : ' e toca em "Iniciar entrega"'}.</p>
             <Input readOnly value={url} onFocus={(event) => event.currentTarget.select()} />
             <div className="grid gap-3 sm:grid-cols-2">
               <Button variant="outline" onClick={() => void copy()}>Copiar link</Button>

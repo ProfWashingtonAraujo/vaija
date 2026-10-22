@@ -5,9 +5,9 @@ export function ReportLegend({ items, colors, unit }: { items: Array<{ name: str
       {items.map((item, index) => (
         <li key={item.name} className="flex items-center gap-2">
           <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
-          <span className="min-w-0 flex-1 truncate text-slate-700">{item.name}</span>
-          <span className="shrink-0 font-semibold text-slate-900">{item.value} {unit}</span>
-          <span className="w-9 shrink-0 text-right text-[11px] text-slate-500">{total ? Math.round((item.value / total) * 100) : 0}%</span>
+          <span className="min-w-0 flex-1 truncate text-sa-text-2">{item.name}</span>
+          <span className="shrink-0 font-semibold text-sa-text">{item.value} {unit}</span>
+          <span className="w-9 shrink-0 text-right text-[11px] text-sa-muted">{total ? Math.round((item.value / total) * 100) : 0}%</span>
         </li>
       ))}
     </ul>

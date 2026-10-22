@@ -37,24 +37,24 @@ export function OrderCard({ order, active, dragging, dropTarget, locked, onClick
         onDrop()
       }}
       className={cn(
-        'w-full rounded-[24px] border bg-white/95 p-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition hover:-translate-y-1 hover:border-orange-300 hover:shadow-[0_18px_36px_rgba(255,107,0,0.1)]',
+        'w-full rounded-xl border bg-sa-surface p-4 text-left shadow-sa transition hover:-translate-y-1 hover:border-sa-border-strong hover:shadow-sa',
         locked ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
-        active ? 'border-orange-300 ring-4 ring-orange-100' : 'border-orange-100',
+        active ? 'border-sa-border-strong ring-4 focus:ring-sa-accent/20' : 'border-sa-border',
         dragging ? 'scale-[0.98] opacity-70' : '',
-        dropTarget ? 'border-orange-300 shadow-[0_18px_36px_rgba(255,107,0,0.12)]' : '',
+        dropTarget ? 'border-sa-border-strong shadow-sa' : '',
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-sm font-semibold text-slate-900">#{order.id}</span>
+        <span className="font-mono text-sm font-semibold text-sa-text">#{order.id}</span>
         <StatusBadge status={order.status} />
       </div>
-      <p className="mt-3 font-semibold text-slate-900">{order.customer}</p>
-      <p className="mt-2 text-sm text-slate-500">{order.items.join(' • ')}</p>
-      <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-orange-700">{(() => { const Icon = orderSourceIcons[resolveOrderSource(order.source)]; return <Icon className="h-3.5 w-3.5" /> })()}{orderSourceLabel(order.source, order.tableNumber)}</p>
-      {order.payment === 'Pix' && order.source !== 'Mesa' ? <p className={cn('mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold', order.paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>{order.paid ? 'Pix pago' : 'Pix aguardando'}</p> : null}
+      <p className="mt-3 font-semibold text-sa-text">{order.customer}</p>
+      <p className="mt-2 text-sm text-sa-muted">{order.items.join(' • ')}</p>
+      <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-sa-accent-text">{(() => { const Icon = orderSourceIcons[resolveOrderSource(order.source)]; return <Icon className="h-3.5 w-3.5" /> })()}{orderSourceLabel(order.source, order.tableNumber)}</p>
+      {order.payment === 'Pix' && order.source !== 'Mesa' ? <p className={cn('mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold', order.paid ? 'bg-sa-ok-soft text-sa-ok' : 'bg-sa-warn-soft text-sa-warn')}>{order.paid ? 'Pix pago' : 'Pix aguardando'}</p> : null}
       <div className="mt-4 flex items-center justify-between text-sm">
-        <span className="text-slate-500">{order.elapsed}</span>
-        <span className="font-mono font-semibold text-slate-900">{formatCurrency(order.value)}</span>
+        <span className="text-sa-muted">{order.elapsed}</span>
+        <span className="font-mono font-semibold text-sa-text">{formatCurrency(order.value)}</span>
       </div>
     </button>
   )

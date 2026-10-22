@@ -8,17 +8,17 @@ import { addCashMovement, cashErrorMessage, closeCash, movementReasons, openCash
 import { formatCurrency } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
 
-const selectClass = 'h-11 w-full rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100'
+const selectClass = 'h-11 w-full rounded-2xl border border-sa-border bg-sa-surface px-4 text-sm text-sa-text outline-none focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20'
 
 function MoneyField({ label, value, onChange, hint, autoFocus }: { label: string; value: string; onChange: (value: string) => void; hint?: string; autoFocus?: boolean }) {
   return (
-    <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
+    <label className="grid gap-1.5 text-sm font-semibold text-sa-text-2">
       {label}
       <div className="relative">
-        <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm text-slate-400">R$</span>
+        <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-sm text-sa-soft">R$</span>
         <Input value={value} onChange={(event) => onChange(event.target.value)} inputMode="decimal" placeholder="0,00" autoFocus={autoFocus} className="pl-11 font-mono" />
       </div>
-      {hint ? <span className="text-xs font-normal text-slate-500">{hint}</span> : null}
+      {hint ? <span className="text-xs font-normal text-sa-muted">{hint}</span> : null}
     </label>
   )
 }
@@ -58,12 +58,12 @@ export function OpenCashDialog({ open, onOpenChange, onOpened }: { open: boolean
       <DialogContent className="max-w-md">
         <form onSubmit={submit} className="grid gap-5">
           <div>
-            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-slate-900">Abrir caixa</DialogTitle>
-            <DialogDescription className="mt-2 text-sm leading-6 text-slate-500">Informe quanto dinheiro tem na gaveta para começar (o fundo de troco). Ao abrir, o cardápio online passa a receber pedidos.</DialogDescription>
+            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-sa-text">Abrir caixa</DialogTitle>
+            <DialogDescription className="mt-2 text-sm leading-6 text-sa-muted">Informe quanto dinheiro tem na gaveta para começar (o fundo de troco). Ao abrir, o cardápio online passa a receber pedidos.</DialogDescription>
           </div>
           <MoneyField label="Fundo de troco" value={floatText} onChange={setFloatText} autoFocus hint="Deixe 0 se a gaveta está vazia." />
-          <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
-            Observação <span className="font-normal text-slate-400">(opcional)</span>
+          <label className="grid gap-1.5 text-sm font-semibold text-sa-text-2">
+            Observação <span className="font-normal text-sa-soft">(opcional)</span>
             <Input value={note} onChange={(event) => setNote(event.target.value)} maxLength={120} placeholder="Ex: turno da noite" />
           </label>
           <Button type="submit" disabled={busy}>{busy ? 'Abrindo...' : 'Abrir caixa'}</Button>
@@ -116,18 +116,18 @@ export function MovementDialog({ kind, onClose, onSaved }: { kind: ManualMovemen
       <DialogContent className="max-w-md">
         <form onSubmit={submit} className="grid gap-5">
           <div>
-            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-slate-900">{copy.title}</DialogTitle>
-            <DialogDescription className="mt-2 text-sm leading-6 text-slate-500">{copy.description}</DialogDescription>
+            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-sa-text">{copy.title}</DialogTitle>
+            <DialogDescription className="mt-2 text-sm leading-6 text-sa-muted">{copy.description}</DialogDescription>
           </div>
           <MoneyField label="Valor" value={amountText} onChange={setAmountText} autoFocus />
-          <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
+          <label className="grid gap-1.5 text-sm font-semibold text-sa-text-2">
             Motivo
             <select value={reason} onChange={(event) => setReason(event.target.value)} className={selectClass}>
               {(kind ? movementReasons[kind] : []).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </select>
           </label>
-          <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
-            Observação <span className="font-normal text-slate-400">(opcional)</span>
+          <label className="grid gap-1.5 text-sm font-semibold text-sa-text-2">
+            Observação <span className="font-normal text-sa-soft">(opcional)</span>
             <Input value={note} onChange={(event) => setNote(event.target.value)} maxLength={120} placeholder="Ex: compra de gás" />
           </label>
           <Button type="submit" disabled={busy}>{busy ? 'Salvando...' : copy.cta}</Button>
@@ -174,20 +174,20 @@ export function CloseCashDialog({ report, onClose, onClosed }: { report: CashRep
       <DialogContent className="max-h-[calc(100vh-2rem)] max-w-md overflow-y-auto">
         <form onSubmit={submit} className="grid gap-5">
           <div>
-            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-slate-900">Fechar caixa</DialogTitle>
-            <DialogDescription className="mt-2 text-sm leading-6 text-slate-500">Conte o dinheiro que está na gaveta e informe abaixo. O app compara com o que deveria ter.</DialogDescription>
+            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-sa-text">Fechar caixa</DialogTitle>
+            <DialogDescription className="mt-2 text-sm leading-6 text-sa-muted">Conte o dinheiro que está na gaveta e informe abaixo. O app compara com o que deveria ter.</DialogDescription>
           </div>
-          <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 text-sm">
-            <div className="flex justify-between text-slate-600"><span>Fundo de troco + vendas em dinheiro + suprimentos − sangrias</span></div>
-            <div className="mt-2 flex items-baseline justify-between"><span className="font-semibold text-slate-900">Esperado na gaveta</span><span className="font-mono text-xl font-bold text-slate-900">{formatCurrency(expected)}</span></div>
+          <div className="rounded-2xl border border-sa-border bg-sa-surface-2 p-4 text-sm">
+            <div className="flex justify-between text-sa-text-2"><span>Fundo de troco + vendas em dinheiro + suprimentos − sangrias</span></div>
+            <div className="mt-2 flex items-baseline justify-between"><span className="font-semibold text-sa-text">Esperado na gaveta</span><span className="font-mono text-xl font-bold text-sa-text">{formatCurrency(expected)}</span></div>
           </div>
-          {report && report.pix.unconfirmedCount > 0 ? <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{report.pix.unconfirmedCount} {report.pix.unconfirmedCount === 1 ? 'pedido Pix está' : 'pedidos Pix estão'} sem confirmação de pagamento ({formatCurrency(report.pix.unconfirmedTotal)}). Confira antes de fechar.</p> : null}
+          {report && report.pix.unconfirmedCount > 0 ? <p className="rounded-2xl border border-sa-border bg-sa-warn-soft p-3 text-sm text-sa-warn">{report.pix.unconfirmedCount} {report.pix.unconfirmedCount === 1 ? 'pedido Pix está' : 'pedidos Pix estão'} sem confirmação de pagamento ({formatCurrency(report.pix.unconfirmedTotal)}). Confira antes de fechar.</p> : null}
           <MoneyField label="Dinheiro contado" value={countedText} onChange={setCountedText} autoFocus hint="Obrigatório. Conte as notas e moedas da gaveta." />
           {difference !== null ? (
-            <p className={cn('rounded-2xl px-4 py-3 text-center text-sm font-semibold', Math.abs(difference) < 0.005 ? 'bg-emerald-50 text-emerald-700' : difference > 0 ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700')}>{differenceLabel(difference)}</p>
+            <p className={cn('rounded-2xl px-4 py-3 text-center text-sm font-semibold', Math.abs(difference) < 0.005 ? 'bg-sa-ok-soft text-sa-ok' : difference > 0 ? 'bg-sa-info-soft text-sa-info' : 'bg-sa-bad-soft text-sa-bad')}>{differenceLabel(difference)}</p>
           ) : null}
-          <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
-            Observação <span className="font-normal text-slate-400">(opcional, útil se houver diferença)</span>
+          <label className="grid gap-1.5 text-sm font-semibold text-sa-text-2">
+            Observação <span className="font-normal text-sa-soft">(opcional, útil se houver diferença)</span>
             <Input value={note} onChange={(event) => setNote(event.target.value)} maxLength={120} placeholder="Ex: troco dado a mais na mesa 4" />
           </label>
           <Button type="submit" disabled={busy || counted === null}>{busy ? 'Fechando...' : 'Fechar caixa'}</Button>
@@ -235,14 +235,14 @@ export function SettleCourierDialog({ target, onClose, onSettled }: { target: Se
       <DialogContent className="max-w-md">
         <form onSubmit={submit} className="grid gap-5">
           <div>
-            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-slate-900">Receber do entregador</DialogTitle>
-            <DialogDescription className="mt-2 text-sm leading-6 text-slate-500">
+            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-sa-text">Receber do entregador</DialogTitle>
+            <DialogDescription className="mt-2 text-sm leading-6 text-sa-muted">
               {target?.name || 'O entregador'} tem {formatCurrency(target?.total ?? 0)} de {target?.count ?? 0} {target?.count === 1 ? 'pedido pago' : 'pedidos pagos'} em dinheiro. Confira o valor que ele entregou: ele entra no dinheiro esperado do caixa.
             </DialogDescription>
           </div>
           <MoneyField label="Valor entregue" value={amountText} onChange={setAmountText} autoFocus />
           {difference !== null && Math.abs(difference) >= 0.005 ? (
-            <p className={cn('rounded-2xl px-4 py-3 text-center text-sm font-semibold', difference < 0 ? 'bg-rose-50 text-rose-700' : 'bg-sky-50 text-sky-700')}>{difference < 0 ? `Faltam ${formatCurrency(Math.abs(difference))} (fica anotado no acerto)` : `${formatCurrency(difference)} a mais (fica anotado no acerto)`}</p>
+            <p className={cn('rounded-2xl px-4 py-3 text-center text-sm font-semibold', difference < 0 ? 'bg-sa-bad-soft text-sa-bad' : 'bg-sa-info-soft text-sa-info')}>{difference < 0 ? `Faltam ${formatCurrency(Math.abs(difference))} (fica anotado no acerto)` : `${formatCurrency(difference)} a mais (fica anotado no acerto)`}</p>
           ) : null}
           <Button type="submit" disabled={busy || amount === null}>{busy ? 'Recebendo...' : 'Receber e lançar no caixa'}</Button>
         </form>

@@ -19,16 +19,16 @@ export function PayCourierDialog({ target, cashOpen, busy, onClose, onConfirm }:
       <DialogContent className="max-w-md">
         <div className="grid gap-5">
           <div>
-            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-slate-900">Registrar pagamento</DialogTitle>
-            <DialogDescription className="mt-2 text-sm leading-6 text-slate-500">
+            <DialogTitle className="pr-8 font-heading text-2xl font-bold text-sa-text">Registrar pagamento</DialogTitle>
+            <DialogDescription className="mt-2 text-sm leading-6 text-sa-muted">
               Registrar que {who} recebeu {formatCurrency(target?.pending ?? 0)} por {target?.count ?? 0} {target?.count === 1 ? 'entrega' : 'entregas'} deste período. Você pode desfazer depois, se registrar por engano.
             </DialogDescription>
           </div>
-          <label className={`flex items-start gap-3 rounded-2xl border p-4 text-sm ${cashOpen ? 'cursor-pointer border-orange-200 bg-orange-50/40' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-            <input type="checkbox" checked={fromCash} disabled={!cashOpen} onChange={(event) => setFromCash(event.target.checked)} className="mt-0.5 h-4 w-4 accent-orange-500" />
+          <label className={`flex items-start gap-3 rounded-2xl border p-4 text-sm ${cashOpen ? 'cursor-pointer border-sa-border bg-sa-surface-2' : 'border-sa-border bg-sa-surface-2 text-sa-soft'}`}>
+            <input type="checkbox" checked={fromCash} disabled={!cashOpen} onChange={(event) => setFromCash(event.target.checked)} className="mt-0.5 h-4 w-4 accent-sa-accent" />
             <span>
-              <span className="block font-semibold text-slate-900">Pagar com dinheiro do caixa</span>
-              <span className="block text-slate-500">{cashOpen ? `Registra uma sangria de ${formatCurrency(target?.pending ?? 0)} no caixa aberto, para o dinheiro esperado na gaveta continuar certo.` : 'O caixa está fechado. Abra o caixa para pagar com o dinheiro da gaveta.'}</span>
+              <span className="block font-semibold text-sa-text">Pagar com dinheiro do caixa</span>
+              <span className="block text-sa-muted">{cashOpen ? `Registra uma sangria de ${formatCurrency(target?.pending ?? 0)} no caixa aberto, para o dinheiro esperado na gaveta continuar certo.` : 'O caixa está fechado. Abra o caixa para pagar com o dinheiro da gaveta.'}</span>
             </span>
           </label>
           <div className="flex justify-end gap-3">

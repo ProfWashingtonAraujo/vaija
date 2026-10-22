@@ -6,7 +6,7 @@ export function UserAvatar({ name }: { name: string }) {
     .join('')
 
   return (
-    <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-orange-200 bg-orange-50 font-heading font-bold text-orange-700">
+    <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-sa-border bg-sa-accent-soft font-heading font-bold text-sa-accent-text">
       {initials}
     </div>
   )
