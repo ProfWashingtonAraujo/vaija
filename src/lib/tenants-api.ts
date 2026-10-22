@@ -12,12 +12,14 @@ export type Tenant = {
   phone: string
   city: string
   businessType: BusinessType
+  /** Endereço amigável do cardápio (/pedido/<slug>); sem ele vale o id. */
+  slug: string | null
   plan: PlanKey
   status: TenantStatus
   createdAt: string | null
 }
 
-export type TenantInput = Omit<Tenant, 'id' | 'createdAt'>
+export type TenantInput = Omit<Tenant, 'id' | 'createdAt' | 'slug'>
 
 /** Enquanto o cadastro não chega do servidor: sem plano pago, sem nome. */
 export const placeholderTenant: Tenant = {
@@ -28,6 +30,7 @@ export const placeholderTenant: Tenant = {
   phone: '',
   city: '',
   businessType: 'pizzeria',
+  slug: null,
   plan: 'Free',
   status: 'active',
   createdAt: null,
@@ -57,6 +60,11 @@ export async function fetchTenants() {
 
 export async function fetchMyTenant() {
   return (await readJson<{ tenant: Tenant }>(await apiFetch('/api/tenant/me'))).tenant
+}
+
+/** O administrador da loja define o endereço do cardápio; texto vazio volta a usar o id. */
+export async function updateMySlug(slug: string) {
+  return (await readJson<{ tenant: Tenant }>(await apiFetch('/api/tenant/slug', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ slug }) }))).tenant
 }
 
 export async function createTenant(input: TenantInput) {

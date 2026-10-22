@@ -83,6 +83,8 @@ async def init_db():
         await conn.execute(text("ALTER TABLE cash_movements ADD COLUMN IF NOT EXISTS voided_by TEXT"))
         await conn.execute(text("ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS payout_id BIGINT"))
         await conn.execute(text("ALTER TABLE couriers ADD COLUMN IF NOT EXISTS pay_percent NUMERIC(5,2)"))
+        await conn.execute(text("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS slug TEXT"))
+        await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS tenants_slug_key ON tenants (slug)"))
         await _migrate_users_to_username(conn)
         # Defesa em profundidade: se a Data API do Neon for ativada, o schema public fica
         # exposto. RLS ligado e sem policies bloqueia esse acesso; a conexão direta do

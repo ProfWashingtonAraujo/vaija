@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import get_settings
 from database import ensure_bootstrap_admin, init_db
+from slug_resolver import SlugRewriteMiddleware
 from routers import (
     auth_router,
     catalog_router,
@@ -67,6 +68,7 @@ app = FastAPI(
 # ── CORS ─────────────────────────────────────────────────────────────────────
 origins = [o.strip() for o in settings.frontend_origin.split(",") if o.strip()]
 
+app.add_middleware(SlugRewriteMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

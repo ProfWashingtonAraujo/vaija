@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import CurrentAuth
 from database import get_db
-from models import RestaurantSettings
+from models import RestaurantSettings, Tenant
 
 settings_router = APIRouter(tags=["settings"])
 public_settings_router = APIRouter(tags=["public"])
@@ -103,7 +103,9 @@ async def get_public_manifest(tenant_id: str, db: AsyncSession = Depends(get_db)
     restaurant = await _public_restaurant(db, tenant_id)
     name = str(restaurant.get("name") or "Pedidos")
     color = restaurant.get("brandColor")
-    start_url = "/pedido" if tenant_id == "default" else f"/pedido/{quote(tenant_id, safe='')}"
+    tenant = await db.get(Tenant, tenant_id)
+    public_id = (tenant.slug if tenant and tenant.slug else tenant_id)
+    start_url = "/pedido" if public_id == "default" else f"/pedido/{quote(public_id, safe='')}"
     logo = _DATA_URL.match(str(restaurant.get("logo") or ""))
     icons = (
         [{"src": f"/api/public/{quote(tenant_id, safe='')}/icon", "sizes": "512x512", "type": logo.group(1), "purpose": "any"}]

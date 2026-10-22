@@ -17,8 +17,9 @@ from database import get_db
 from models import AuditLog, Lead, PlanConfig, Subscription, Tenant, User
 from plans_service import PLAN_KEYS, load_plans
 from tenants_service import (
-    PLANS, PLATFORM_TENANT_ID, RESERVED_TENANT_IDS, tenant_payload, tenant_to_dict, unique_tenant_id,
+    PLANS, PLATFORM_TENANT_ID, RESERVED_TENANT_IDS, slug_error, tenant_payload, tenant_to_dict, unique_tenant_id,
 )
+from slug_resolver import invalidate_slug_cache
 from user_utils import BUSINESS_CATEGORIES
 from .billing import sync_subscription_plan
 
@@ -174,6 +175,29 @@ async def import_tenants(body: TenantImport, _: PlatformAdmin, db: AsyncSession 
 @tenant_router.get("/me")
 async def my_tenant(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
     return {"ok": True, "tenant": await tenant_payload(db, auth.tenant_id)}
+
+
+class SlugIn(_CamelModel):
+    slug: str = Field(default="", max_length=40)
+
+
+@tenant_router.put("/slug")
+async def set_my_slug(body: SlugIn, auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
+    """O administrador da loja escolhe o endereço do cardápio (/pedido/<slug>). Vazio volta a usar o id."""
+    if auth.role_key != "admin" or auth.is_platform_admin:
+        return _error(403, "forbidden")
+    tenant = await db.get(Tenant, auth.tenant_id)
+    if tenant is None:
+        return _error(404, "tenant_not_registered")
+    slug = body.slug.strip().lower()
+    if slug:
+        error = await slug_error(db, tenant.id, slug)
+        if error:
+            return _error(400 if error != "slug_taken" else 409, error)
+    tenant.slug = slug or None
+    await db.flush()
+    invalidate_slug_cache()
+    return {"ok": True, "tenant": tenant_to_dict(tenant)}
 
 
 # ── Catálogo de planos ────────────────────────────────────────────────────────

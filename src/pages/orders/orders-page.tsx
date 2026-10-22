@@ -16,6 +16,7 @@ import type { Product } from '@/data/mock-products'
 import { fetchOrders, ProductUnavailableError, saveOrdersKeepingNew, setOrderPaid } from '@/lib/orders-api'
 import { usePolling } from '@/lib/use-polling'
 import { getTenantId } from '@/lib/tenant-storage'
+import { useTenant } from '@/contexts/auth-context'
 import { defaultDeliveryFee, resolveOrderSource } from '@/lib/order-source'
 import { getCourierUrl, getPublicOrderTrackingUrl } from '@/lib/public-order-url'
 import { courierLinkErrorMessage, createCourierLink, fetchDeliveries } from '@/lib/delivery-api'
@@ -79,16 +80,17 @@ function getOrderItemsFromMenu(order: Order, products: Product[]): EditableOrder
   })
 }
 
-function getWhatsappUrl(order: Order) {
+function getWhatsappUrl(order: Order, publicId: string) {
   const phone = order.phone.replace(/\D/g, '')
   const phoneWithCountry = phone.startsWith('55') ? phone : `55${phone}`
-  const trackingUrl = getPublicOrderTrackingUrl(getTenantId(), order.id)
+  const trackingUrl = getPublicOrderTrackingUrl(publicId, order.id)
   const message = encodeURIComponent(`Olá, ${order.customer}! Acompanhe o seu pedido #${order.id}: ${trackingUrl}`)
 
   return `https://wa.me/${phoneWithCountry}?text=${message}`
 }
 
 export function OrdersPage() {
+  const tenant = useTenant()
   const [orders, setOrders] = useState<Order[]>([])
   const savingRef = useRef(false)
   const changeVersion = useRef(0)
@@ -375,7 +377,7 @@ export function OrdersPage() {
 
   const handleOpenWhatsapp = () => {
     if (!selected) return
-    window.open(getWhatsappUrl(selected), '_blank', 'noopener,noreferrer')
+    window.open(getWhatsappUrl(selected, tenant.slug ?? getTenantId()), '_blank', 'noopener,noreferrer')
   }
 
   const handleSaveOrder = (event: FormEvent<HTMLFormElement>) => {

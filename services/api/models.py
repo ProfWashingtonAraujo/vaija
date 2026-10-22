@@ -317,6 +317,8 @@ class Tenant(Base):
     phone: Mapped[str] = mapped_column(String, nullable=False, default="")
     city: Mapped[str] = mapped_column(String, nullable=False, default="")
     business_type: Mapped[str] = mapped_column(String, nullable=False, default="pizzeria")
+    # Endereço amigável do cardápio (/pedido/<slug>). Opcional: sem ele, vale o id.
+    slug: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
     plan: Mapped[str] = mapped_column(String, nullable=False, default="Free")  # Free | Start | Pro | Premium
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")  # active | inactive
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

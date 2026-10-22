@@ -16,6 +16,7 @@ import { planLabels } from '@/lib/plan-access'
 import { isPixConfigured, pixKeyTypeLabels, type PixKeyType } from '@/lib/pix'
 import { CouriersPanel } from '@/components/delivery/couriers-panel'
 import { getPublicOrderUrl } from '@/lib/public-order-url'
+import { TenantsError, updateMySlug } from '@/lib/tenants-api'
 import { userErrorMessage, usernameHint, usernamePattern } from '@/lib/username'
 import { cn } from '@/lib/utils'
 
@@ -81,6 +82,14 @@ const selectClass = 'h-10 w-full rounded-lg border border-sa-border bg-sa-surfac
 const primaryButtonClass = 'rounded-lg shadow-none hover:translate-y-0'
 const outlineButtonClass = 'rounded-lg border-sa-border hover:border-sa-border-strong hover:text-sa-text'
 
+const slugErrors: Record<string, string> = {
+  invalid_slug: 'Endereço inválido: use 3 a 40 letras minúsculas, números e hífen.',
+  reserved_slug: 'Esse endereço é reservado. Escolha outro.',
+  slug_taken: 'Esse endereço já está em uso por outra loja.',
+  forbidden: 'Somente o administrador da loja pode alterar o endereço.',
+  tenant_not_registered: 'Sua loja ainda não está cadastrada no sistema. Fale com o suporte.',
+}
+
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <div className="grid gap-2 border-b border-sa-border py-4 last:border-b-0 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center sm:gap-8">
@@ -123,7 +132,7 @@ export function SettingsPage() {
 }
 
 function SettingsForm() {
-  const { user } = useAuth()
+  const { user, refreshTenant } = useAuth()
   const storedSettings = readSettings()
   const { register, handleSubmit, watch, reset, formState: { isDirty, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -171,7 +180,29 @@ function SettingsForm() {
   const [brandColor, setBrandColor] = useState(normalizeHex(storedSettings.restaurant.brandColor))
   const [cepStatus, setCepStatus] = useState<string | null>(null)
   const tenant = useTenant()
-  const publicOrderUrl = user ? getPublicOrderUrl(user.tenantId) : ''
+  const [slugDraft, setSlugDraft] = useState(tenant.slug ?? '')
+  const [slugSaving, setSlugSaving] = useState(false)
+  const publicOrderUrl = user ? getPublicOrderUrl(tenant.slug ?? user.tenantId) : ''
+  const canEditSlug = user?.roleKey === 'admin' && !user.isPlatformAdmin
+  const slugChanged = slugDraft.trim() !== (tenant.slug ?? '')
+
+  useEffect(() => {
+    setSlugDraft(tenant.slug ?? '')
+  }, [tenant.slug])
+
+  const saveSlug = async () => {
+    setSlugSaving(true)
+    try {
+      await updateMySlug(slugDraft.trim().toLowerCase())
+      await refreshTenant()
+      toast.success(slugDraft.trim() ? 'Endereço do cardápio atualizado.' : 'Endereço personalizado removido.')
+    } catch (error) {
+      const code = error instanceof TenantsError ? error.code : ''
+      toast.error(slugErrors[code] ?? 'Não foi possível salvar o endereço. Tente de novo.')
+    } finally {
+      setSlugSaving(false)
+    }
+  }
 
   // campos fora do react-hook-form (horários, entrega e logo) são comparados com o último estado salvo
   const localSnapshot = JSON.stringify({ businessHours, delivery: deliverySettings, tables, logo: restaurantLogo, brandColor })
@@ -382,6 +413,25 @@ function SettingsForm() {
               </Row>
               {!user?.isPlatformAdmin ? (
                 <Row label="Link público" hint="Endereço do cardápio para seus clientes fazerem pedidos.">
+                  {canEditSlug ? (
+                    <div className="mb-3">
+                      <div className="flex gap-2">
+                        <div className="flex min-w-0 flex-1 items-center rounded-xl border border-sa-border bg-sa-surface-2 pl-3 focus-within:border-sa-accent">
+                          <span className="shrink-0 font-mono text-xs text-sa-muted">/pedido/</span>
+                          <input
+                            value={slugDraft}
+                            onChange={(event) => setSlugDraft(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                            maxLength={40}
+                            placeholder="nome-da-loja"
+                            aria-label="Endereço do cardápio"
+                            className="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 font-mono text-xs text-sa-text outline-none"
+                          />
+                        </div>
+                        <Button type="button" disabled={!slugChanged || slugSaving} className="px-3 py-1.5" onClick={() => void saveSlug()}>{slugSaving ? 'Salvando...' : 'Salvar'}</Button>
+                      </div>
+                      <p className="mt-1.5 text-xs text-sa-muted">Use letras minúsculas, números e hífen (3 a 40 caracteres). O endereço com o código original da loja continua funcionando; um endereço personalizado anterior deixa de funcionar ao trocar.</p>
+                    </div>
+                  ) : null}
                   <Input value={publicOrderUrl} readOnly aria-label="Link público do restaurante" className={cn(fieldClass, 'bg-sa-surface-2 font-mono text-xs')} />
                   <div className="mt-2 flex gap-2">
                     <Button type="button" variant="outline" className={cn(outlineButtonClass, 'px-3 py-1.5')} onClick={() => void copyPublicOrderUrl()}>Copiar link</Button>
