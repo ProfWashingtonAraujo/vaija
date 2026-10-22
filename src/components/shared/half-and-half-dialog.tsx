@@ -24,7 +24,7 @@ type HalfAndHalfDialogProps = {
   onConfirm: (item: HalfAndHalfItem) => void
 }
 
-const selectClass = 'mt-1 h-11 w-full rounded-2xl border border-orange-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200'
+const selectClass = 'mt-1 h-11 w-full rounded-2xl border border-sa-border bg-sa-surface px-3 text-sm font-semibold text-sa-text outline-none focus:border-sa-accent focus:ring-2 focus:ring-sa-accent/20'
 
 export function HalfAndHalfDialog({ open, onOpenChange, products, initialProduct, onConfirm }: HalfAndHalfDialogProps) {
   const pizzas = useMemo(() => products.filter(isHalfEligible), [products])
@@ -69,13 +69,13 @@ export function HalfAndHalfDialog({ open, onOpenChange, products, initialProduct
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
-        <DialogPrimitive.Title className="font-heading text-2xl font-bold text-slate-900">Pizza meio a meio</DialogPrimitive.Title>
-        <DialogPrimitive.Description className="mt-1 text-sm text-slate-500">
+        <DialogPrimitive.Title className="font-heading text-2xl font-bold text-sa-text">Pizza meio a meio</DialogPrimitive.Title>
+        <DialogPrimitive.Description className="mt-1 text-sm text-sa-muted">
           Escolha o tamanho e dois sabores. {halfAndHalfRules.pricing === 'average' ? 'Cobrado pela média dos dois sabores.' : 'Cobrado pelo sabor mais caro.'}
         </DialogPrimitive.Description>
 
         <div className="mt-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Tamanho</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-sa-soft">Tamanho</p>
           <div className="mt-2 grid grid-cols-3 gap-2">
             {pizzaSizes.map((option) => {
               const enabled = availableSizes.includes(option)
@@ -87,7 +87,7 @@ export function HalfAndHalfDialog({ open, onOpenChange, products, initialProduct
                   disabled={!enabled}
                   aria-pressed={active}
                   onClick={() => setSize(option)}
-                  className={`rounded-2xl border px-2 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-orange-500 bg-orange-500 text-white' : 'border-orange-100 bg-white text-slate-700 hover:border-orange-300'}`}
+                  className={`rounded-2xl border px-2 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-sa-accent bg-sa-accent text-white' : 'border-sa-border bg-sa-surface text-sa-text-2 hover:border-sa-border-strong'}`}
                 >
                   {pizzaSizeLabels[option]}
                 </button>
@@ -96,7 +96,7 @@ export function HalfAndHalfDialog({ open, onOpenChange, products, initialProduct
           </div>
         </div>
 
-        <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+        <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.14em] text-sa-soft">
           1ª metade
           <select className={selectClass} value={firstId} onChange={(event) => setFirstId(event.target.value)}>
             <option value="">Escolha o sabor…</option>
@@ -104,7 +104,7 @@ export function HalfAndHalfDialog({ open, onOpenChange, products, initialProduct
           </select>
         </label>
 
-        <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+        <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.14em] text-sa-soft">
           2ª metade
           <select className={selectClass} value={secondId} onChange={(event) => setSecondId(event.target.value)}>
             <option value="">Escolha o sabor…</option>
@@ -113,18 +113,18 @@ export function HalfAndHalfDialog({ open, onOpenChange, products, initialProduct
         </label>
 
         {first && second && !availableSizes.length ? (
-          <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">Esses dois sabores não têm um tamanho em comum.</p>
+          <p className="mt-4 rounded-2xl border border-sa-border bg-sa-bad-soft p-3 text-sm font-semibold text-sa-bad">Esses dois sabores não têm um tamanho em comum.</p>
         ) : null}
 
-        <div className="mt-5 rounded-2xl border border-orange-100 bg-orange-50/50 p-4">
+        <div className="mt-5 rounded-2xl border border-sa-border bg-sa-surface-2 p-4">
           {item && first && second && effectiveSize ? (
             <>
-              <p className="text-sm font-semibold text-slate-800">1/2 {first.name} + 1/2 {second.name}</p>
-              <p className="mt-1 text-xs text-slate-500">{pizzaSizeLabels[effectiveSize]}</p>
-              <p className="mt-2 font-mono text-2xl font-bold text-slate-900">{formatCurrency(item.price)}</p>
+              <p className="text-sm font-semibold text-sa-text">1/2 {first.name} + 1/2 {second.name}</p>
+              <p className="mt-1 text-xs text-sa-muted">{pizzaSizeLabels[effectiveSize]}</p>
+              <p className="mt-2 font-mono text-2xl font-bold text-sa-text">{formatCurrency(item.price)}</p>
             </>
           ) : (
-            <p className="text-sm text-slate-500">Escolha as duas metades para ver o preço.</p>
+            <p className="text-sm text-sa-muted">Escolha as duas metades para ver o preço.</p>
           )}
         </div>
 

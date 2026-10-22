@@ -275,7 +275,7 @@ export function CustomerOrderPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fff8f1] pb-28 text-slate-900">
+    <main className="min-h-screen bg-sa-bg pb-28 text-sa-text">
       <SplashScreen name={settings.restaurant.name} logo={settings.restaurant.logo} ready={ready} storageKey={`vaija.splash.${tenantId}`} />
       <header className="relative overflow-hidden rounded-b-[36px] bg-gradient-to-br from-orange-400 via-orange-500 to-orange-700 px-5 pb-8 pt-[max(1.25rem,env(safe-area-inset-top))] text-white shadow-[0_18px_40px_rgba(0,0,0,0.12)] sm:px-6">
         <div className="mx-auto max-w-6xl">
@@ -297,18 +297,18 @@ export function CustomerOrderPage() {
 
       {!profile ? (
         <section className="mx-auto max-w-xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="rounded-[34px] border border-orange-100 bg-white p-6 shadow-[0_18px_42px_rgba(15,23,42,0.08)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Identificação</p>
-            <h2 className="mt-2 font-heading text-3xl font-bold text-slate-900">Entre para ver o cardápio</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Faça um cadastro rápido ou conecte sua conta Google antes de montar o pedido.</p>
+          <div className="rounded-3xl border border-sa-border bg-sa-surface p-6 shadow-sa">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-accent-text">Identificação</p>
+            <h2 className="mt-2 font-heading text-3xl font-bold text-sa-text">Entre para ver o cardápio</h2>
+            <p className="mt-2 text-sm leading-6 text-sa-muted">Faça um cadastro rápido ou conecte sua conta Google antes de montar o pedido.</p>
             <div className="mt-6 grid gap-3">
               <Input value={signupName} onChange={(event) => setSignupName(event.target.value)} placeholder="Seu nome" />
               <Input value={signupEmail} onChange={(event) => setSignupEmail(event.target.value)} placeholder="Seu e-mail" type="email" />
               <Input value={signupPhone} onChange={(event) => setSignupPhone(event.target.value)} placeholder="WhatsApp" inputMode="tel" />
               <Button onClick={handleSimpleSignup}>Continuar com cadastro simples</Button>
             </div>
-            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"><span className="h-px flex-1 bg-orange-100" />ou<span className="h-px flex-1 bg-orange-100" /></div>
-            {googleClientId ? <div className="flex justify-center" ref={googleButtonRef} /> : <button type="button" onClick={() => toast.error('Configure VITE_GOOGLE_CLIENT_ID para ativar o login com Google.')} className="w-full rounded-2xl border border-orange-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-orange-400 hover:text-orange-700">Conectar com Google</button>}
+            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft"><span className="h-px flex-1 bg-sa-accent-soft" />ou<span className="h-px flex-1 bg-sa-accent-soft" /></div>
+            {googleClientId ? <div className="flex justify-center" ref={googleButtonRef} /> : <button type="button" onClick={() => toast.error('Configure VITE_GOOGLE_CLIENT_ID para ativar o login com Google.')} className="w-full rounded-2xl border border-sa-border bg-sa-surface px-4 py-2.5 text-sm font-semibold text-sa-text-2 hover:border-sa-border-strong hover:text-sa-accent-text">Conectar com Google</button>}
           </div>
         </section>
       ) : null}
@@ -316,23 +316,23 @@ export function CustomerOrderPage() {
       {profile ? (
         <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           {!cashRegister.isOpen ? (
-            <div className="mb-6 rounded-[28px] border border-orange-200 bg-orange-50 p-4 text-sm font-semibold text-orange-800 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+            <div className="mb-6 rounded-2xl border border-sa-border bg-sa-accent-soft p-4 text-sm font-semibold text-sa-accent-text shadow-sa">
               Pedidos online pausados. Tente novamente quando o caixa estiver aberto.
             </div>
           ) : null}
           {pastOrders.length > 0 ? (
             <div className="mb-6">
-              <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-bold"><History className="h-4 w-4 text-orange-500" />Pedir de novo</h2>
+              <h2 className="mb-3 flex items-center gap-2 font-heading text-lg font-bold"><History className="h-4 w-4 text-sa-accent-text" />Pedir de novo</h2>
               <div className="scrollbar-thin -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
                 {pastOrders.map((order) => (
-                  <div key={order.id} className="flex w-64 shrink-0 snap-start flex-col justify-between gap-3 rounded-[24px] border border-orange-100 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.05)]">
+                  <div key={order.id} className="flex w-64 shrink-0 snap-start flex-col justify-between gap-3 rounded-2xl border border-sa-border bg-sa-surface p-4 shadow-sa">
                     <div>
-                      <p className="text-xs font-semibold text-slate-400">Pedido #{order.id} · {order.time}</p>
-                      <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-800">{order.items.join(', ')}</p>
+                      <p className="text-xs font-semibold text-sa-soft">Pedido #{order.id} · {order.time}</p>
+                      <p className="mt-1 line-clamp-2 text-sm font-semibold text-sa-text">{order.items.join(', ')}</p>
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-sm text-slate-500">{formatCurrency(order.value - (order.deliveryFee ?? 0))}</span>
-                      <button type="button" onClick={() => reorder(order)} disabled={!cashRegister.isOpen} className="rounded-full bg-orange-500 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-orange-600 disabled:opacity-50">Repetir</button>
+                      <span className="font-mono text-sm text-sa-muted">{formatCurrency(order.value - (order.deliveryFee ?? 0))}</span>
+                      <button type="button" onClick={() => reorder(order)} disabled={!cashRegister.isOpen} className="rounded-full bg-sa-accent px-4 py-1.5 text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-50">Repetir</button>
                     </div>
                   </div>
                 ))}
@@ -344,22 +344,22 @@ export function CustomerOrderPage() {
 
           <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredProducts.map((product) => (
-              <article key={product.id} className="group overflow-hidden rounded-[34px] border border-orange-100 bg-white shadow-[0_18px_42px_rgba(15,23,42,0.07)] transition hover:-translate-y-1 hover:border-orange-300">
-                <div className="relative h-52 overflow-hidden"><img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute left-4 top-4 rounded-full border border-white/40 bg-white/90 px-3 py-1 text-xs font-semibold text-orange-700 backdrop-blur">{product.category}</div></div>
+              <article key={product.id} className="group overflow-hidden rounded-3xl border border-sa-border bg-sa-surface shadow-sa transition hover:-translate-y-1 hover:border-sa-border-strong">
+                <div className="relative h-52 overflow-hidden"><img src={product.image} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute left-4 top-4 rounded-full border border-white/40 bg-sa-surface px-3 py-1 text-xs font-semibold text-sa-accent-text backdrop-blur">{product.category}</div></div>
                 <div className="p-5">
                   <h2 className="font-heading text-xl font-bold">{product.name}</h2>
-                  <p className="mt-2 min-h-12 text-sm leading-6 text-slate-500">{product.description}</p>
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-sa-muted">{product.description}</p>
                   {product.sizePrices?.length ? (
                     <div className="mt-4 grid grid-cols-3 gap-2">
                       {product.sizePrices.map((item) => (
-                        <button key={item.size} type="button" onClick={() => addToCart(product, item.size, item.price)} disabled={!cashRegister.isOpen} className="rounded-2xl border border-orange-100 bg-white px-2 py-2 text-sm font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50">
-                          {item.size} <span className="block font-mono text-xs text-slate-500">{formatCurrency(item.price)}</span>
+                        <button key={item.size} type="button" onClick={() => addToCart(product, item.size, item.price)} disabled={!cashRegister.isOpen} className="rounded-2xl border border-sa-border bg-sa-surface px-2 py-2 text-sm font-semibold text-sa-text-2 transition hover:border-sa-border-strong hover:bg-sa-hover disabled:cursor-not-allowed disabled:opacity-50">
+                          {item.size} <span className="block font-mono text-xs text-sa-muted">{formatCurrency(item.price)}</span>
                         </button>
                       ))}
                     </div>
                   ) : null}
                   {isHalfEligible(product) ? (
-                    <button type="button" onClick={() => { setHalfProduct(product); setHalfOpen(true) }} disabled={!cashRegister.isOpen} className="mt-2 w-full rounded-2xl border border-dashed border-orange-300 bg-orange-50/60 px-3 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-100">Meio a meio</button>
+                    <button type="button" onClick={() => { setHalfProduct(product); setHalfOpen(true) }} disabled={!cashRegister.isOpen} className="mt-2 w-full rounded-2xl border border-dashed border-sa-border-strong bg-sa-surface-2 px-3 py-2 text-sm font-semibold text-sa-accent-text transition hover:bg-sa-hover">Meio a meio</button>
                   ) : null}
                   <div className="mt-5 flex items-center justify-between gap-3"><p className="font-mono text-lg font-bold">{formatCurrency(product.price)}</p><Button onClick={() => addToCart(product)} disabled={!cashRegister.isOpen}>Adicionar</Button></div>
                 </div>
@@ -369,18 +369,18 @@ export function CustomerOrderPage() {
         </section>
       ) : null}
 
-      <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-40 border-t border-orange-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+      <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-40 border-t border-sa-border bg-sa-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur">
         <div className="mx-auto grid max-w-md grid-cols-3">
-          <button type="button" aria-current="page" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-orange-600"><Home className="h-5 w-5" />Cardápio</button>
-          <button type="button" onClick={goToCheckout} disabled={!profile} className="relative flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-slate-500 disabled:opacity-40">
-            <span className="relative"><ShoppingBag className="h-5 w-5" />{cartQuantity > 0 ? <span className="absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">{cartQuantity}</span> : null}</span>
+          <button type="button" aria-current="page" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-sa-accent-text"><Home className="h-5 w-5" />Cardápio</button>
+          <button type="button" onClick={goToCheckout} disabled={!profile} className="relative flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-sa-muted disabled:opacity-40">
+            <span className="relative"><ShoppingBag className="h-5 w-5" />{cartQuantity > 0 ? <span className="absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-sa-accent px-1 text-[10px] font-bold text-white">{cartQuantity}</span> : null}</span>
             {cartQuantity > 0 ? formatCurrency(subtotal) : 'Carrinho'}
           </button>
-          <Link to={`${orderPath}/acompanhar`} className="flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-slate-500"><Truck className="h-5 w-5" />Acompanhar</Link>
+          <Link to={`${orderPath}/acompanhar`} className="flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-sa-muted"><Truck className="h-5 w-5" />Acompanhar</Link>
         </div>
       </nav>
 
-      <div className="mx-auto hidden max-w-6xl px-4 pb-10 text-sm text-slate-500 sm:px-6 lg:block lg:px-8"><Link to="/">Voltar para o site</Link></div>
+      <div className="mx-auto hidden max-w-6xl px-4 pb-10 text-sm text-sa-muted sm:px-6 lg:block lg:px-8"><Link to="/">Voltar para o site</Link></div>
       <HalfAndHalfDialog open={halfOpen} onOpenChange={setHalfOpen} products={products} initialProduct={halfProduct} onConfirm={addCustomItem} />
     </main>
   )

@@ -307,7 +307,7 @@ export function CustomerCheckoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fff8f1] text-slate-900">
+    <main className="min-h-screen bg-sa-bg text-sa-text">
       <section className="bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -315,24 +315,24 @@ export function CustomerCheckoutPage() {
             <h1 className="mt-4 font-heading text-4xl font-black">Checkout</h1>
             <p className="mt-2 text-orange-50">Revise seu pedido no {restaurantSettings.name} antes de enviar.</p>
           </div>
-          <div className="rounded-[26px] border border-white/15 bg-white/10 p-4 backdrop-blur"><p className="text-sm text-orange-50">Total do pedido</p><p className="mt-1 font-heading text-3xl font-bold">{formatCurrency(total)}</p></div>
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur"><p className="text-sm text-orange-50">Total do pedido</p><p className="mt-1 font-heading text-3xl font-bold">{formatCurrency(total)}</p></div>
         </div>
       </section>
 
       <section className="mx-auto grid max-w-5xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8">
         <div className="space-y-6">
-          <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-            <div className="grid grid-cols-2 gap-2 rounded-[24px] border border-orange-100 bg-[#fffaf5] p-2" role="radiogroup" aria-label="Como você quer receber o pedido">
+          <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-sa-border bg-sa-surface-2 p-2" role="radiogroup" aria-label="Como você quer receber o pedido">
               {([['delivery', 'Entrega', Bike, 'Receba em casa'], ['pickup', 'Retirar na loja', ShoppingBag, 'Sem taxa de entrega']] as const).map(([value, label, Icon, hint]) => (
-                <button key={value} type="button" role="radio" aria-checked={fulfillment === value} onClick={() => setFulfillment(value)} className={cn('flex flex-col items-center gap-1 rounded-2xl border px-3 py-3 text-sm font-semibold transition-all duration-200', fulfillment === value ? 'border-orange-300 bg-orange-50 text-orange-700 shadow-[0_8px_18px_rgba(255,107,0,0.08)]' : 'border-transparent bg-white text-slate-600 hover:border-orange-200')}>
+                <button key={value} type="button" role="radio" aria-checked={fulfillment === value} onClick={() => setFulfillment(value)} className={cn('flex flex-col items-center gap-1 rounded-2xl border px-3 py-3 text-sm font-semibold transition-all duration-200', fulfillment === value ? 'border-sa-border-strong bg-sa-accent-soft text-sa-accent-text shadow-sa' : 'border-transparent bg-sa-surface text-sa-text-2 hover:border-sa-border-strong')}>
                   <Icon className="h-5 w-5" />
                   {label}
-                  <span className="text-xs font-normal text-slate-500">{hint}</span>
+                  <span className="text-xs font-normal text-sa-muted">{hint}</span>
                 </button>
               ))}
             </div>
-            <div className="mt-6 flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold">{isPickup ? 'Seus dados' : 'Dados para entrega'}</h2></div>
-            {isPickup ? <p className="mt-3 rounded-2xl border border-orange-100 bg-orange-50/60 p-3 text-sm text-slate-600">Você retira o pedido no restaurante quando ele estiver pronto. Acompanhe o andamento depois de enviar.</p> : null}
+            <div className="mt-6 flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-sa-accent-text" /><h2 className="font-heading text-2xl font-bold">{isPickup ? 'Seus dados' : 'Dados para entrega'}</h2></div>
+            {isPickup ? <p className="mt-3 rounded-2xl border border-sa-border bg-sa-surface-2 p-3 text-sm text-sa-text-2">Você retira o pedido no restaurante quando ele estiver pronto. Acompanhe o andamento depois de enviar.</p> : null}
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               <Input value={customer} onChange={(event) => setCustomer(event.target.value)} placeholder="Seu nome" />
               <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="WhatsApp" inputMode="tel" />
@@ -349,21 +349,21 @@ export function CustomerCheckoutPage() {
                 </>
               )}
               {!isPickup && deliverySettings.mode === 'perKm' ? <Button type="button" variant="outline" onClick={() => void calculateDeliveryByCep()} disabled={isCalculatingDelivery || isLoadingCep}>{isCalculatingDelivery ? 'Calculando...' : 'Recalcular entrega'}</Button> : null}
-              <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Observações do pedido. Ex: sem cebola, sem molho, sem salada" className="min-h-24 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100 md:col-span-2" />
-              <select value={payment} onChange={(event) => setPayment(event.target.value as Order['payment'])} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+              <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Observações do pedido. Ex: sem cebola, sem molho, sem salada" className="min-h-24 rounded-2xl border border-sa-border bg-sa-surface px-4 py-3 text-sm text-sa-text outline-none transition-all duration-200 placeholder:text-sa-soft focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20 md:col-span-2" />
+              <select value={payment} onChange={(event) => setPayment(event.target.value as Order['payment'])} className="h-11 rounded-2xl border border-sa-border bg-sa-surface px-4 text-sm text-sa-text outline-none focus:border-sa-accent focus:ring-4 focus:ring-sa-accent/20">
                 {paymentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
-              {payment === 'Pix' && isPixConfigured(publicSettings.payments) ? <p className="text-xs leading-5 text-slate-500 md:col-span-2">O QR Code do Pix aparece na próxima tela, logo depois de enviar o pedido.</p> : null}
+              {payment === 'Pix' && isPixConfigured(publicSettings.payments) ? <p className="text-xs leading-5 text-sa-muted md:col-span-2">O QR Code do Pix aparece na próxima tela, logo depois de enviar o pedido.</p> : null}
             </div>
           </div>
 
-          <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+          <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
             <h2 className="font-heading text-2xl font-bold">Itens do pedido</h2>
             <div className="mt-5 space-y-3">
-              {cart.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-4 text-center text-sm text-slate-500">Seu carrinho está vazio.</p> : null}
+              {cart.length === 0 ? <p className="rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-4 text-center text-sm text-sa-muted">Seu carrinho está vazio.</p> : null}
               {cart.map((item) => (
-                <div key={item.id} className="rounded-[24px] border border-orange-100 bg-white p-4 shadow-[0_10px_24px_rgba(255,107,0,0.05)]">
-                  <div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-slate-900">{item.name}</p><p className="mt-1 font-mono text-sm text-slate-500">{formatCurrency(item.price)}</p></div><button type="button" onClick={() => removeItem(item.id)} className="rounded-full p-2 text-slate-400 hover:bg-orange-50 hover:text-orange-600"><Trash2 className="h-4 w-4" /></button></div>
+                <div key={item.id} className="rounded-2xl border border-sa-border bg-sa-surface p-4 shadow-sa">
+                  <div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-sa-text">{item.name}</p><p className="mt-1 font-mono text-sm text-sa-muted">{formatCurrency(item.price)}</p></div><button type="button" onClick={() => removeItem(item.id)} className="rounded-full p-2 text-sa-soft hover:bg-sa-hover hover:text-sa-accent-text"><Trash2 className="h-4 w-4" /></button></div>
                   <div className="mt-4 flex items-center gap-2"><Button type="button" variant="outline" className="h-9 w-9 px-0" onClick={() => updateQuantity(item.id, -1)}>-</Button><span className="min-w-8 text-center font-mono font-semibold">{item.quantity}</span><Button type="button" variant="outline" className="h-9 w-9 px-0" onClick={() => updateQuantity(item.id, 1)}>+</Button></div>
                 </div>
               ))}
@@ -372,18 +372,18 @@ export function CustomerCheckoutPage() {
         </div>
 
         <aside className="lg:sticky lg:top-6 lg:self-start">
-          <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_18px_42px_rgba(15,23,42,0.08)]">
+          <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
             <h2 className="font-heading text-2xl font-bold">Resumo</h2>
-            {!registerOpen ? <p className="mt-3 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-800">Pedidos online pausados porque o caixa está fechado.</p> : null}
-            <div className="mt-5 space-y-2 rounded-[24px] border border-orange-100 bg-orange-50/50 p-4 text-sm text-slate-600">
+            {!registerOpen ? <p className="mt-3 rounded-2xl border border-sa-border bg-sa-accent-soft p-3 text-sm font-semibold text-sa-accent-text">Pedidos online pausados porque o caixa está fechado.</p> : null}
+            <div className="mt-5 space-y-2 rounded-2xl border border-sa-border bg-sa-surface-2 p-4 text-sm text-sa-text-2">
               <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatCurrency(subtotal)}</span></div>
               {isPickup ? <div className="flex justify-between"><span>Retirada na loja</span><span className="font-mono">Grátis</span></div> : <div className="flex justify-between"><span>Taxa de entrega</span><span className="font-mono">{deliverySettings.mode === 'perKm' && calculatedDeliveryFee === null ? (isCalculatingDelivery ? 'Calculando...' : 'Informe o CEP') : deliveryFee === 0 && deliverySettings.mode === 'perKm' ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>}
               {!isPickup && calculatedDistanceKm !== null ? <div className="flex justify-between"><span>Distância</span><span className="font-mono">{calculatedDistanceKm.toFixed(1).replace('.', ',')} km</span></div> : null}
-              <div className="flex justify-between text-base font-semibold text-slate-900"><span>Total</span><span className="font-mono">{formatCurrency(total)}</span></div>
+              <div className="flex justify-between text-base font-semibold text-sa-text"><span>Total</span><span className="font-mono">{formatCurrency(total)}</span></div>
             </div>
-            {!isPickup && deliverySettings.mode === 'perKm' ? <p className="mt-3 text-center text-xs text-slate-500">Digite o CEP de entrega: a taxa é calculada automaticamente pela distância até a pizzaria{parseCurrencyInput(deliverySettings.freeKm ?? '0') > 0 ? `, grátis até ${deliverySettings.freeKm.replace('.', ',')} km` : ''}.</p> : null}
+            {!isPickup && deliverySettings.mode === 'perKm' ? <p className="mt-3 text-center text-xs text-sa-muted">Digite o CEP de entrega: a taxa é calculada automaticamente pela distância até a pizzaria{parseCurrencyInput(deliverySettings.freeKm ?? '0') > 0 ? `, grátis até ${deliverySettings.freeKm.replace('.', ',')} km` : ''}.</p> : null}
             <Button className="mt-5 w-full" onClick={handleSubmitOrder} disabled={cart.length === 0}>Enviar pedido</Button>
-            <Link to={orderPath} className="mt-3 block text-center text-sm font-semibold text-orange-700">Adicionar mais itens</Link>
+            <Link to={orderPath} className="mt-3 block text-center text-sm font-semibold text-sa-accent-text">Adicionar mais itens</Link>
           </div>
         </aside>
       </section>

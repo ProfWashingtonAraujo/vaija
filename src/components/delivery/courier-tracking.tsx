@@ -40,7 +40,7 @@ export function CourierTracking({ tenantId, orderId, address }: { tenantId: stri
 
   if (!location?.active || location.latitude === undefined || location.longitude === undefined) {
     return (
-      <div className="mt-6 flex items-center gap-3 rounded-[24px] border border-sky-100 bg-sky-50/60 p-4 text-sm text-sky-800">
+      <div className="mt-6 flex items-center gap-3 rounded-2xl border border-sa-border bg-sky-50/60 p-4 text-sm text-sky-800">
         <Truck className="h-5 w-5 shrink-0" />Seu pedido saiu para entrega. Assim que o entregador compartilhar a localização, ela aparece aqui no mapa.
       </div>
     )
@@ -50,13 +50,13 @@ export function CourierTracking({ tenantId, orderId, address }: { tenantId: stri
   return (
     <div className="mt-6">
       <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-        <p className="font-semibold text-slate-900">Acompanhe o entregador</p>
-        {age !== null ? <p className={age > 60 ? 'text-amber-600' : 'text-slate-500'}>{age > 60 ? 'Sinal fraco · ' : ''}atualizado há {age < 60 ? `${age} s` : `${Math.round(age / 60)} min`}</p> : null}
+        <p className="font-semibold text-sa-text">Acompanhe o entregador</p>
+        {age !== null ? <p className={age > 60 ? 'text-sa-warn' : 'text-sa-muted'}>{age > 60 ? 'Sinal fraco · ' : ''}atualizado há {age < 60 ? `${age} s` : `${Math.round(age / 60)} min`}</p> : null}
       </div>
-      <Suspense fallback={<div className="h-72 animate-pulse rounded-[24px] bg-orange-50 sm:h-96" />}>
+      <Suspense fallback={<div className="h-72 animate-pulse rounded-2xl bg-sa-accent-soft sm:h-96" />}>
         <CourierMap courier={{ latitude: location.latitude, longitude: location.longitude }} destination={destination} />
       </Suspense>
-      <p className="mt-2 text-xs text-slate-400">O ponto do endereço é aproximado.</p>
+      <p className="mt-2 text-xs text-sa-soft">O ponto do endereço é aproximado.</p>
     </div>
   )
 }

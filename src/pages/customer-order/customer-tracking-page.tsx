@@ -107,7 +107,7 @@ export function CustomerTrackingPage() {
   }, 8_000)
 
   return (
-    <main className="min-h-screen bg-[#fff8f1] text-slate-900">
+    <main className="min-h-screen bg-sa-bg text-sa-text">
       <section className="bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl">
           <Link to={orderPath} className="inline-flex items-center gap-2 text-sm font-semibold text-orange-100 hover:text-white"><ArrowLeft className="h-4 w-4" />Voltar ao cardápio</Link>
@@ -117,7 +117,7 @@ export function CustomerTrackingPage() {
               <h1 className="mt-3 font-heading text-4xl font-black sm:text-5xl">Veja o status do seu pedido</h1>
               <p className="mt-4 max-w-2xl text-orange-50">Acompanhe em tempo real conforme o {restaurantSettings.name} avança o pedido na operação.</p>
             </div>
-            <div className="rounded-[28px] border border-white/15 bg-white/10 p-4 backdrop-blur">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
               <p className="text-sm text-orange-50">Busque por</p>
               <p className="mt-1 font-heading text-2xl font-bold">Número do pedido ou WhatsApp</p>
             </div>
@@ -126,7 +126,7 @@ export function CustomerTrackingPage() {
       </section>
 
       <section className="mx-auto grid max-w-5xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:px-8">
-        <aside className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)] lg:self-start">
+        <aside className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa lg:self-start">
           <h2 className="font-heading text-2xl font-bold">Encontrar pedido</h2>
           <div className="mt-4 grid gap-3">
             <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ex: 4852 ou WhatsApp" inputMode="search" />
@@ -135,31 +135,31 @@ export function CustomerTrackingPage() {
 
           {foundOrders.length > 1 ? (
             <div className="mt-5 space-y-2">
-              <p className="text-sm font-semibold text-slate-700">Pedidos encontrados</p>
+              <p className="text-sm font-semibold text-sa-text-2">Pedidos encontrados</p>
               {foundOrders.map((order) => (
-                <button key={order.id} type="button" onClick={() => setSelectedOrderId(order.id)} className="w-full rounded-2xl border border-orange-100 bg-white p-3 text-left text-sm transition hover:border-orange-300 hover:bg-orange-50/60">
+                <button key={order.id} type="button" onClick={() => setSelectedOrderId(order.id)} className="w-full rounded-2xl border border-sa-border bg-sa-surface p-3 text-left text-sm transition hover:border-sa-border-strong hover:bg-orange-50/60">
                   <span className="block font-mono font-semibold">#{order.id}</span>
-                  <span className="mt-1 block text-slate-500">{order.time} · {formatCurrency(order.value)}</span>
+                  <span className="mt-1 block text-sa-muted">{order.time} · {formatCurrency(order.value)}</span>
                 </button>
               ))}
             </div>
           ) : null}
         </aside>
 
-        <div className="rounded-[30px] border border-orange-100 bg-white p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+        <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
           {!selectedOrder ? (
-            <div className="flex min-h-80 flex-col items-center justify-center rounded-[24px] border border-dashed border-orange-200 bg-orange-50/50 p-6 text-center">
-              <Clock className="h-8 w-8 text-orange-500" />
+            <div className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-sa-border bg-sa-surface-2 p-6 text-center">
+              <Clock className="h-8 w-8 text-sa-accent-text" />
               <h2 className="mt-4 font-heading text-2xl font-bold">Informe seus dados para acompanhar</h2>
-              <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">Digite o número do pedido ou o WhatsApp usado no checkout.</p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-sa-muted">Digite o número do pedido ou o WhatsApp usado no checkout.</p>
             </div>
           ) : (
             <div>
-              <div className="flex flex-col gap-3 border-b border-orange-100 pb-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex flex-col gap-3 border-b border-sa-border pb-5 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="font-mono text-sm font-semibold text-slate-500">Pedido #{selectedOrder.id}</p>
+                  <p className="font-mono text-sm font-semibold text-sa-muted">Pedido #{selectedOrder.id}</p>
                   <h2 className="mt-2 font-heading text-3xl font-bold">{selectedOrder.customer}</h2>
-                  <p className="mt-1 text-sm text-slate-500">Recebido às {selectedOrder.time}</p>
+                  <p className="mt-1 text-sm text-sa-muted">Recebido às {selectedOrder.time}</p>
                 </div>
                 <StatusBadge status={selectedOrder.status} />
               </div>
@@ -173,12 +173,12 @@ export function CustomerTrackingPage() {
                   return (
                     <div key={step.status} className="flex gap-4">
                       <div className="flex flex-col items-center">
-                        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${completed ? 'border-orange-500 bg-orange-500 text-white' : 'border-orange-100 bg-orange-50 text-orange-300'}`}><Icon className="h-5 w-5" /></div>
-                        {index < steps.length - 1 ? <div className={`mt-2 h-10 w-px ${index < activeStep ? 'bg-orange-400' : 'bg-orange-100'}`} /> : null}
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${completed ? 'border-sa-accent bg-sa-accent text-white' : 'border-sa-border bg-sa-accent-soft text-orange-300'}`}><Icon className="h-5 w-5" /></div>
+                        {index < steps.length - 1 ? <div className={`mt-2 h-10 w-px ${index < activeStep ? 'bg-orange-400' : 'bg-sa-accent-soft'}`} /> : null}
                       </div>
                       <div className="pb-4">
-                        <p className={`font-semibold ${completed ? 'text-slate-900' : 'text-slate-400'}`}>{step.label}</p>
-                        <p className="mt-1 text-sm leading-6 text-slate-500">{step.description}</p>
+                        <p className={`font-semibold ${completed ? 'text-sa-text' : 'text-sa-soft'}`}>{step.label}</p>
+                        <p className="mt-1 text-sm leading-6 text-sa-muted">{step.description}</p>
                       </div>
                     </div>
                   )
@@ -187,11 +187,11 @@ export function CustomerTrackingPage() {
 
               {selectedOrder.status === 'Saiu para entrega' ? <CourierTracking tenantId={tenantId} orderId={selectedOrder.id} address={selectedOrder.address} /> : null}
 
-              <div className="mt-6 grid gap-4 rounded-[24px] border border-orange-100 bg-orange-50/40 p-4 text-sm text-slate-600 sm:grid-cols-2">
-                <div><span className="font-semibold text-slate-900">Total:</span> {formatCurrency(selectedOrder.value)}</div>
-                <div><span className="font-semibold text-slate-900">Pagamento:</span> {selectedOrder.payment}</div>
-                <div className="sm:col-span-2"><span className="font-semibold text-slate-900">Endereço:</span> {selectedOrder.address}</div>
-                {selectedOrder.notes ? <div className="sm:col-span-2"><span className="font-semibold text-slate-900">Observação:</span> {selectedOrder.notes}</div> : null}
+              <div className="mt-6 grid gap-4 rounded-2xl border border-sa-border bg-sa-surface-2 p-4 text-sm text-sa-text-2 sm:grid-cols-2">
+                <div><span className="font-semibold text-sa-text">Total:</span> {formatCurrency(selectedOrder.value)}</div>
+                <div><span className="font-semibold text-sa-text">Pagamento:</span> {selectedOrder.payment}</div>
+                <div className="sm:col-span-2"><span className="font-semibold text-sa-text">Endereço:</span> {selectedOrder.address}</div>
+                {selectedOrder.notes ? <div className="sm:col-span-2"><span className="font-semibold text-sa-text">Observação:</span> {selectedOrder.notes}</div> : null}
               </div>
             </div>
           )}
