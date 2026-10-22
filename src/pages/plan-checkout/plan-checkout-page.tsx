@@ -1,8 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, MessageCircle, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/auth-context'
 import { Input } from '@/components/ui/input'
 import { getPricingPlans } from '@/data/pricing-plans'
 import { cn } from '@/lib/utils'
@@ -29,6 +30,7 @@ function readPlanLeads() {
 }
 
 export function PlanCheckoutPage() {
+  const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const requestedPlan = searchParams.get('plano') ?? 'Pro'
   const plans = useMemo(() => getPricingPlans(), [])
@@ -75,6 +77,10 @@ export function PlanCheckoutPage() {
 
     const message = encodeURIComponent(`Olá! Quero contratar o plano ${currentPlan.name} da Vaija. Restaurante: ${lead.restaurantName}. Responsável: ${lead.ownerName}. Cidade: ${lead.city}. WhatsApp: ${lead.phone}. E-mail: ${lead.email}.`)
     window.open(`https://wa.me/${salesWhatsapp}?text=${message}`, '_blank', 'noopener,noreferrer')
+  }
+
+  if (user?.roleKey === 'admin' && !user.isPlatformAdmin) {
+    return <Navigate to={`/subscription?plano=${encodeURIComponent(planName)}`} replace />
   }
 
   return (

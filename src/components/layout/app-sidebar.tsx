@@ -13,6 +13,7 @@ import {
   Truck,
   UserCog,
   Users,
+  Wallet,
   ChevronLeft,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -51,7 +52,10 @@ const navGroups = [
   },
   {
     label: 'Sistema',
-    links: [{ to: '/settings', label: 'Configurações', icon: Cog }],
+    links: [
+      { to: '/settings', label: 'Configurações', icon: Cog },
+      { to: '/subscription', label: 'Assinatura', icon: Wallet },
+    ],
   },
 ]
 
@@ -100,7 +104,7 @@ export function AppSidebar() {
       : navGroups
           .map((group) => ({
             ...group,
-            links: group.links.filter((link) => canAccessPath(currentPlan, link.to)),
+            links: group.links.filter((link) => canAccessPath(currentPlan, link.to) && (link.to !== '/subscription' || user?.roleKey === 'admin')),
           }))
           .filter((group) => group.links.length > 0)
 

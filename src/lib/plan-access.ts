@@ -15,7 +15,7 @@ export const planRoutes: Record<PlanKey, string[]> = {
 }
 
 export function canAccessPath(plan: PlanKey, path: string) {
-  if (path.startsWith('/saas') || path === '/activation' || path === '/support') {
+  if (path.startsWith('/saas') || path === '/activation' || path === '/support' || path === '/subscription') {
     return true
   }
 

@@ -124,7 +124,7 @@ async def my_billing(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
     invoices = (await db.execute(
         select(Invoice).where(Invoice.tenant_id == auth.tenant_id).order_by(Invoice.due_date.desc()).limit(24)
     )).scalars().all()
-    return {"ok": True, "subscription": _sub_to_dict(sub), "invoices": [_invoice_to_dict(i) for i in invoices]}
+    return {"ok": True, "subscription": _sub_to_dict(sub), "invoices": [_invoice_to_dict(i) for i in invoices], "prices": PLAN_PRICES, "trialDays": get_settings().billing_trial_days}
 
 
 @billing_router.post("/checkout")
