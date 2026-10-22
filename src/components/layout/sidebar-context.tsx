@@ -7,9 +7,29 @@ interface SidebarContextValue {
 
 const SidebarContext = createContext<SidebarContextValue | null>(null)
 
-export function SidebarProvider({ children }: PropsWithChildren) {
-  const [collapsed, setCollapsed] = useState(false)
-  const toggle = () => setCollapsed((prev) => !prev)
+const collapsedKey = 'vaija.store.sidebarCollapsed'
+
+function readCollapsed() {
+  try {
+    return localStorage.getItem(collapsedKey) === 'true'
+  } catch {
+    return false
+  }
+}
+
+/** `persist` guarda a escolha do menu entre telas; o menu do celular não persiste e abre sempre expandido. */
+export function SidebarProvider({ children, persist = true }: PropsWithChildren<{ persist?: boolean }>) {
+  const [collapsed, setCollapsed] = useState(() => (persist ? readCollapsed() : false))
+  const toggle = () => {
+    const next = !collapsed
+    setCollapsed(next)
+    if (!persist) return
+    try {
+      localStorage.setItem(collapsedKey, String(next))
+    } catch {
+      // preferência não guardada
+    }
+  }
   return <SidebarContext.Provider value={{ collapsed, toggle }}>{children}</SidebarContext.Provider>
 }
 

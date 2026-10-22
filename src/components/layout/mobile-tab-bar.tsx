@@ -37,7 +37,7 @@ export function MobileTabBar() {
         <MobileDrawer
           trigger={<button type="button" className="flex flex-1 flex-col items-center gap-1 py-2.5 !text-[11px] font-semibold leading-normal text-sa-muted"><Menu className="h-5 w-5" />Menu</button>}
         >
-          <SidebarProvider><div className="h-full"><AppSidebar /></div></SidebarProvider>
+          <SidebarProvider persist={false}><div className="h-full"><AppSidebar /></div></SidebarProvider>
         </MobileDrawer>
       </div>
     </nav>

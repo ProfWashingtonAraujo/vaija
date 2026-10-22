@@ -14,7 +14,7 @@ function LayoutInner({ title, description, children }: PropsWithChildren<{ title
   return (
     <div className="flex h-dvh overflow-hidden bg-sa-bg text-sa-text">
       {/* Sidebar — desktop only */}
-      <div className={cn('hidden flex-shrink-0 transition-all duration-300 lg:flex', collapsed ? 'w-[76px]' : 'w-64')}>
+      <div className={cn('relative z-50 hidden flex-shrink-0 transition-all duration-300 lg:flex', collapsed ? 'w-[76px]' : 'w-64')}>
         <AppSidebar />
       </div>
 
