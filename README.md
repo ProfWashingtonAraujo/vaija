@@ -3,7 +3,7 @@
 Plataforma SaaS multi-restaurante para pizzarias, buffets e delivery: cardápio online, PDV, kanban de pedidos, impressão de cupom, automação por WhatsApp e um painel de administração da plataforma (clientes, planos, acessos e financeiro).
 
 - **Site (produção):** https://vaija.vercel.app
-- **API (produção):** https://vaija-api-xom6.onrender.com
+- **API (produção):** https://vaija.onrender.com
 
 ## Sumário
 

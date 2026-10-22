@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://vaija-api-xom6.onrender.com/api/:path*"
+      "destination": "https://vaija.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
