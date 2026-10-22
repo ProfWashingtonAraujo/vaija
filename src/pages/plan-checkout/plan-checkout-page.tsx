@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
 import { Input } from '@/components/ui/input'
-import { getPricingPlans } from '@/data/pricing-plans'
+import { usePricingPlans } from '@/data/use-pricing-plans'
 import { submitLead as sendLead } from '@/lib/saas-api'
 import type { PlanKey } from '@/lib/plan-access'
 import { cn } from '@/lib/utils'
@@ -16,7 +16,7 @@ export function PlanCheckoutPage() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const requestedPlan = searchParams.get('plano') ?? 'Pro'
-  const plans = useMemo(() => getPricingPlans(), [])
+  const plans = usePricingPlans()
   const selectedPlan = plans.find((plan) => plan.name.toLowerCase() === requestedPlan.toLowerCase()) ?? plans[1] ?? plans[0]
   const [planName, setPlanName] = useState(selectedPlan.name)
   const [restaurantName, setRestaurantName] = useState('')

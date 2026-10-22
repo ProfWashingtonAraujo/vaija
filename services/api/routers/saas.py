@@ -14,11 +14,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import asaas
 from auth import CurrentAuth, PlatformAdmin
 from database import get_db
-from models import AuditLog, Lead, Subscription, Tenant, User
+from models import AuditLog, Lead, PlanConfig, Subscription, Tenant, User
+from plans_service import PLAN_KEYS, load_plans
 from tenants_service import (
     PLANS, PLATFORM_TENANT_ID, RESERVED_TENANT_IDS, tenant_payload, tenant_to_dict, unique_tenant_id,
 )
 from user_utils import BUSINESS_CATEGORIES
+from .billing import sync_subscription_plan
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +111,11 @@ async def update_tenant(tenant_id: str, body: TenantUpdate, _: PlatformAdmin, db
     tenant = await db.get(Tenant, tenant_id)
     if tenant is None:
         return _error(404, "tenant_not_found")
+    if body.plan is not None and body.plan != tenant.plan:
+        # O valor cobrado no Asaas acompanha o plano; se o Asaas recusar, o plano não muda.
+        if (code := await sync_subscription_plan(db, tenant_id, body.plan)) is not None:
+            await db.rollback()
+            return _error(503 if code == "billing_not_configured" else 502, code)
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(tenant, field, value.strip() if isinstance(value, str) else value)
     await db.flush()
@@ -167,6 +174,40 @@ async def import_tenants(body: TenantImport, _: PlatformAdmin, db: AsyncSession 
 @tenant_router.get("/me")
 async def my_tenant(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
     return {"ok": True, "tenant": await tenant_payload(db, auth.tenant_id)}
+
+
+# ── Catálogo de planos ────────────────────────────────────────────────────────
+
+class PlanConfigIn(_CamelModel):
+    key: Plan
+    price: float = Field(ge=0, le=100000)
+    active: bool = True
+    description: str = Field(default="", max_length=400)
+
+
+class PlanConfigsIn(_CamelModel):
+    plans: list[PlanConfigIn] = Field(max_length=len(PLAN_KEYS))
+
+
+@public_leads_router.get("/plans")
+async def public_plans(db: AsyncSession = Depends(get_db)):
+    """Preços e textos da página de vendas e do checkout."""
+    return {"ok": True, "plans": await load_plans(db)}
+
+
+@saas_router.put("/plans")
+async def save_plans(body: PlanConfigsIn, _: PlatformAdmin, db: AsyncSession = Depends(get_db)):
+    if len({plan.key for plan in body.plans}) != len(body.plans):
+        return _error(400, "duplicate_plan")
+    for plan in body.plans:
+        price = 0 if plan.key == "Free" else plan.price  # o plano gratuito é sempre R$ 0
+        row = await db.get(PlanConfig, plan.key)
+        if row is None:
+            db.add(PlanConfig(key=plan.key, price=price, active=plan.active, description=plan.description.strip()))
+        else:
+            row.price, row.active, row.description = price, plan.active, plan.description.strip()
+    await db.flush()
+    return {"ok": True, "plans": await load_plans(db)}
 
 
 # ── Leads da página de vendas ─────────────────────────────────────────────────

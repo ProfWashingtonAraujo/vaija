@@ -348,3 +348,14 @@ class AuditLog(Base):
     target: Mapped[str] = mapped_column(String, nullable=False, default="")
     actor: Mapped[str] = mapped_column(String, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PlanConfig(Base):
+    """Preço e texto de cada plano; o dono do SaaS edita em Planos."""
+    __tablename__ = "plan_configs"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)  # Free | Start | Pro | Premium
+    price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

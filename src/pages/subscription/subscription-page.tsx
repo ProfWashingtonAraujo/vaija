@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CheckCircle2, ExternalLink, ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
@@ -6,7 +6,7 @@ import { AdminLayout } from '@/components/layout/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth, useTenant } from '@/contexts/auth-context'
-import { getPricingPlans } from '@/data/pricing-plans'
+import { usePricingPlans } from '@/data/use-pricing-plans'
 import {
   billingErrorMessage, cancelSubscription, fetchBillingOverview, invoiceStatusLabels, startCheckout, subscriptionStatusLabels,
   type BillingInvoice, type BillingOverview, type BillingType,
@@ -50,7 +50,7 @@ export function SubscriptionPage() {
   const [sending, setSending] = useState(false)
   const [payUrl, setPayUrl] = useState<string | null>(null)
 
-  const planDetails = useMemo(() => getPricingPlans(), [])
+  const planDetails = usePricingPlans()
   const load = () => fetchBillingOverview().then((data) => {
     invalidateBillingAccess()
     setOverview(data)

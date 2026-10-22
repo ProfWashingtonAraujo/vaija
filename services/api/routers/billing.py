@@ -20,13 +20,13 @@ from auth import CurrentAuth, PlatformAdmin
 from config import get_settings
 from database import get_db
 from models import Invoice, Subscription, Tenant
+from plans_service import plan_prices
 
 logger = logging.getLogger(__name__)
 billing_router = APIRouter(prefix="/api/billing", tags=["billing"])
 billing_webhook_router = APIRouter(prefix="/api/billing/webhook", tags=["billing"])
 
-# Preço é decidido aqui: o front nunca manda valor.
-PLAN_PRICES: dict[str, float] = {"Free": 0, "Start": 79, "Pro": 149, "Premium": 249}
+# O preço vem do catálogo de planos no servidor: o front nunca manda valor.
 Plan = Literal["Free", "Start", "Pro", "Premium"]
 BillingType = Literal["PIX", "BOLETO", "CREDIT_CARD"]
 
@@ -132,6 +132,29 @@ async def _set_tenant_plan(db: AsyncSession, tenant_id: str, plan: str, body: "C
         tenant.plan = plan
 
 
+async def sync_subscription_plan(db: AsyncSession, tenant_id: str, plan: str) -> str | None:
+    """Faz a cobrança no Asaas acompanhar uma troca de plano feita pelo dono. Devolve o código do erro, se houver.
+
+    Sem assinatura no Asaas (cortesia, Free, cancelada) não há o que ajustar. Com assinatura, o novo valor vale
+    a partir da próxima fatura em aberto; Free cancela a cobrança.
+    """
+    sub = await db.get(Subscription, tenant_id)
+    if sub is None or not sub.asaas_subscription_id or sub.status == "cancelled" or sub.plan == plan:
+        return None
+    try:
+        if plan == "Free":
+            await asaas.cancel_subscription(sub.asaas_subscription_id)
+            sub.plan, sub.status, sub.billing_type = "Free", "active", None
+            sub.asaas_subscription_id, sub.overdue_since = None, None
+        else:
+            await asaas.update_subscription(sub.asaas_subscription_id, sub.billing_type, (await plan_prices(db))[plan], plan)
+            sub.plan = plan
+    except asaas.AsaasError as exc:
+        logger.warning("Troca de plano de %s recusada pelo Asaas: %s", tenant_id, exc)
+        return exc.code
+    return None
+
+
 async def _sync_from_gateway(db: AsyncSession, sub: Subscription) -> None:
     """Reconcilia faturas e status com o Asaas; cobre webhook perdido ou ainda não configurado."""
     if not sub.asaas_subscription_id or sub.status == "cancelled":
@@ -169,7 +192,7 @@ async def my_billing(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
     invoices = (await db.execute(
         select(Invoice).where(Invoice.tenant_id == auth.tenant_id).order_by(Invoice.due_date.desc()).limit(24)
     )).scalars().all()
-    return {"ok": True, "subscription": _sub_to_dict(sub), "invoices": [_invoice_to_dict(i) for i in invoices], "prices": PLAN_PRICES, "trialDays": get_settings().billing_trial_days}
+    return {"ok": True, "subscription": _sub_to_dict(sub), "invoices": [_invoice_to_dict(i) for i in invoices], "prices": await plan_prices(db), "trialDays": get_settings().billing_trial_days}
 
 
 @billing_router.post("/checkout")
@@ -181,7 +204,7 @@ async def checkout(body: CheckoutIn, auth: CurrentAuth, db: AsyncSession = Depen
         return _error(400, "invalid_cpf_cnpj")
 
     settings = get_settings()
-    price = PLAN_PRICES[body.plan]
+    price = (await plan_prices(db))[body.plan]
     sub = await db.get(Subscription, auth.tenant_id)
     now = _now()
 
@@ -264,7 +287,8 @@ async def cancel(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
 @billing_router.get("/admin/subscriptions")
 async def all_subscriptions(_: PlatformAdmin, db: AsyncSession = Depends(get_db)):
     subs = (await db.execute(select(Subscription).order_by(Subscription.created_at.desc()))).scalars().all()
-    return {"ok": True, "subscriptions": [{"tenantId": s.tenant_id, "customerName": s.customer_name, **_sub_to_dict(s)} for s in subs]}
+    prices = await plan_prices(db)
+    return {"ok": True, "subscriptions": [{"tenantId": s.tenant_id, "customerName": s.customer_name, "price": prices.get(s.plan, 0), **_sub_to_dict(s)} for s in subs]}
 
 
 @billing_router.post("/admin/cancel/{tenant_id}")

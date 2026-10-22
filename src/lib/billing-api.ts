@@ -33,7 +33,7 @@ export type BillingOverview = {
   trialDays: number
 }
 
-export type AdminSubscription = Subscription & { tenantId: string; customerName: string }
+export type AdminSubscription = Subscription & { tenantId: string; customerName: string; price: number }
 
 export const subscriptionStatusLabels: Record<SubscriptionStatus, { label: string; style: string }> = {
   none: { label: 'Sem assinatura', style: 'bg-slate-100 text-slate-600' },

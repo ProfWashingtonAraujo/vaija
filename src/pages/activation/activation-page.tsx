@@ -11,8 +11,7 @@ import { planLabels, type PlanKey } from '@/lib/plan-access'
 import { createTenant, deleteTenant, fetchTenants, importLegacyTenants, needsLegacyImport, readLegacyTenants, tenantErrorMessage, updateTenant, type Tenant, type TenantStatus } from '@/lib/tenants-api'
 import { createPlatformUser, createTenantAdminUser, deleteTenantAccess, fetchAllUsers, impersonateUser, platformPermissionLabels, updatePlatformUser, updatePlatformUserPermissions, updateTenantAccess, type AppUser } from '@/lib/users-api'
 import { formatCurrency } from '@/lib/formatters'
-import { readPlanConfigs, savePlanConfigs, type PlanConfig } from '@/lib/saas-admin-api'
-import { addAuditLog, deleteLead, fetchAuditLogs, fetchLeads, updateLeadStatus, type Lead, type LeadStatus, type SaasAuditLog } from '@/lib/saas-api'
+import { addAuditLog, defaultPlanConfigs, deleteLead, fetchAuditLogs, fetchLeads, fetchPlanConfigs, savePlanConfigs, updateLeadStatus, type Lead, type LeadStatus, type PlanConfig, type SaasAuditLog } from '@/lib/saas-api'
 import { billingTypeLabels, fetchAdminBilling, subscriptionStatusLabels, type AdminSubscription, type BillingInvoice, type SubscriptionStatus } from '@/lib/billing-api'
 import { usePolling } from '@/lib/use-polling'
 import { useAuth } from '@/contexts/auth-context'
@@ -38,6 +37,32 @@ function SubscriptionBadge({ subscription }: { subscription?: AdminSubscription 
   return <Pill tone={subscriptionTones[subscription?.status ?? 'none']}>{subscription ? subscriptionStatusLabels[subscription.status].label : 'Sem cobrança'}</Pill>
 }
 
+/** Uma situação só por cliente: junta o cadastro (suspenso), a cobrança e o acesso. */
+function clientSituation(tenant: Tenant, subscription?: AdminSubscription): { label: string; tone: PillTone; hint: string } {
+  if (tenant.status === 'inactive') return { label: 'Suspenso', tone: 'neutral', hint: 'Acesso suspenso manualmente pelo painel.' }
+  if (!subscription || subscription.status === 'none') {
+    return tenant.plan === 'Free'
+      ? { label: 'Free', tone: 'neutral', hint: 'Plano gratuito, sem cobrança.' }
+      : { label: 'Cortesia', tone: 'warn', hint: 'Plano pago liberado sem cobrança no Asaas.' }
+  }
+  if (subscription.status === 'cancelled') return { label: 'Cancelado', tone: 'neutral', hint: 'A assinatura foi cancelada.' }
+  if (subscription.access === 'restricted') {
+    return subscription.status === 'trialing'
+      ? { label: 'Teste vencido', tone: 'bad', hint: 'O teste grátis acabou e o painel do lojista está bloqueado.' }
+      : { label: 'Bloqueado', tone: 'bad', hint: 'Mensalidade em atraso além da carência: o painel do lojista está bloqueado.' }
+  }
+  if (subscription.status === 'trialing') return { label: 'Em teste', tone: 'info', hint: 'Teste grátis em andamento.' }
+  if (subscription.status === 'past_due') return { label: 'Em atraso', tone: 'bad', hint: 'Mensalidade em atraso, ainda dentro da carência.' }
+  return subscription.plan === tenant.plan
+    ? { label: 'Ativo', tone: 'ok', hint: 'Assinatura em dia.' }
+    : { label: 'Ativo', tone: 'ok', hint: `Assinatura em dia, cobrada como ${subscription.plan}.` }
+}
+
+function SituationBadge({ tenant, subscription }: { tenant: Tenant; subscription?: AdminSubscription }) {
+  const situation = clientSituation(tenant, subscription)
+  return <span title={situation.hint}><Pill tone={situation.tone}>{situation.label}</Pill></span>
+}
+
 function PasswordInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
   const [visible, setVisible] = useState(false)
   return (
@@ -61,7 +86,7 @@ export function ActivationPage() {
   const currentView = tenantId ? 'cliente-detalhe' : view
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [users, setUsers] = useState<AppUser[]>([])
-  const [planConfigs, setPlanConfigs] = useState<PlanConfig[]>(() => readPlanConfigs())
+  const [planConfigs, setPlanConfigs] = useState<PlanConfig[]>(defaultPlanConfigs)
   const [billingInvoices, setBillingInvoices] = useState<BillingInvoice[]>([])
   const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([])
   const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'open' | 'overdue' | 'paid' | 'cancelled'>('all')
@@ -117,7 +142,10 @@ export function ActivationPage() {
   const activeTenants = clientTenants.filter((tenant) => tenant.status === 'active')
   const inactiveTenants = clientTenants.filter((tenant) => tenant.status === 'inactive')
   const planPrices = planConfigs.reduce((prices, config) => ({ ...prices, [config.key]: config.price }), defaultPlanPrices)
-  const monthlyRecurringRevenue = activeTenants.reduce((sum, tenant) => sum + planPrices[tenant.plan], 0)
+  const recurringSubscriptions = subscriptions.filter((item) => (item.status === 'active' || item.status === 'past_due') && item.price > 0)
+  const monthlyRecurringRevenue = recurringSubscriptions.reduce((sum, item) => sum + item.price, 0)
+  const averageTicket = recurringSubscriptions.length ? monthlyRecurringRevenue / recurringSubscriptions.length : 0
+  const trialCount = subscriptions.filter((item) => item.status === 'trialing').length
   const activeUsers = users.filter((user) => clientTenants.some((tenant) => tenant.id === user.restaurantId))
   const platformUsers = users.filter((user) => user.isPlatformAdmin)
   const usersByTenant = new Map(clientTenants.map((tenant) => [tenant.id, activeUsers.filter((user) => user.restaurantId === tenant.id)]))
@@ -197,6 +225,7 @@ export function ActivationPage() {
   }
 
   useEffect(() => {
+    void fetchPlanConfigs().then(setPlanConfigs).catch(() => undefined)
     void loadTenants()
     void loadBilling()
     void loadTickets()
@@ -268,7 +297,7 @@ export function ActivationPage() {
       await updateTenant(tenant.id, values)
       refreshData()
       logAction(values.plan ? 'Plano alterado' : 'Status alterado', `${tenant.restaurantName} · ${values.plan ? planLabels[values.plan] : values.status}`)
-      toast.success('Cliente atualizado.')
+      toast.success(values.plan ? 'Plano alterado. A cobrança acompanha o novo plano.' : 'Cliente atualizado.')
     } catch (error) {
       toast.error(tenantErrorMessage(error, 'Não foi possível atualizar o cliente.'))
     }
@@ -291,8 +320,13 @@ export function ActivationPage() {
     setPlanConfigs(nextConfigs)
   }
 
-  const savePlansConfiguration = () => {
-    savePlanConfigs(planConfigs)
+  const savePlansConfiguration = async () => {
+    try {
+      setPlanConfigs(await savePlanConfigs(planConfigs))
+    } catch {
+      toast.error('Não foi possível salvar os planos.')
+      return
+    }
     logAction('Planos configurados', 'Tabela de planos')
     toast.success('Planos salvos e publicados na landing page.')
   }
@@ -522,13 +556,13 @@ export function ActivationPage() {
   const summaryCards = (
     <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
       <StatTile label="Clientes ativos" value={String(activeTenants.length)} detail={`${inactiveTenants.length} inativo(s)`} icon={<Building2 className="h-[18px] w-[18px]" />} />
-      <StatTile label="MRR estimado" value={formatCurrency(monthlyRecurringRevenue)} detail="Receita mensal recorrente" icon={<TrendingUp className="h-[18px] w-[18px]" />} tone="ok" />
+      <StatTile label="MRR" value={formatCurrency(monthlyRecurringRevenue)} detail={`${recurringSubscriptions.length} assinatura(s) paga(s)`} icon={<TrendingUp className="h-[18px] w-[18px]" />} tone="ok" />
       <StatTile label="Acessos criados" value={String(activeUsers.length)} detail="Usuários de clientes" icon={<KeyRound className="h-[18px] w-[18px]" />} tone="info" />
-      <StatTile label="Ticket médio" value={formatCurrency(activeTenants.length ? monthlyRecurringRevenue / activeTenants.length : 0)} detail="Por cliente ativo" icon={<CreditCard className="h-[18px] w-[18px]" />} tone="warn" />
+      <StatTile label="Ticket médio" value={formatCurrency(averageTicket)} detail="Por assinatura paga" icon={<CreditCard className="h-[18px] w-[18px]" />} tone="warn" />
     </div>
   )
 
-  const clientGrid = 'lg:grid-cols-[minmax(200px,2fr)_104px_130px_72px_84px_auto]'
+  const clientGrid = 'lg:grid-cols-[minmax(200px,2fr)_150px_120px_72px_auto]'
   const clientsSection = (
     <SaasCard>
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -548,7 +582,7 @@ export function ActivationPage() {
       {searchedClientTenants.length === 0 ? <EmptyBlock icon={<Building2 className="h-5 w-5" />} text="Nenhum cliente com esse filtro." /> : (
         <div className="overflow-hidden rounded-xl border border-sa-border">
           <div className={cn('hidden gap-4 border-b border-sa-border bg-sa-surface-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-sa-soft lg:grid', clientGrid)}>
-            <span>Cliente</span><span>Plano</span><span>Cobrança</span><span>Acessos</span><span>Status</span><span className="w-[148px]" />
+            <span>Cliente</span><span>Plano</span><span>Situação</span><span>Acessos</span><span className="w-[148px]" />
           </div>
           <ul className="divide-y divide-sa-border">
             {searchedClientTenants.map((tenant) => {
@@ -577,10 +611,12 @@ export function ActivationPage() {
                           <p className="truncate text-xs text-sa-soft">{tenant.city}</p>
                         </div>
                       </div>
-                      <Pill tone="accent">{tenant.plan}</Pill>
-                      <SubscriptionBadge subscription={subscriptionByTenant.get(tenant.id)} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Pill tone="accent">{tenant.plan}</Pill>
+                        {subscriptionByTenant.get(tenant.id)?.plan && subscriptionByTenant.get(tenant.id)?.plan !== tenant.plan ? <span title="O plano cobrado no Asaas é diferente do plano liberado."><Pill tone="warn">Cobrado: {subscriptionByTenant.get(tenant.id)?.plan}</Pill></span> : null}
+                      </div>
+                      <SituationBadge tenant={tenant} subscription={subscriptionByTenant.get(tenant.id)} />
                       <p className="text-sm text-sa-text-2"><span className="mr-1 text-xs text-sa-soft lg:hidden">Acessos</span>{tenantUsers.length}</p>
-                      <Pill tone={tenant.status === 'active' ? 'ok' : 'neutral'}>{tenant.status === 'active' ? 'Ativo' : 'Inativo'}</Pill>
                       <div className="flex items-center gap-1 lg:justify-end">
                         <Button type="button" variant="outline" className="h-9 px-3 py-0 text-xs" onClick={() => navigate(`/saas/clientes/${tenant.id}`)}>Ver detalhe</Button>
                         <ActionMenu
@@ -657,11 +693,11 @@ export function ActivationPage() {
               <div className="flex flex-wrap gap-2">
                 <Pill tone="accent">{planLabels[selectedTenant.plan]}</Pill>
                 <Pill>{businessTypeLabels[selectedTenant.businessType]}</Pill>
-                <Pill tone={selectedTenant.status === 'active' ? 'ok' : 'neutral'}>{selectedTenant.status === 'active' ? 'Ativo' : 'Inativo'}</Pill>
+                <SituationBadge tenant={selectedTenant} subscription={selectedSubscription} />
               </div>
             </div>
-            <div className="mt-6 grid gap-3 border-t border-sa-border pt-5 md:grid-cols-2">
-              <FormField label="Plano">
+            <div className="mt-6 grid items-start gap-3 border-t border-sa-border pt-5 md:grid-cols-2">
+              <FormField label="Plano" hint={selectedSubscription && selectedSubscription.status !== 'none' && selectedSubscription.status !== 'cancelled' && selectedSubscription.plan !== 'Free' ? 'Este cliente tem cobrança ativa: trocar o plano atualiza o valor no Asaas.' : 'Sem cobrança ativa: a troca libera o plano como cortesia, sem cobrar.'}>
                 <select value={selectedTenant.plan} onChange={(event) => updateClient(selectedTenant, { plan: event.target.value as PlanKey })} className="h-11 w-full border px-4 text-sm outline-none">
                   {planOrder.map((item) => <option key={item} value={item}>{planLabels[item]}</option>)}
                 </select>
@@ -723,7 +759,7 @@ export function ActivationPage() {
   const financialSection = (
     <div className="space-y-6">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.5fr)]">
-        <FeaturedStat label="Receita mensal recorrente" value={formatCurrency(monthlyRecurringRevenue)} caption={`Projeção com ${activeTenants.length} cliente(s) ativo(s)`} icon={<TrendingUp className="h-5 w-5" />} />
+        <FeaturedStat label="MRR · receita mensal recorrente" value={formatCurrency(monthlyRecurringRevenue)} caption={`${recurringSubscriptions.length} assinatura(s) paga(s) · ${trialCount} em teste`} icon={<TrendingUp className="h-5 w-5" />} />
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <StatTile tone="ok" label="Recebido no mês" value={formatCurrency(paidRevenue)} detail={`${paidThisMonth.length} cobrança(s) paga(s)`} icon={<CheckCircle2 className="h-[18px] w-[18px]" />} />
           <StatTile tone="warn" label="A receber" value={formatCurrency(openRevenue)} detail={`${billingInvoices.filter((invoice) => invoice.status === 'open').length} cobrança(s) em aberto`} icon={<Clock3 className="h-[18px] w-[18px]" />} />
@@ -833,12 +869,12 @@ export function ActivationPage() {
   const plansSection = (
     <SaasCard
       title="Tabela de planos"
-      description="Preço, descrição e disponibilidade de cada plano na página de vendas."
+      description="Preço, descrição e disponibilidade de cada plano na página de vendas e no checkout."
       action={<Button type="button" onClick={savePlansConfiguration}>Salvar alterações</Button>}
     >
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-sa-border-strong bg-sa-accent-soft p-4 text-sm leading-6 text-sa-text-2">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-sa-accent-text" />
-        <p>Os valores desta tela mudam só o que aparece na página de vendas. O valor realmente cobrado no checkout é definido no servidor e não muda por aqui.</p>
+        <p>Estes preços valem para a página de vendas e para o checkout. Quem já tem assinatura ativa mantém o valor atual até trocar de plano; ao trocar o plano de um cliente em Clientes, a cobrança no Asaas é atualizada para o preço de agora.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {planConfigs.map((config) => (
@@ -848,7 +884,7 @@ export function ActivationPage() {
               <Pill tone={config.active ? 'ok' : 'neutral'}>{config.active ? 'Ativo' : 'Oculto'}</Pill>
             </div>
             <div className="mt-4 grid gap-3">
-              <FormField label="Preço mensal (R$)"><Input value={String(config.price)} onChange={(event) => updatePlanConfig(config.key, { price: Number(event.target.value) || 0 })} inputMode="numeric" /></FormField>
+              <FormField label="Preço mensal (R$)"><Input value={String(config.price)} disabled={config.key === 'Free'} onChange={(event) => updatePlanConfig(config.key, { price: Number(event.target.value) || 0 })} inputMode="decimal" /></FormField>
               <FormField label="Descrição"><textarea value={config.description} onChange={(event) => updatePlanConfig(config.key, { description: event.target.value })} className="min-h-24 w-full border px-4 py-3 text-sm outline-none" /></FormField>
               <label className="flex items-center justify-between rounded-xl border border-sa-border bg-sa-surface px-4 py-3 text-sm font-semibold text-sa-text-2">Mostrar na página de vendas<input type="checkbox" checked={config.active} onChange={(event) => updatePlanConfig(config.key, { active: event.target.checked })} className="h-4 w-4" /></label>
             </div>
@@ -994,7 +1030,7 @@ export function ActivationPage() {
           <StatTile tone="warn" label="A receber" value={formatCurrency(openRevenue)} detail={`${billingInvoices.filter((invoice) => invoice.status === 'open').length} cobrança(s) em aberto`} icon={<Clock3 className="h-[18px] w-[18px]" />} />
           <StatTile tone="bad" label="Em atraso" value={formatCurrency(overdueRevenue)} detail={`${billingInvoices.filter((invoice) => invoice.status === 'overdue').length} cobrança(s) vencida(s)`} icon={<AlertTriangle className="h-[18px] w-[18px]" />} />
           <StatTile label="Clientes ativos" value={String(activeTenants.length)} detail={`${inactiveTenants.length} inativo(s)`} icon={<Building2 className="h-[18px] w-[18px]" />} />
-          <StatTile tone="ok" label="MRR estimado" value={formatCurrency(monthlyRecurringRevenue)} detail="Receita mensal recorrente" icon={<TrendingUp className="h-[18px] w-[18px]" />} />
+          <StatTile tone="ok" label="MRR" value={formatCurrency(monthlyRecurringRevenue)} detail={`${recurringSubscriptions.length} assinatura(s) paga(s)`} icon={<TrendingUp className="h-[18px] w-[18px]" />} />
         </div>
       </div>
 
@@ -1129,7 +1165,7 @@ export function ActivationPage() {
     clientes: ['Clientes', 'Restaurantes da carteira e os planos contratados.'],
     'cliente-detalhe': [selectedTenant?.restaurantName ?? 'Cliente', 'Dados, acessos, assinatura e cobranças.'],
     acessos: ['Acessos', 'Usuários dos restaurantes clientes.'],
-    planos: ['Planos', 'Tabela de planos exibida na página de vendas.'],
+    planos: ['Planos', 'Preços e textos usados na página de vendas e no checkout.'],
     ativacoes: ['Ativações', 'Cadastre um novo restaurante e crie o primeiro acesso.'],
     leads: ['Leads', 'Interessados que pediram contratação.'],
     suporte: ['Suporte', 'Chamados abertos pelos lojistas.'],

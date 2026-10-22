@@ -42,11 +42,11 @@ async def create_subscription(customer_id: str, billing_type: str, value: float,
     })
 
 
-async def update_subscription(subscription_id: str, billing_type: str, value: float, plan: str) -> dict:
-    return await _request("PUT", f"/subscriptions/{subscription_id}", {
-        "billingType": billing_type, "value": value, "updatePendingPayments": True,
-        "description": f"Vaija - Plano {plan}",
-    })
+async def update_subscription(subscription_id: str, billing_type: str | None, value: float, plan: str) -> dict:
+    payload: dict = {"value": value, "updatePendingPayments": True, "description": f"Vaija - Plano {plan}"}
+    if billing_type:
+        payload["billingType"] = billing_type
+    return await _request("PUT", f"/subscriptions/{subscription_id}", payload)
 
 
 async def cancel_subscription(subscription_id: str) -> dict:

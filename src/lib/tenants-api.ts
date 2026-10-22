@@ -128,8 +128,9 @@ const errorMessages: Record<string, string> = {
   invalid_business_type: 'Tipo de negócio inválido.',
   tenant_not_found: 'Cliente não encontrado.',
   cannot_delete_platform_tenant: 'A conta da plataforma não pode ser excluída.',
-  gateway_rejected: 'Não foi possível cancelar a cobrança no Asaas. O cliente não foi excluído.',
-  gateway_unavailable: 'Não conseguimos falar com o Asaas agora. O cliente não foi excluído.',
+  gateway_rejected: 'O Asaas recusou a operação. Nada foi alterado.',
+  gateway_unavailable: 'Não conseguimos falar com o Asaas agora. Nada foi alterado.',
+  billing_not_configured: 'A cobrança (Asaas) não está configurada. Nada foi alterado.',
 }
 
 export function tenantErrorMessage(error: unknown, fallback: string) {

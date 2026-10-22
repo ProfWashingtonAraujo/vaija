@@ -1,21 +1,13 @@
-import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { getPricingPlans } from '@/data/pricing-plans'
+import { usePricingPlans } from '@/data/use-pricing-plans'
 import { PageContainer } from '@/components/layout/page-container'
 import { SectionHeader } from '@/components/shared/section-header'
 import { Button } from '@/components/ui/button'
-import { planConfigsUpdatedEvent } from '@/lib/saas-admin-api'
 import { cn } from '@/lib/utils'
 
 export function PricingSection() {
-  const [plans, setPlans] = useState(() => getPricingPlans())
-
-  useEffect(() => {
-    const refreshPlans = () => setPlans(getPricingPlans())
-    window.addEventListener(planConfigsUpdatedEvent, refreshPlans)
-    return () => window.removeEventListener(planConfigsUpdatedEvent, refreshPlans)
-  }, [])
+  const plans = usePricingPlans()
 
   return (
     <section id="planos" className="py-20">

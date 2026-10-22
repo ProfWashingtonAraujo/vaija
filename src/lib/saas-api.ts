@@ -59,3 +59,27 @@ export async function fetchAuditLogs() {
 export async function addAuditLog(action: string, target: string) {
   return (await readJson<{ log: SaasAuditLog }>(await apiFetch('/api/platform/audit', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ action, target }) }))).log
 }
+
+export type PlanConfig = {
+  key: PlanKey
+  price: number
+  active: boolean
+  description: string
+}
+
+/** Valores de partida enquanto o catálogo não chega do servidor (o servidor tem os mesmos padrões). */
+export const defaultPlanConfigs: PlanConfig[] = [
+  { key: 'Free', price: 0, active: true, description: 'Plano gratuito para começar com pedidos online e configuração básica.' },
+  { key: 'Start', price: 79, active: true, description: 'Entrada para pedido online e operação simples.' },
+  { key: 'Pro', price: 149, active: true, description: 'Operação com painel, PDV, pedidos e cardápio.' },
+  { key: 'Premium', price: 249, active: true, description: 'Gestão completa com operador, controle de ingredientes e relatórios.' },
+]
+
+/** Preços e textos dos planos, públicos: a página de vendas e o checkout usam os mesmos valores da cobrança. */
+export async function fetchPlanConfigs() {
+  return (await readJson<{ plans: PlanConfig[] }>(await apiFetch('/api/public/plans', undefined, false))).plans
+}
+
+export async function savePlanConfigs(plans: PlanConfig[]) {
+  return (await readJson<{ plans: PlanConfig[] }>(await apiFetch('/api/platform/plans', { method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ plans }) }))).plans
+}

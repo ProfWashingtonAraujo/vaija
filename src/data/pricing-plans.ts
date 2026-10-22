@@ -1,4 +1,4 @@
-import { readPlanConfigs } from '@/lib/saas-admin-api'
+import { defaultPlanConfigs, type PlanConfig } from '@/lib/saas-api'
 
 export const pricingPlans = [
   {
@@ -98,8 +98,7 @@ export const pricingPlans = [
   },
 ]
 
-export function getPricingPlans() {
-  const planConfigs = readPlanConfigs()
+export function getPricingPlans(planConfigs: PlanConfig[] = defaultPlanConfigs) {
 
   const plans = pricingPlans.map((plan) => {
     const config = planConfigs.find((item) => item.key === plan.name)
