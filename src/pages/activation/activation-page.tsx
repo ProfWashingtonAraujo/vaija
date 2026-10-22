@@ -12,7 +12,8 @@ import { createTenant, deleteTenant, readTenants, updateTenant, type Tenant, typ
 import { platformTenantId } from '@/lib/tenant-storage'
 import { createPlatformUser, createTenantAdminUser, deleteTenantAccess, fetchAllUsers, impersonateUser, platformPermissionLabels, updatePlatformUser, updatePlatformUserPermissions, updateTenantAccess, type AppUser } from '@/lib/users-api'
 import { formatCurrency } from '@/lib/formatters'
-import { addAuditLog, createSupportTicket, readAuditLogs, readBillingInvoices, readPlanConfigs, readSupportTickets, saveBillingInvoices, savePlanConfigs, syncCurrentBillingInvoices, updateBillingInvoice, updateSupportTicket, type BillingInvoice, type PlanConfig, type SupportTicket } from '@/lib/saas-admin-api'
+import { addAuditLog, readAuditLogs, readBillingInvoices, readPlanConfigs, saveBillingInvoices, savePlanConfigs, syncCurrentBillingInvoices, updateBillingInvoice, type BillingInvoice, type PlanConfig } from '@/lib/saas-admin-api'
+import { fetchAllTickets, updateTicket, type SupportTicket } from '@/lib/support-api'
 import { businessTypeLabels, businessTypeOptions, type BusinessType } from '@/lib/business-types'
 import { isValidOptionalEmail, isValidUsername, normalizeUsername, userErrorMessage, usernameHint } from '@/lib/username'
 
@@ -50,7 +51,7 @@ export function ActivationPage() {
   const [users, setUsers] = useState<AppUser[]>([])
   const [planConfigs, setPlanConfigs] = useState<PlanConfig[]>(() => readPlanConfigs())
   const [billingInvoices, setBillingInvoices] = useState<BillingInvoice[]>(() => readBillingInvoices())
-  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(() => readSupportTickets())
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([])
   const [auditLogs, setAuditLogs] = useState(() => readAuditLogs())
   const [restaurantName, setRestaurantName] = useState('')
   const [ownerName, setOwnerName] = useState('')
@@ -62,9 +63,7 @@ export function ActivationPage() {
   const [plan, setPlan] = useState<PlanKey>('Pro')
   const [password, setPassword] = useState('')
   const [clientFilter, setClientFilter] = useState<'all' | PlanKey | TenantStatus>('all')
-  const [supportTenantId, setSupportTenantId] = useState('')
-  const [supportSubject, setSupportSubject] = useState('')
-  const [supportPriority, setSupportPriority] = useState<SupportTicket['priority']>('Média')
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({})
   const [platformUserName, setPlatformUserName] = useState('')
   const [platformUserUsername, setPlatformUserUsername] = useState('')
   const [platformUserEmail, setPlatformUserEmail] = useState('')
@@ -127,7 +126,7 @@ export function ActivationPage() {
     setTenants(nextTenants)
     void fetchAllUsers().then((result) => setUsers(result.users))
     setBillingInvoices(nextInvoices)
-    setSupportTickets(readSupportTickets())
+    void fetchAllTickets().then(setSupportTickets).catch(() => undefined)
     setAuditLogs(readAuditLogs())
   }
 
@@ -239,21 +238,16 @@ export function ActivationPage() {
     toast.success('Permissões atualizadas.')
   }
 
-  const createTicket = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!supportTenantId || !supportSubject.trim()) {
-      toast.error('Selecione o cliente e informe o assunto do suporte.')
-      return
+  const saveTicket = async (ticket: SupportTicket, values: Partial<Pick<SupportTicket, 'status' | 'priority' | 'reply'>>) => {
+    try {
+      const saved = await updateTicket(ticket.id, values)
+      setSupportTickets((current) => current.map((item) => item.id === saved.id ? saved : item))
+      setReplyDrafts(({ [ticket.id]: _discarded, ...rest }) => rest)
+      logAction('Ticket atualizado', ticket.subject)
+      toast.success('Ticket atualizado.')
+    } catch {
+      toast.error('Não foi possível atualizar o ticket.')
     }
-
-    const tenant = clientTenants.find((item) => item.id === supportTenantId)
-    createSupportTicket({ tenantId: supportTenantId, subject: supportSubject.trim(), priority: supportPriority, status: 'Aberto' })
-    setSupportSubject('')
-    setSupportPriority('Média')
-    setSupportTenantId('')
-    refreshData()
-    logAction('Ticket criado', tenant?.restaurantName ?? 'Cliente')
-    toast.success('Ticket de suporte criado.')
   }
 
   const exportClients = () => {
@@ -845,27 +839,34 @@ export function ActivationPage() {
   )
 
   const supportSection = (
-    <div className="grid items-start gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-      <form onSubmit={createTicket} className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-        <h2 className="font-heading text-2xl font-bold text-slate-900">Novo ticket</h2>
-        <div className="mt-5 grid gap-3">
-          <select value={supportTenantId} onChange={(event) => setSupportTenantId(event.target.value)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100"><option value="">Selecione o cliente</option>{clientTenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.restaurantName}</option>)}</select>
-          <Input value={supportSubject} onChange={(event) => setSupportSubject(event.target.value)} placeholder="Assunto" />
-          <select value={supportPriority} onChange={(event) => setSupportPriority(event.target.value as SupportTicket['priority'])} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100"><option>Baixa</option><option>Média</option><option>Alta</option></select>
-        </div>
-        <Button type="submit" className="mt-5 w-full">Criar ticket</Button>
-      </form>
-      <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-        <h2 className="font-heading text-2xl font-bold text-slate-900">Tickets</h2>
-        <div className="mt-5 space-y-3">
-          {supportTickets.map((ticket) => {
-            const tenant = clientTenants.find((item) => item.id === ticket.tenantId)
-            return <div key={ticket.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold text-slate-900">{ticket.subject}</p><p className="mt-1 text-sm text-slate-500">{tenant?.restaurantName ?? 'Cliente'} · {ticket.priority}</p></div><select value={ticket.status} onChange={(event) => { updateSupportTicket(ticket.id, { status: event.target.value as SupportTicket['status'] }); refreshData(); logAction('Ticket atualizado', ticket.subject) }} className="h-10 rounded-2xl border border-orange-100 bg-white px-3 text-sm outline-none"><option>Aberto</option><option>Em atendimento</option><option>Resolvido</option></select></div></div>
-          })}
-          {supportTickets.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhum ticket aberto.</p> : null}
-        </div>
-      </section>
-    </div>
+    <section className="rounded-[30px] border border-orange-100 bg-white p-6 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+      <h2 className="font-heading text-2xl font-bold text-slate-900">Tickets dos clientes</h2>
+      <div className="mt-5 space-y-3">
+        {supportTickets.map((ticket) => {
+          const tenant = clientTenants.find((item) => item.id === ticket.tenantId)
+          const draft = replyDrafts[ticket.id] ?? ticket.reply
+          const selectClass = 'h-10 rounded-2xl border border-orange-100 bg-white px-3 text-sm outline-none'
+          return (
+            <div key={ticket.id} className="rounded-2xl border border-orange-100 bg-orange-50/30 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900">{ticket.subject}</p>
+                  <p className="mt-1 text-sm text-slate-500">{tenant?.restaurantName ?? ticket.tenantId}{ticket.createdBy ? ` · ${ticket.createdBy}` : ''} · {new Date(ticket.createdAt).toLocaleString('pt-BR')}</p>
+                </div>
+                <div className="flex gap-2">
+                  <select value={ticket.priority} onChange={(event) => void saveTicket(ticket, { priority: event.target.value as SupportTicket['priority'] })} aria-label="Prioridade" className={selectClass}><option>Baixa</option><option>Média</option><option>Alta</option></select>
+                  <select value={ticket.status} onChange={(event) => void saveTicket(ticket, { status: event.target.value as SupportTicket['status'] })} aria-label="Status" className={selectClass}><option>Aberto</option><option>Em atendimento</option><option>Resolvido</option></select>
+                </div>
+              </div>
+              {ticket.message ? <p className="mt-3 whitespace-pre-wrap text-sm text-slate-600">{ticket.message}</p> : null}
+              <textarea value={draft} onChange={(event) => setReplyDrafts((current) => ({ ...current, [ticket.id]: event.target.value }))} placeholder="Resposta para o cliente" rows={2} maxLength={2000} className="mt-3 w-full resize-none rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100" />
+              {draft !== ticket.reply ? <Button type="button" className="mt-2" onClick={() => void saveTicket(ticket, { reply: draft })}>Enviar resposta</Button> : null}
+            </div>
+          )
+        })}
+        {supportTickets.length === 0 ? <p className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/60 p-6 text-center text-sm font-semibold text-slate-500">Nenhum ticket aberto.</p> : null}
+      </div>
+    </section>
   )
 
   const overviewSection = (

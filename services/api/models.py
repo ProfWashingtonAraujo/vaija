@@ -249,3 +249,20 @@ class CashMovement(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     voided_by: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class SupportTicket(Base):
+    """Chamado aberto pelo lojista; o dono da plataforma responde e muda o status em /saas/suporte."""
+    __tablename__ = "support_tickets"
+    __table_args__ = (Index("support_tickets_tenant_idx", "tenant_id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String, nullable=False)
+    subject: Mapped[str] = mapped_column(String, nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    priority: Mapped[str] = mapped_column(String, nullable=False, default="Média")  # Baixa | Média | Alta
+    status: Mapped[str] = mapped_column(String, nullable=False, default="Aberto")  # Aberto | Em atendimento | Resolvido
+    reply: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[str] = mapped_column(String, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

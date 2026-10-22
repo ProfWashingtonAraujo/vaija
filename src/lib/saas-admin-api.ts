@@ -9,15 +9,6 @@ export type SaasAuditLog = {
   createdAt: string
 }
 
-export type SupportTicket = {
-  id: number
-  tenantId: string
-  subject: string
-  priority: 'Baixa' | 'Média' | 'Alta'
-  status: 'Aberto' | 'Em atendimento' | 'Resolvido'
-  createdAt: string
-}
-
 export type SaasSettings = {
   companyName: string
   salesWhatsapp: string
@@ -47,7 +38,6 @@ export type BillingInvoice = {
 }
 
 const auditLogsKey = 'vaija.saas.auditLogs'
-const supportTicketsKey = 'vaija.saas.supportTickets'
 const saasSettingsKey = 'vaija.saas.settings'
 const planConfigsKey = 'vaija.saas.planConfigs'
 const billingInvoicesKey = 'vaija.saas.billingInvoices'
@@ -90,27 +80,6 @@ export function addAuditLog(input: Omit<SaasAuditLog, 'id' | 'createdAt'>) {
   }
   writeList(auditLogsKey, [log, ...logs])
   return log
-}
-
-export function readSupportTickets() {
-  return readList<SupportTicket>(supportTicketsKey)
-}
-
-export function createSupportTicket(input: Omit<SupportTicket, 'id' | 'createdAt'>) {
-  const tickets = readSupportTickets()
-  const ticket: SupportTicket = {
-    id: Math.max(0, ...tickets.map((item) => item.id)) + 1,
-    ...input,
-    createdAt: new Date().toISOString(),
-  }
-  writeList(supportTicketsKey, [ticket, ...tickets])
-  return ticket
-}
-
-export function updateSupportTicket(id: number, values: Partial<Pick<SupportTicket, 'status' | 'priority'>>) {
-  const tickets = readSupportTickets().map((ticket) => ticket.id === id ? { ...ticket, ...values } : ticket)
-  writeList(supportTicketsKey, tickets)
-  return tickets
 }
 
 export function readSaasSettings() {
