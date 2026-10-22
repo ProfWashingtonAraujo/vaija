@@ -54,6 +54,11 @@ services:
       PRINTER_PORT: ${PRINTER_PORT:-9100}
       PRINTER_MODEL: ${PRINTER_MODEL:-epson}
       PRINT_COPIES: ${PRINT_COPIES:-1}
+      ASAAS_API_KEY: ${ASAAS_API_KEY:-}
+      ASAAS_BASE_URL: ${ASAAS_BASE_URL:-https://api-sandbox.asaas.com/v3}
+      ASAAS_WEBHOOK_TOKEN: ${ASAAS_WEBHOOK_TOKEN:-}
+      BILLING_TRIAL_DAYS: ${BILLING_TRIAL_DAYS:-7}
+      BILLING_GRACE_DAYS: ${BILLING_GRACE_DAYS:-3}
     ports:
       - "3002:3002"
     depends_on:
