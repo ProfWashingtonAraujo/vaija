@@ -422,7 +422,7 @@ export function OrdersPage() {
 
   return (
     <AdminLayout title="Gestão de Pedidos" description="Acompanhe a fila operacional e avance a produção com poucos cliques.">
-      <div className="mb-6 rounded-2xl border border-sa-border bg-gradient-to-r   p-5 shadow-sa">
+      <div className="mb-6 rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
         <div className="flex flex-wrap items-center gap-3">
           {Object.entries(columns).map(([label, list]) => (
             <div key={label} className="rounded-2xl border border-sa-border bg-sa-surface px-4 py-3 shadow-sa">

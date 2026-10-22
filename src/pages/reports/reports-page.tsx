@@ -66,7 +66,7 @@ export function ReportsPage() {
 
   return (
     <AdminLayout title="Relatórios Inteligentes" description="Indicadores reais dos seus pedidos, com filtro de período e exportação.">
-      <div className="rounded-2xl border border-sa-border bg-gradient-to-r   p-5 shadow-sa">
+      <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft">Insights</p>

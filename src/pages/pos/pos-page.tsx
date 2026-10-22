@@ -166,7 +166,7 @@ export function PosPage() {
 
   return (
     <AdminLayout title="PDV Operacional" description="Busca rápida, categorias visíveis e carrinho pronto para atendimento ágil.">
-      <div className="mb-3 rounded-xl border border-sa-border bg-gradient-to-r   p-3 shadow-sa sm:mb-6 sm:rounded-[30px] sm:p-5">
+      <div className="mb-3 rounded-xl border border-sa-border bg-sa-surface p-3 shadow-sa sm:mb-6 sm:rounded-2xl sm:p-5">
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
           <div className="col-span-2 mb-1 sm:mb-0">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sa-soft">Operação</p>

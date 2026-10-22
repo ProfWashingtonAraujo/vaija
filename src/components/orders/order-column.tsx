@@ -44,7 +44,7 @@ export function OrderColumn({ title, orders, selectedId, draggedOrderId, isDropT
         }
       }}
       className={cn(
-        'rounded-2xl border bg-gradient-to-b   p-4 shadow-sa transition',
+        'rounded-2xl border bg-sa-surface p-4 shadow-sa transition',
         isDropTarget ? 'border-sa-border-strong shadow-sa ring-4 focus:ring-sa-accent/20' : 'border-sa-border',
       )}
     >
