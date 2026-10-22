@@ -11,6 +11,7 @@ import {
   billingErrorMessage, cancelSubscription, fetchBillingOverview, startCheckout,
   type BillingInvoice, type BillingOverview, type BillingType, type InvoiceStatus, type SubscriptionStatus,
 } from '@/lib/billing-api'
+import { invalidateBillingAccess } from '@/lib/billing-access'
 import { formatCurrency } from '@/lib/formatters'
 import type { PlanKey } from '@/lib/plan-access'
 import { getTenantForUser, updateTenant } from '@/lib/tenants-api'
@@ -67,7 +68,10 @@ export function SubscriptionPage() {
   const [payUrl, setPayUrl] = useState<string | null>(null)
 
   const planDetails = useMemo(() => getPricingPlans(), [])
-  const load = () => fetchBillingOverview().then(setOverview)
+  const load = () => fetchBillingOverview().then((data) => {
+    invalidateBillingAccess()
+    setOverview(data)
+  })
 
   useEffect(() => {
     void load().catch(() => toast.error('Não foi possível carregar sua assinatura.'))
@@ -140,6 +144,7 @@ export function SubscriptionPage() {
               {subscription ? <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', statusLabels[subscription.status].style)}>{statusLabels[subscription.status].label}</span> : null}
             </div>
             {subscription?.status === 'trialing' && subscription.trialEndsAt ? <p className="mt-3 text-sm text-slate-600">Seu teste grátis vai até {formatDate(subscription.trialEndsAt)}. A primeira cobrança vence nessa data.</p> : null}
+            {subscription?.status === 'active' && subscription.currentPeriodEnd ? <p className="mt-3 text-sm text-slate-600">Próxima cobrança em {formatCalendarDate(subscription.currentPeriodEnd)}.</p> : null}
             {subscription?.status === 'past_due' ? <p className="mt-3 text-sm font-medium text-red-600">Há uma fatura em atraso. Pague para manter o painel liberado.</p> : null}
             {subscription?.status === 'cancelled' ? <p className="mt-3 text-sm text-slate-600">Sua assinatura foi cancelada. Escolha um plano ao lado para reativar.</p> : null}
             {pendingInvoice?.invoiceUrl ? (

@@ -3,6 +3,7 @@
 O Asaas avisa por webhook (/api/billing/webhook/asaas); é o webhook que muda o status da
 assinatura e das faturas. O acesso do lojista é calculado aqui, no servidor.
 """
+import calendar
 import hmac
 import logging
 from datetime import datetime, timedelta, timezone
@@ -46,6 +47,12 @@ def _now() -> datetime:
 
 def _error(status: int, code: str) -> JSONResponse:
     return JSONResponse({"ok": False, "error": code}, status_code=status)
+
+
+def _add_month(value: datetime) -> datetime:
+    year, month = divmod(value.month, 12)
+    year, month = value.year + year, month + 1
+    return value.replace(year=year, month=month, day=min(value.day, calendar.monthrange(year, month)[1]))
 
 
 def _only_digits(value: str) -> str:
@@ -133,10 +140,17 @@ async def _sync_from_gateway(db: AsyncSession, sub: Subscription) -> None:
         sub.overdue_since = sub.overdue_since or _now()
     elif paid:
         sub.status, sub.overdue_since = "active", None
-        sub.current_period_end = max(i.due_date for i in paid) + timedelta(days=31)
+        sub.current_period_end = _add_month(max(i.due_date for i in paid))
 
 
 # ── Lojista ───────────────────────────────────────────────────────────────────
+
+@billing_router.get("/access")
+async def my_access(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
+    """Consulta leve (sem falar com o Asaas) usada pelo painel para decidir se libera ou bloqueia."""
+    data = _sub_to_dict(await db.get(Subscription, auth.tenant_id))
+    return {"ok": True, "access": data["access"], "status": data["status"], "plan": data["plan"]}
+
 
 @billing_router.get("/status")
 async def my_billing(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
@@ -279,7 +293,7 @@ async def asaas_webhook(
         if name in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
             invoice = await _upsert_invoice(db, sub.tenant_id, payment, "paid")
             sub.status, sub.overdue_since = "active", None
-            sub.current_period_end = invoice.due_date + timedelta(days=31)
+            sub.current_period_end = _add_month(invoice.due_date)
         elif name == "PAYMENT_OVERDUE":
             await _upsert_invoice(db, sub.tenant_id, payment, "overdue")
             if sub.status != "cancelled":
