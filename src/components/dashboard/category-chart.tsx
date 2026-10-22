@@ -7,10 +7,10 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   if (!active || !payload?.length) return null
   const item = payload[0]
   return (
-    <div className="rounded-2xl border border-orange-100 bg-white px-4 py-3 shadow-[0_12px_32px_rgba(255,107,0,0.15)]">
-      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{item.name}</p>
-      <p className="mt-1 font-heading text-lg font-bold text-orange-600">{formatNumber(item.value)} vendas</p>
-      <p className="text-xs text-slate-400">{(item.payload.percent * 100).toFixed(1)}% do total</p>
+    <div className="rounded-xl border border-sa-border bg-sa-surface px-4 py-3 shadow-sa">
+      <p className="text-xs font-semibold uppercase tracking-widest text-sa-soft">{item.name}</p>
+      <p className="mt-1 font-heading text-lg font-bold text-sa-accent-text">{formatNumber(item.value)} vendas</p>
+      <p className="text-xs text-sa-muted">{(item.payload.percent * 100).toFixed(1)}% do total</p>
     </div>
   )
 }
@@ -45,8 +45,8 @@ export function CategoryChart({ data }: { data: Array<{ name: string; value: num
         </ResponsiveContainer>
         {total > 0 && (
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-            <p className="font-heading text-2xl font-extrabold text-slate-800">{formatNumber(total)}</p>
-            <p className="text-xs font-medium text-slate-400">vendas</p>
+            <p className="font-heading text-2xl font-extrabold text-sa-text">{formatNumber(total)}</p>
+            <p className="text-xs font-medium text-sa-muted">vendas</p>
           </div>
         )}
       </div>
@@ -59,8 +59,8 @@ export function CategoryChart({ data }: { data: Array<{ name: string; value: num
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: COLORS[index % COLORS.length] }}
               />
-              <span className="flex-1 truncate text-xs font-medium text-slate-600">{entry.name}</span>
-              <span className="text-xs font-bold text-slate-800">{(entry.percent * 100).toFixed(0)}%</span>
+              <span className="flex-1 truncate text-xs font-medium text-sa-text-2">{entry.name}</span>
+              <span className="text-xs font-bold text-sa-text">{(entry.percent * 100).toFixed(0)}%</span>
             </div>
           ))}
         </div>

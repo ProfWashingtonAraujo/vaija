@@ -14,9 +14,9 @@ const GRADIENT_ID = 'revenueAreaGradient'
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-2xl border border-orange-100 bg-white px-4 py-3 shadow-[0_12px_32px_rgba(255,107,0,0.15)]">
-      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{label}</p>
-      <p className="mt-1 font-heading text-lg font-bold text-orange-600">{formatCurrency(payload[0].value)}</p>
+    <div className="rounded-xl border border-sa-border bg-sa-surface px-4 py-3 shadow-sa">
+      <p className="text-xs font-semibold uppercase tracking-widest text-sa-soft">{label}</p>
+      <p className="mt-1 font-heading text-lg font-bold text-sa-accent-text">{formatCurrency(payload[0].value)}</p>
     </div>
   )
 }
@@ -31,18 +31,18 @@ export function RevenueLineChart({ data }: { data: Array<{ day: string; revenue:
             <stop offset="100%" stopColor="#ff6b00" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid vertical={false} stroke="#fde7d1" strokeDasharray="4 4" />
+        <CartesianGrid vertical={false} stroke="var(--sa-border)" strokeDasharray="4 4" />
         <XAxis
           dataKey="day"
           tickLine={false}
           axisLine={false}
-          tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 500 }}
+          tick={{ fontSize: 12, fill: 'var(--sa-muted)', fontWeight: 500 }}
         />
         <YAxis
           tickLine={false}
           axisLine={false}
           width={64}
-          tick={{ fontSize: 11, fill: '#94a3b8' }}
+          tick={{ fontSize: 11, fill: 'var(--sa-muted)' }}
           tickFormatter={(v: number) => `R$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v}`}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ff6b00', strokeWidth: 1.5, strokeDasharray: '4 4' }} />
@@ -52,8 +52,8 @@ export function RevenueLineChart({ data }: { data: Array<{ day: string; revenue:
           stroke="#ff6b00"
           strokeWidth={2.5}
           fill={`url(#${GRADIENT_ID})`}
-          dot={{ r: 4, fill: '#ff6b00', strokeWidth: 2, stroke: '#fff' }}
-          activeDot={{ r: 6, fill: '#ff6b00', stroke: '#fff', strokeWidth: 2 }}
+          dot={{ r: 4, fill: '#ff6b00', strokeWidth: 2, stroke: 'var(--sa-surface)' }}
+          activeDot={{ r: 6, fill: '#ff6b00', stroke: 'var(--sa-surface)', strokeWidth: 2 }}
           isAnimationActive
           animationDuration={800}
         />

@@ -81,24 +81,24 @@ function getDashboardData(allOrders: Order[], products: Product[]) {
 
 function SkeletonCard() {
   return (
-    <div className="relative overflow-hidden rounded-[28px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+    <div className="relative overflow-hidden rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
       <div className="flex items-center justify-between">
-        <div className="h-3 w-24 animate-pulse rounded-full bg-orange-100" />
-        <div className="h-10 w-10 animate-pulse rounded-2xl bg-orange-100" />
+        <div className="h-3 w-24 animate-pulse rounded-full bg-sa-hover" />
+        <div className="h-10 w-10 animate-pulse rounded-2xl bg-sa-hover" />
       </div>
-      <div className="mt-5 h-8 w-32 animate-pulse rounded-xl bg-orange-100" />
-      <div className="mt-3 h-3 w-20 animate-pulse rounded-full bg-orange-50" />
-      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+      <div className="mt-5 h-8 w-32 animate-pulse rounded-xl bg-sa-hover" />
+      <div className="mt-3 h-3 w-20 animate-pulse rounded-full bg-sa-surface-2" />
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-sa-surface/60 to-transparent" />
     </div>
   )
 }
 
 function SkeletonChart() {
   return (
-    <div className="relative overflow-hidden rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <div className="h-5 w-40 animate-pulse rounded-full bg-orange-100" />
-      <div className="mt-5 h-[280px] animate-pulse rounded-[24px] bg-orange-50" />
-      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite_0.3s] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+    <div className="relative overflow-hidden rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa sm:p-6">
+      <div className="h-5 w-40 animate-pulse rounded-full bg-sa-hover" />
+      <div className="mt-5 h-[280px] animate-pulse rounded-xl bg-sa-surface-2" />
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite_0.3s] bg-gradient-to-r from-transparent via-sa-surface/60 to-transparent" />
     </div>
   )
 }
@@ -156,14 +156,14 @@ export function DashboardPage() {
 
           <div className="mt-6 grid gap-6 xl:grid-cols-2">
             {/* Revenue chart card with bar/line toggle */}
-            <div className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+            <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa sm:p-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-heading text-xl font-bold text-slate-900">Faturamento de hoje</h3>
-                <div className="flex items-center gap-1 rounded-2xl border border-orange-100 bg-white p-1">
+                <h3 className="font-heading text-lg font-bold text-sa-text">Faturamento de hoje</h3>
+                <div className="flex items-center gap-1 rounded-xl border border-sa-border bg-sa-surface-2 p-1">
                   <button
                     type="button"
                     onClick={() => setChartType('bar')}
-                    className={`rounded-xl p-2 transition-colors ${chartType === 'bar' ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-400 hover:text-orange-500'}`}
+                    className={`rounded-lg p-2 transition-colors ${chartType === 'bar' ? 'bg-sa-accent text-white shadow-sm' : 'text-sa-muted hover:text-sa-text'}`}
                     aria-label="Gráfico de barras"
                   >
                     <BarChart2 className="h-3.5 w-3.5" />
@@ -171,14 +171,14 @@ export function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => setChartType('line')}
-                    className={`rounded-xl p-2 transition-colors ${chartType === 'line' ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-400 hover:text-orange-500'}`}
+                    className={`rounded-lg p-2 transition-colors ${chartType === 'line' ? 'bg-sa-accent text-white shadow-sm' : 'text-sa-muted hover:text-sa-text'}`}
                     aria-label="Gráfico de linha"
                   >
                     <LineChartIcon className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
-              <div className="mt-5 rounded-[24px] border border-orange-100 bg-white/80 p-3">
+              <div className="mt-5 rounded-xl border border-sa-border bg-sa-surface-2 p-3">
                 {chartType === 'bar'
                   ? <RevenueChart data={dashboardData.revenueSeries} />
                   : <RevenueLineChart data={dashboardData.revenueSeries} />}
@@ -186,9 +186,9 @@ export function DashboardPage() {
             </div>
 
             {/* Category donut chart */}
-            <div className="rounded-[30px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-              <h3 className="font-heading text-xl font-bold text-slate-900">Vendas por categoria</h3>
-              <div className="mt-5 rounded-[24px] border border-orange-100 bg-white/80 p-3">
+            <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa sm:p-6">
+              <h3 className="font-heading text-lg font-bold text-sa-text">Vendas por categoria</h3>
+              <div className="mt-5 rounded-xl border border-sa-border bg-sa-surface-2 p-3">
                 <CategoryChart data={dashboardData.categorySeries} />
               </div>
             </div>

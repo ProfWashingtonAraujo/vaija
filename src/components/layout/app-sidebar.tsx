@@ -101,8 +101,8 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        'relative flex h-full flex-col border-r border-orange-100/60 bg-gradient-to-b from-[#fffdf8] to-white transition-all duration-300 ease-in-out',
-        collapsed ? 'w-[72px]' : 'w-72',
+        'relative flex h-full flex-col border-r border-sa-border bg-sa-surface transition-[width] duration-300 ease-in-out',
+        collapsed ? 'w-[76px]' : 'w-64',
       )}
     >
       {/* Toggle button */}
@@ -110,50 +110,45 @@ export function AppSidebar() {
         type="button"
         onClick={toggle}
         aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-        className={cn(
-          'absolute -right-3.5 top-8 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-orange-200 bg-white shadow-[0_4px_12px_rgba(255,107,0,0.15)] transition-all duration-300 hover:border-orange-300 hover:bg-orange-50',
-        )}
+        className="absolute -right-3.5 top-7 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-sa-border bg-sa-surface text-sa-muted shadow-sa transition-colors hover:text-sa-accent-text"
       >
-        <ChevronLeft
-          className={cn('h-3.5 w-3.5 text-orange-500 transition-transform duration-300', collapsed && 'rotate-180')}
-        />
+        <ChevronLeft className={cn('h-3.5 w-3.5 transition-transform duration-300', collapsed && 'rotate-180')} />
       </button>
 
       {/* Brand */}
-      <div className={cn('flex items-center gap-3 px-4 pt-5 pb-4', collapsed && 'justify-center px-0')}>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-500 to-orange-600 shadow-[0_8px_20px_rgba(255,107,0,0.3)]">
+      <div className={cn('flex items-center gap-3 px-5 pb-5 pt-6', collapsed && 'justify-center px-0')}>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-[0_8px_20px_rgba(255,107,0,0.3)]">
           {settings.restaurant.logo ? (
             <img src={settings.restaurant.logo} alt={tenant.restaurantName} className="h-full w-full object-contain p-1" />
           ) : (
-            <span className="font-heading text-base font-bold text-white">V</span>
+            <span className="font-heading text-lg font-bold text-white">V</span>
           )}
         </div>
         {!collapsed && (
-          <div className="min-w-0 overflow-hidden">
-            <p className="truncate font-heading text-sm font-bold text-slate-900">{tenant.restaurantName}</p>
-            <p className="truncate text-xs font-medium text-orange-600">{planLabels[currentPlan] ?? ''}</p>
+          <div className="min-w-0">
+            <p className="truncate font-heading text-base font-bold leading-tight text-sa-text">{tenant.restaurantName}</p>
+            <p className="truncate text-xs font-semibold text-sa-accent-text">{planLabels[currentPlan] ?? ''}</p>
           </div>
         )}
       </div>
 
-      <div className={cn('mx-3 mb-3 h-px bg-gradient-to-r from-transparent via-orange-100 to-transparent', collapsed && 'mx-2')} />
-
       {/* New order CTA */}
       {canCreatePosOrder && !user?.isPlatformAdmin && (
-        <div className={cn('px-3 pb-3', collapsed && 'flex justify-center px-2')}>
+        <div className={cn('px-3 pb-4', collapsed && 'flex justify-center px-2')}>
           {collapsed ? (
             <button
               type="button"
               onClick={() => navigate('/pos')}
               aria-label="Novo Pedido"
-              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-[0_8px_20px_rgba(255,107,0,0.3)] transition-all hover:shadow-[0_12px_28px_rgba(255,107,0,0.4)]"
+              title="Novo Pedido"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-sa-accent text-white shadow-[0_8px_18px_rgba(255,107,0,0.25)] transition-opacity hover:opacity-90"
             >
-              <Plus className="h-4 w-4 text-white" />
+              <Plus className="h-[18px] w-[18px]" />
             </button>
           ) : (
             <Button
               onClick={() => navigate('/pos')}
-              className="w-full justify-center gap-2 rounded-2xl shadow-[0_10px_24px_rgba(255,107,0,0.25)] transition-all hover:shadow-[0_14px_32px_rgba(255,107,0,0.35)]"
+              className="w-full justify-center gap-2 rounded-xl bg-sa-accent shadow-[0_8px_18px_rgba(255,107,0,0.25)] transition-opacity hover:bg-sa-accent hover:opacity-90"
             >
               <Plus className="h-4 w-4" />
               Novo Pedido
@@ -163,15 +158,14 @@ export function AppSidebar() {
       )}
 
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2 pb-2 scrollbar-thin">
+      <nav aria-label="Menu do painel" className="scrollbar-thin flex-1 space-y-5 overflow-y-auto px-3 pb-4">
         {resolvedGroups.map((group) => (
-          <div key={group.label} className="mb-1">
-            {!collapsed && (
-              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                {group.label}
-              </p>
+          <div key={group.label}>
+            {!collapsed ? (
+              <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sa-soft">{group.label}</p>
+            ) : (
+              <div className="mx-3 mb-2 h-px bg-sa-border" />
             )}
-            {collapsed && <div className="my-1.5 h-px mx-2 bg-orange-100/70" />}
             <div className="space-y-0.5">
               {group.links.map(({ to, label, icon: Icon }) => (
                 <NavLink
@@ -180,15 +174,13 @@ export function AppSidebar() {
                   title={collapsed ? label : undefined}
                   className={({ isActive }) =>
                     cn(
-                      'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                      collapsed && 'justify-center px-0 py-2.5 mx-auto w-11',
-                      isActive
-                        ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-[0_6px_16px_rgba(255,107,0,0.25)]'
-                        : 'text-slate-500 hover:bg-orange-50 hover:text-slate-900',
+                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors',
+                      collapsed && 'mx-auto w-11 justify-center px-0',
+                      isActive ? 'bg-sa-accent text-white shadow-[0_8px_18px_rgba(255,107,0,0.25)]' : 'text-sa-muted hover:bg-sa-hover hover:text-sa-text',
                     )
                   }
                 >
-                  <Icon className={cn('h-4 w-4 shrink-0', !collapsed && 'group-[.active]:text-white')} />
+                  <Icon className="h-[18px] w-[18px] shrink-0" />
                   {!collapsed && <span className="truncate">{label}</span>}
                 </NavLink>
               ))}
@@ -198,30 +190,30 @@ export function AppSidebar() {
       </nav>
 
       {/* Footer actions */}
-      <div className={cn('border-t border-orange-100/60 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]', collapsed && 'flex flex-col items-center gap-1')}>
+      <div className={cn('space-y-0.5 border-t border-sa-border p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]', collapsed && 'flex flex-col items-center')}>
         <button
           type="button"
           title={collapsed ? 'Suporte' : undefined}
           onClick={() => navigate(user?.isPlatformAdmin ? '/saas/suporte' : '/support')}
           className={cn(
-            'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 transition-all hover:bg-orange-50 hover:text-slate-900',
+            'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-sa-muted transition-colors hover:bg-sa-hover hover:text-sa-text',
             collapsed && 'w-11 justify-center px-0',
           )}
         >
-          <LifeBuoy className="h-4 w-4 shrink-0" />
-          {!collapsed && 'Suporte'}
+          <LifeBuoy className="h-[18px] w-[18px] shrink-0" />
+          {!collapsed && <span className="truncate">Suporte</span>}
         </button>
         <button
           type="button"
           title={collapsed ? 'Sair' : undefined}
           onClick={() => void logout().finally(() => navigate('/login', { replace: true }))}
           className={cn(
-            'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 transition-all hover:bg-red-50 hover:text-red-600',
+            'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-sa-muted transition-colors hover:bg-sa-bad-soft hover:text-sa-bad',
             collapsed && 'w-11 justify-center px-0',
           )}
         >
-          <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && 'Sair'}
+          <LogOut className="h-[18px] w-[18px] shrink-0" />
+          {!collapsed && <span className="truncate">Sair{user?.name ? ` · ${user.name.split(' ')[0]}` : ''}</span>}
         </button>
       </div>
     </aside>

@@ -27,15 +27,15 @@ export function MobileTabBar() {
   const tabs = user?.roleKey === 'operator' ? operatorTabs : managerTabs.filter((tab) => canAccessPath(plan, tab.to))
 
   return (
-    <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-40 border-t border-orange-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
+    <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-40 border-t border-sa-border bg-sa-surface/95 pb-[env(safe-area-inset-bottom)] shadow-sa backdrop-blur lg:hidden">
       <div className="flex">
         {tabs.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} className={({ isActive }) => cn('flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-semibold', isActive ? 'text-orange-600' : 'text-slate-500')}>
+          <NavLink key={to} to={to} className={({ isActive }) => cn('flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-semibold', isActive ? 'text-sa-accent-text' : 'text-sa-muted')}>
             <Icon className="h-5 w-5" />{label}
           </NavLink>
         ))}
         <MobileDrawer
-          trigger={<button type="button" className="flex flex-1 flex-col items-center gap-1 py-2.5 !text-[11px] font-semibold leading-normal text-slate-500"><Menu className="h-5 w-5" />Menu</button>}
+          trigger={<button type="button" className="flex flex-1 flex-col items-center gap-1 py-2.5 !text-[11px] font-semibold leading-normal text-sa-muted"><Menu className="h-5 w-5" />Menu</button>}
         >
           <SidebarProvider><div className="h-full"><AppSidebar /></div></SidebarProvider>
         </MobileDrawer>

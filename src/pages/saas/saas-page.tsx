@@ -586,15 +586,15 @@ export function SaasPage() {
       </div>
       <p className="mb-3 text-sm text-sa-muted">{searchedClientTenants.length} cliente(s) encontrado(s)</p>
       {searchedClientTenants.length === 0 ? <EmptyBlock icon={<Building2 className="h-5 w-5" />} text="Nenhum cliente com esse filtro." /> : (
-        <div className="overflow-hidden rounded-xl border border-sa-border">
-          <div className={cn('hidden gap-4 border-b border-sa-border bg-sa-surface-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-sa-soft lg:grid', clientGrid)}>
+        <div className="rounded-xl border border-sa-border">
+          <div className={cn('hidden gap-4 rounded-t-[11px] border-b border-sa-border bg-sa-surface-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-sa-soft lg:grid', clientGrid)}>
             <span>Cliente</span><span>Plano</span><span>Situação</span><span>Acessos</span><span className="w-[148px]" />
           </div>
           <ul className="divide-y divide-sa-border">
             {searchedClientTenants.map((tenant) => {
               const tenantUsers = usersByTenant.get(tenant.id) ?? []
               return (
-                <li key={tenant.id} className="px-4 py-4 transition-colors hover:bg-sa-hover">
+                <li key={tenant.id} className="px-4 py-4 transition-colors first:rounded-t-[11px] last:rounded-b-[11px] hover:bg-sa-hover">
                   {editingTenantId === tenant.id ? (
                     <form onSubmit={(event) => saveTenant(event, tenant)} className="grid gap-3 md:grid-cols-2">
                       <Input value={editingRestaurantName} onChange={(event) => setEditingRestaurantName(event.target.value)} placeholder="Nome do restaurante" />
@@ -816,8 +816,8 @@ export function SaasPage() {
         <SearchBox value={accessQuery} onChange={setAccessQuery} placeholder="Buscar acesso" />
       </div>
       {searchedUsers.length === 0 ? <EmptyBlock icon={<Users className="h-5 w-5" />} text={activeUsers.length ? 'Nenhum acesso com essa busca.' : 'Nenhum acesso de cliente criado.'} /> : (
-        <div className="overflow-hidden rounded-xl border border-sa-border">
-          <div className={cn('hidden gap-4 border-b border-sa-border bg-sa-surface-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-sa-soft lg:grid', accessGrid)}>
+        <div className="rounded-xl border border-sa-border">
+          <div className={cn('hidden gap-4 rounded-t-[11px] border-b border-sa-border bg-sa-surface-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-sa-soft lg:grid', accessGrid)}>
             <span>Usuário</span><span>Restaurante</span><span>Função</span><span className="w-[84px]" />
           </div>
           <ul className="divide-y divide-sa-border">

@@ -4,21 +4,23 @@ import { MobileTabBar } from '@/components/layout/mobile-tab-bar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppHeader, PageTitle } from '@/components/layout/app-header'
 import { SidebarProvider, useSidebar } from '@/components/layout/sidebar-context'
+import { useStoreTheme } from '@/lib/saas-theme'
 import { cn } from '@/lib/utils'
 
 function LayoutInner({ title, description, children }: PropsWithChildren<{ title: string; description?: string }>) {
   const { collapsed } = useSidebar()
+  const { theme, setTheme } = useStoreTheme()
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-[#fafaf9]">
+    <div className="flex h-dvh overflow-hidden bg-sa-bg text-sa-text">
       {/* Sidebar — desktop only */}
-      <div className={cn('hidden flex-shrink-0 transition-all duration-300 lg:flex', collapsed ? 'w-[72px]' : 'w-72')}>
+      <div className={cn('hidden flex-shrink-0 transition-all duration-300 lg:flex', collapsed ? 'w-[76px]' : 'w-64')}>
         <AppSidebar />
       </div>
 
       {/* Main content area */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <AppHeader title={title} description={description ?? ''} />
+        <AppHeader title={title} description={description ?? ''} theme={theme} onThemeChange={setTheme} />
 
         <motion.main
           key={title}

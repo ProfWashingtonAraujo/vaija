@@ -9,9 +9,9 @@ const icons = {
 }
 
 const trendColors = {
-  up: { text: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-  down: { text: 'text-rose-500', bg: 'bg-rose-50', border: 'border-rose-100' },
-  neutral: { text: 'text-slate-400', bg: 'bg-slate-50', border: 'border-slate-100' },
+  up: 'bg-sa-ok-soft text-sa-ok',
+  down: 'bg-sa-bad-soft text-sa-bad',
+  neutral: 'bg-sa-hover text-sa-muted',
 }
 
 export function MetricCard({
@@ -34,26 +34,21 @@ export function MetricCard({
   const TrendIcon = trendDirection === 'up' ? TrendingUp : trendDirection === 'down' ? TrendingDown : null
 
   return (
-    <div className="group relative overflow-hidden rounded-[28px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-orange-300 hover:shadow-[0_22px_48px_rgba(255,107,0,0.14)]">
-      {/* Subtle glow on hover */}
-      <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-orange-400/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-500">{label}</span>
-        <div className="rounded-2xl border border-orange-100 bg-white p-3 text-orange-600 shadow-[0_10px_24px_rgba(255,107,0,0.08)]">
+    <div className="rounded-2xl border border-sa-border bg-sa-surface p-5 shadow-sa">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold text-sa-muted">{label}</span>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sa-accent-soft text-sa-accent-text">
           <Icon className="h-4 w-4" />
         </div>
       </div>
 
-      <p className="mt-4 font-heading text-3xl font-extrabold tracking-tight text-slate-900">
+      <p className="mt-3 font-heading text-2xl font-bold text-sa-text sm:text-3xl">
         {currency ? formatCurrency(value) : formatNumber(value)}
       </p>
 
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${colors.bg} ${colors.border} ${colors.text}`}>
-          {TrendIcon && <TrendIcon className="h-3 w-3" />}
-          <span>{trend}</span>
-        </div>
+      <div className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${colors}`}>
+        {TrendIcon && <TrendIcon className="h-3 w-3" />}
+        <span>{trend}</span>
       </div>
     </div>
   )

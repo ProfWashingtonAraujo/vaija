@@ -1,24 +1,26 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useLayoutEffect, useState } from 'react'
 
 export type SaasTheme = 'light' | 'dark'
 
 const storageKey = 'vaija.saas.theme'
+const storeStorageKey = 'vaija.store.theme'
 
-function readTheme(): SaasTheme {
+function readTheme(key: string, followSystem: boolean): SaasTheme {
   try {
-    const stored = localStorage.getItem(storageKey)
+    const stored = localStorage.getItem(key)
     if (stored === 'light' || stored === 'dark') return stored
   } catch {
-    // sem acesso ao armazenamento: cai no tema do sistema
+    // sem acesso ao armazenamento: cai no padrão
   }
+  if (!followSystem) return 'light'
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-/** Tema claro/escuro do painel SaaS. A classe fica no <html> só enquanto o painel está montado. */
-export function useSaasTheme() {
-  const [theme, setTheme] = useState<SaasTheme>(readTheme)
+function usePanelTheme(key: string, followSystem: boolean) {
+  const [theme, setTheme] = useState<SaasTheme>(() => readTheme(key, followSystem))
 
-  useEffect(() => {
+  // layout effect: ao trocar de tela o cleanup e o novo efeito rodam juntos, sem piscar entre claro e escuro
+  useLayoutEffect(() => {
     const root = document.documentElement
     root.classList.add('saas-active')
     root.classList.toggle('saas-dark', theme === 'dark')
@@ -28,11 +30,21 @@ export function useSaasTheme() {
   const setAndStore = useCallback((next: SaasTheme) => {
     setTheme(next)
     try {
-      localStorage.setItem(storageKey, next)
+      localStorage.setItem(key, next)
     } catch {
       // a escolha vale só nesta sessão
     }
-  }, [])
+  }, [key])
 
   return { theme, setTheme: setAndStore }
+}
+
+/** Tema claro/escuro do painel SaaS. A classe fica no <html> só enquanto o painel está montado. */
+export function useSaasTheme() {
+  return usePanelTheme(storageKey, true)
+}
+
+/** Tema do painel da loja: começa claro; o modo escuro é uma escolha do lojista. */
+export function useStoreTheme() {
+  return usePanelTheme(storeStorageKey, false)
 }
