@@ -21,7 +21,7 @@ const pieColors = ['#ff6b00', '#0f766e', '#2563eb', '#a855f7', '#eab308', '#e11d
 function PieWithLegend({ data, unit }: { data: Array<{ name: string; value: number }>; unit: string }) {
   return (
     <div className="flex h-full items-center gap-2">
-      <div className="h-full w-1/2 shrink-0">
+      <div className="h-full w-2/5 shrink-0">
         <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data} dataKey="value" nameKey="name" innerRadius={45} outerRadius={80}>{data.map((entry, index) => <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer>
       </div>
       <ReportLegend items={data} colors={pieColors} unit={unit} />
@@ -86,7 +86,7 @@ export function ReportsPage() {
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <ReportChartCard title="Receita por dia">
-          <ResponsiveContainer width="100%" height="100%"><BarChart data={report.dailyRevenue}><XAxis dataKey="day" tickLine={false} axisLine={false} /><Tooltip formatter={(value: unknown) => formatCurrency(Number(value ?? 0))} /><Bar dataKey="value" fill="#ff6b00" radius={[10, 10, 0, 0]}><LabelList dataKey="value" position="top" formatter={(value: unknown) => (Number(value) > 0 ? formatCurrency(Number(value)) : '')} className="fill-slate-700 text-[11px] font-semibold" /></Bar></BarChart></ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%"><BarChart data={report.dailyRevenue} margin={{ top: 22 }}><XAxis dataKey="day" tickLine={false} axisLine={false} /><Tooltip formatter={(value: unknown) => formatCurrency(Number(value ?? 0))} /><Bar dataKey="value" name="Receita" fill="#ff6b00" radius={[10, 10, 0, 0]}><LabelList dataKey="value" position="top" formatter={(value: unknown) => (Number(value) > 0 ? formatCurrency(Number(value)) : '')} className="fill-slate-700 text-[11px] font-semibold" /></Bar></BarChart></ResponsiveContainer>
         </ReportChartCard>
         <ReportChartCard title="Pedidos por status">
           {report.statusSeries.length === 0 ? emptyState : <PieWithLegend data={report.statusSeries} unit="pedidos" />}
@@ -95,7 +95,7 @@ export function ReportsPage() {
           {report.categorySeries.length === 0 ? emptyState : <PieWithLegend data={report.categorySeries} unit="un." />}
         </ReportChartCard>
         <ReportChartCard title="Métodos de pagamento">
-          {report.paymentSeries.length === 0 ? emptyState : <ResponsiveContainer width="100%" height="100%"><BarChart data={report.paymentSeries}><XAxis dataKey="name" tickLine={false} axisLine={false} /><Tooltip /><Bar dataKey="value" fill="#ffb26b" radius={[10, 10, 0, 0]}><LabelList dataKey="value" position="top" className="fill-slate-700 text-xs font-semibold" /></Bar></BarChart></ResponsiveContainer>}
+          {report.paymentSeries.length === 0 ? emptyState : <ResponsiveContainer width="100%" height="100%"><BarChart data={report.paymentSeries} margin={{ top: 22 }}><XAxis dataKey="name" tickLine={false} axisLine={false} /><Tooltip /><Bar dataKey="value" name="Pedidos" fill="#ffb26b" radius={[10, 10, 0, 0]}><LabelList dataKey="value" position="top" className="fill-slate-700 text-xs font-semibold" /></Bar></BarChart></ResponsiveContainer>}
         </ReportChartCard>
       </div>
       <div className="mt-6"><ProductsPerformanceTable products={report.products} /></div>
