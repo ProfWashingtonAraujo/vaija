@@ -57,6 +57,11 @@ if (typeof window !== 'undefined') {
   window.addEventListener('keydown', () => void unlockAudio(), { once: true })
 }
 
+/** Preferência de som atual; os avisos de suporte seguem a mesma chave. */
+export function alertSoundEnabled() {
+  return state.soundOn
+}
+
 export function playAlertSound() {
   if (!audio || audio.state !== 'running') return
   const now = audio.currentTime

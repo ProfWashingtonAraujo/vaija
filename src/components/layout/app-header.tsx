@@ -1,9 +1,10 @@
-import { Bell, ChevronRight, Volume2, VolumeX } from 'lucide-react'
+import { Bell, ChevronRight, LifeBuoy, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth-context'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import { Button } from '@/components/ui/button'
+import { checkSupportUpdates, clearSupportAlerts, markSupportAlertsRead, useSupportAlerts } from '@/lib/support-alerts'
 import { checkNewOrders, clearAlerts, markAlertsRead, setAlertSound, useOrderAlerts } from '@/lib/order-alerts'
 import { orderSourceIcons, orderSourceLabel, resolveOrderSource } from '@/lib/order-source'
 import { formatCurrency } from '@/lib/formatters'
@@ -27,7 +28,9 @@ const routeLabels: Record<string, string> = {
 }
 
 function NotificationBell() {
-  const { items, unread, soundOn } = useOrderAlerts()
+  const { items, unread: unreadOrders, soundOn } = useOrderAlerts()
+  const support = useSupportAlerts()
+  const unread = unreadOrders + support.unread
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
@@ -47,7 +50,10 @@ function NotificationBell() {
   }, [open])
 
   const toggle = () => {
-    if (!open) markAlertsRead()
+    if (!open) {
+      markAlertsRead()
+      markSupportAlertsRead()
+    }
     setOpen((current) => !current)
   }
 
@@ -74,13 +80,24 @@ function NotificationBell() {
                 {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                 {soundOn ? 'Som ligado' : 'Som desligado'}
               </button>
-              {items.length > 0 ? <button type="button" onClick={clearAlerts} className="rounded-lg px-2 py-1 text-xs font-medium text-sa-muted hover:bg-sa-hover hover:text-sa-text">Limpar</button> : null}
+              {items.length + support.items.length > 0 ? <button type="button" onClick={() => { clearAlerts(); clearSupportAlerts() }} className="rounded-lg px-2 py-1 text-xs font-medium text-sa-muted hover:bg-sa-hover hover:text-sa-text">Limpar</button> : null}
             </div>
           </div>
-          {items.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-sa-muted">Nenhum pedido novo por enquanto. Quando chegar um pedido pelo link, ele aparece aqui.</p>
+          {items.length + support.items.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-sa-muted">Nenhum pedido novo por enquanto. Quando chegar um pedido pelo link ou o suporte responder um chamado, o aviso aparece aqui.</p>
           ) : (
             <ul className="max-h-[60vh] divide-y divide-sa-border overflow-y-auto">
+              {support.items.map((alert) => (
+                <li key={`support-${alert.ticketId}-${alert.at}`}>
+                  <button type="button" onClick={() => { setOpen(false); navigate('/support') }} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-sa-hover">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sa-info-soft text-sa-info"><LifeBuoy className="h-4 w-4" /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-sa-text">{alert.subject}</span>
+                      <span className="block text-xs text-sa-muted">{alert.text} · {new Date(alert.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
               {items.map((alert) => {
                 const Icon = orderSourceIcons[resolveOrderSource(alert.source)]
                 return (
@@ -125,9 +142,13 @@ export function AppHeader({ title, theme, onThemeChange }: { title: string; desc
 
   // a cada tela nova o cabeçalho monta de novo: a primeira checagem também cria a base de pedidos já vistos
   useEffect(() => {
-    if (watchOrders) void checkNewOrders()
+    if (watchOrders) {
+      void checkNewOrders()
+      void checkSupportUpdates()
+    }
   }, [watchOrders])
   usePolling(() => { if (watchOrders) return checkNewOrders() })
+  usePolling(() => { if (watchOrders) return checkSupportUpdates() }, 30_000)
 
   // abrir pede o fundo de troco aqui mesmo; fechar exige contar o dinheiro, então leva à tela do caixa
   const toggleCashRegister = () => {

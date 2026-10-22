@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Bell, Menu } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth-context'
 import { MobileDrawer } from '@/components/shared/mobile-drawer'
 import { SaasSidebar } from '@/components/layout/saas-sidebar'
 import { ThemeToggle } from '@/components/saas/theme-toggle'
 import { fetchAllTickets } from '@/lib/support-api'
+import { processNewTickets } from '@/lib/support-alerts'
 import { usePolling } from '@/lib/use-polling'
 import type { SaasTheme } from '@/lib/saas-theme'
 
@@ -18,17 +19,21 @@ type HeaderProps = {
 
 export function SaasHeader({ title, description, theme, onThemeChange }: HeaderProps) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [openTickets, setOpenTickets] = useState(0)
 
   const loadTickets = () => fetchAllTickets()
-    .then((tickets) => setOpenTickets(tickets.filter((ticket) => ticket.status === 'Aberto').length))
+    .then((tickets) => {
+      setOpenTickets(tickets.filter((ticket) => ticket.status === 'Aberto').length)
+      processNewTickets(tickets, () => navigate('/saas/suporte'))
+    })
     .catch(() => undefined)
 
   useEffect(() => {
     void loadTickets()
   }, [])
 
-  usePolling(loadTickets, 60_000)
+  usePolling(loadTickets, 15_000)
 
   const initials = (user?.name ?? 'Vaija').split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase()
 
