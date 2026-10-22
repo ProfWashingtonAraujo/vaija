@@ -116,11 +116,33 @@ async def _upsert_invoice(db: AsyncSession, tenant_id: str, payment: dict, statu
     return invoice
 
 
+async def _sync_from_gateway(db: AsyncSession, sub: Subscription) -> None:
+    """Reconcilia faturas e status com o Asaas; cobre webhook perdido ou ainda não configurado."""
+    if not sub.asaas_subscription_id or sub.status == "cancelled":
+        return
+    try:
+        payments = await asaas.list_subscription_payments(sub.asaas_subscription_id)
+    except asaas.AsaasError as exc:
+        logger.warning("Não foi possível sincronizar a assinatura %s: %s", sub.asaas_subscription_id, exc)
+        return
+    invoices = [await _upsert_invoice(db, sub.tenant_id, payment) for payment in payments]
+    overdue = [i for i in invoices if i.status == "overdue"]
+    paid = [i for i in invoices if i.status == "paid"]
+    if overdue:
+        sub.status = "past_due"
+        sub.overdue_since = sub.overdue_since or _now()
+    elif paid:
+        sub.status, sub.overdue_since = "active", None
+        sub.current_period_end = max(i.due_date for i in paid) + timedelta(days=31)
+
+
 # ── Lojista ───────────────────────────────────────────────────────────────────
 
 @billing_router.get("/status")
 async def my_billing(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
     sub = await db.get(Subscription, auth.tenant_id)
+    if sub:
+        await _sync_from_gateway(db, sub)
     invoices = (await db.execute(
         select(Invoice).where(Invoice.tenant_id == auth.tenant_id).order_by(Invoice.due_date.desc()).limit(24)
     )).scalars().all()
