@@ -26,6 +26,13 @@ export function OrderCard({ order, active, dragging, dropTarget, locked, onClick
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'move'
         event.dataTransfer.setData('text/plain', String(order.id))
+        // Cartão "levantado": imagem de arraste inclinada, como se estivesse sendo segurado.
+        const source = event.currentTarget
+        const ghost = source.cloneNode(true) as HTMLElement
+        ghost.style.cssText = `position:fixed;top:-1000px;left:-1000px;width:${source.offsetWidth}px;transform:rotate(3deg) scale(1.03);box-shadow:0 18px 40px rgba(0,0,0,.35);border-radius:12px;`
+        document.body.appendChild(ghost)
+        event.dataTransfer.setDragImage(ghost, 24, 24)
+        window.setTimeout(() => ghost.remove(), 0)
         onDragStart()
       }}
       onDragEnd={onDragEnd}
@@ -37,10 +44,10 @@ export function OrderCard({ order, active, dragging, dropTarget, locked, onClick
         onDrop()
       }}
       className={cn(
-        'w-full rounded-xl border bg-sa-surface p-4 text-left shadow-sa transition hover:-translate-y-1 hover:border-sa-border-strong hover:shadow-sa',
+        'w-full rounded-2xl border bg-sa-surface p-4 text-left shadow-sa transition duration-200 hover:-translate-y-1 hover:border-sa-border-strong hover:shadow-sa',
         locked ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
         active ? 'border-sa-border-strong ring-4 focus:ring-sa-accent/20' : 'border-sa-border',
-        dragging ? 'scale-[0.98] opacity-70' : '',
+        dragging ? 'scale-[0.97] opacity-40' : '',
         dropTarget ? 'border-sa-border-strong shadow-sa' : '',
       )}
     >
