@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { OrderCard } from '@/components/orders/order-card'
 import { OrderColumn } from '@/components/orders/order-column'
+import { DragLayer, useOrderDrag } from '@/components/orders/use-order-drag'
 import { OrderDetailsPanel } from '@/components/orders/order-details-panel'
 import { OrderSearch } from '@/components/orders/order-search'
 import { Button } from '@/components/ui/button'
@@ -99,9 +100,6 @@ export function OrdersPage() {
   const focusOrderId = (location.state as { orderId?: number } | null)?.orderId
   const focusedKey = useRef<string | null>(null)
   const detailsRef = useRef<HTMLDivElement>(null)
-  const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null)
-  const [dropTarget, setDropTarget] = useState<ColumnTitle | null>(null)
-  const [dropTargetOrderId, setDropTargetOrderId] = useState<number | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [courierDialog, setCourierDialog] = useState<{ orderId: number; name: string; phone: string; choice: string; url: string | null; busy: boolean } | null>(null)
   const [knownCouriers, setKnownCouriers] = useState<string[]>([])
@@ -118,6 +116,7 @@ export function OrdersPage() {
     }),
     [orders],
   )
+  const { drag, onCardPointerDown, shouldIgnoreClick, finishSettle } = useOrderDrag(columns, (orderId, column, beforeId) => handleMoveOrder(orderId, column, beforeId))
   const enRoute = useMemo(() => orders.filter((order) => order.status === 'Saiu para entrega'), [orders])
 
   useEffect(() => {
@@ -149,7 +148,7 @@ export function OrdersPage() {
   }, [])
 
   usePolling(() => {
-    if (savingRef.current || isEditOpen || draggedOrderId !== null) return
+    if (savingRef.current || isEditOpen || drag !== null) return
     const version = changeVersion.current
     return fetchOrders()
       .then((loadedOrders) => {
@@ -238,18 +237,11 @@ export function OrdersPage() {
     toast.success('Status do pedido atualizado com sucesso.')
   }
 
-  const resetDragState = () => {
-    setDraggedOrderId(null)
-    setDropTarget(null)
-    setDropTargetOrderId(null)
-  }
-
   const handleMoveOrder = (orderId: number, column: ColumnTitle, targetOrderId?: number) => {
     const nextStatus = COLUMN_STATUS[column]
     const currentOrder = orders.find((order) => order.id === orderId)
 
     if (!currentOrder || targetOrderId === orderId) {
-      resetDragState()
       return
     }
 
@@ -257,13 +249,11 @@ export function OrdersPage() {
     const movedWithinColumn = currentOrder.status === nextStatus && targetOrderId !== undefined
 
     if (!movedToAnotherColumn && !movedWithinColumn) {
-      resetDragState()
       return
     }
 
     const draggedOrder = orders.find((order) => order.id === orderId)
     if (!draggedOrder) {
-      resetDragState()
       return
     }
 
@@ -291,19 +281,10 @@ export function OrdersPage() {
     const nextSelected = selected?.id === orderId ? updatedOrder : selected
 
     persistOrders(nextOrders, nextSelected)
-    resetDragState()
 
     if (movedToAnotherColumn) {
       toast.success(`Pedido #${orderId} movido para ${column}.`)
     }
-  }
-
-  const handleDragStart = (orderId: number) => {
-    setDraggedOrderId(orderId)
-  }
-
-  const handleDragEnd = () => {
-    resetDragState()
   }
 
   const openEditOrderForm = () => {
@@ -438,6 +419,7 @@ export function OrdersPage() {
           </div>
         </div>
       </div>
+      <DragLayer drag={drag} onSettled={finishSettle} />
       <OrderSearch orders={orders} onSelect={handleSelectFromSearch} />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
@@ -446,46 +428,28 @@ export function OrdersPage() {
             title="Pendente"
             orders={columns.Pendente}
             selectedId={selected?.id}
-            draggedOrderId={draggedOrderId}
-            isDropTarget={dropTarget === 'Pendente'}
-            dropTargetOrderId={dropTargetOrderId}
+            drag={drag}
             onSelect={setSelected}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragEnter={() => setDropTarget('Pendente')}
-            onDragLeave={() => setDropTarget((current) => (current === 'Pendente' && dropTargetOrderId === null ? null : current))}
-            onDragOverOrder={setDropTargetOrderId}
-            onDropOrder={handleMoveOrder}
+            onCardPointerDown={onCardPointerDown}
+            shouldIgnoreClick={shouldIgnoreClick}
           />
           <OrderColumn
             title="Em Produção"
             orders={columns['Em Produção']}
             selectedId={selected?.id}
-            draggedOrderId={draggedOrderId}
-            isDropTarget={dropTarget === 'Em Produção'}
-            dropTargetOrderId={dropTargetOrderId}
+            drag={drag}
             onSelect={setSelected}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragEnter={() => setDropTarget('Em Produção')}
-            onDragLeave={() => setDropTarget((current) => (current === 'Em Produção' && dropTargetOrderId === null ? null : current))}
-            onDragOverOrder={setDropTargetOrderId}
-            onDropOrder={handleMoveOrder}
+            onCardPointerDown={onCardPointerDown}
+            shouldIgnoreClick={shouldIgnoreClick}
           />
           <OrderColumn
             title="Pronto/Retirada"
             orders={columns['Pronto/Retirada']}
             selectedId={selected?.id}
-            draggedOrderId={draggedOrderId}
-            isDropTarget={dropTarget === 'Pronto/Retirada'}
-            dropTargetOrderId={dropTargetOrderId}
+            drag={drag}
             onSelect={setSelected}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragEnter={() => setDropTarget('Pronto/Retirada')}
-            onDragLeave={() => setDropTarget((current) => (current === 'Pronto/Retirada' && dropTargetOrderId === null ? null : current))}
-            onDragOverOrder={setDropTargetOrderId}
-            onDropOrder={handleMoveOrder}
+            onCardPointerDown={onCardPointerDown}
+            shouldIgnoreClick={shouldIgnoreClick}
           />
         </div>
         {enRoute.length > 0 ? (
@@ -503,10 +467,6 @@ export function OrdersPage() {
                   active={selected?.id === order.id}
                   locked
                   onClick={() => setSelected(order)}
-                  onDragStart={() => undefined}
-                  onDragEnd={() => undefined}
-                  onDragEnter={() => undefined}
-                  onDrop={() => undefined}
                 />
               ))}
             </div>

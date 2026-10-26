@@ -7,48 +7,22 @@ import { orderSourceIcons, orderSourceLabel, resolveOrderSource } from '@/lib/or
 type OrderCardProps = {
   order: Order
   active?: boolean
-  dragging?: boolean
-  dropTarget?: boolean
   /** Cartão fixo (não arrastável): usado em pedidos em rota, que só mudam pelo entregador. */
   locked?: boolean
   onClick: () => void
-  onDragStart: () => void
-  onDragEnd: () => void
-  onDragEnter: () => void
-  onDrop: () => void
+  onPointerDown?: (event: React.PointerEvent<HTMLElement>) => void
 }
 
-export function OrderCard({ order, active, dragging, dropTarget, locked, onClick, onDragStart, onDragEnd, onDragEnter, onDrop }: OrderCardProps) {
+export function OrderCard({ order, active, locked, onClick, onPointerDown }: OrderCardProps) {
   return (
     <button
-      draggable={!locked}
       onClick={onClick}
-      onDragStart={(event) => {
-        event.dataTransfer.effectAllowed = 'move'
-        event.dataTransfer.setData('text/plain', String(order.id))
-        // Cartão "levantado": imagem de arraste inclinada, como se estivesse sendo segurado.
-        const source = event.currentTarget
-        const ghost = source.cloneNode(true) as HTMLElement
-        ghost.style.cssText = `position:fixed;top:-1000px;left:-1000px;width:${source.offsetWidth}px;transform:rotate(3deg) scale(1.03);box-shadow:0 18px 40px rgba(0,0,0,.35);border-radius:12px;`
-        document.body.appendChild(ghost)
-        event.dataTransfer.setDragImage(ghost, 24, 24)
-        window.setTimeout(() => ghost.remove(), 0)
-        onDragStart()
-      }}
-      onDragEnd={onDragEnd}
-      onDragOver={(event) => event.preventDefault()}
-      onDragEnter={onDragEnter}
-      onDrop={(event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        onDrop()
-      }}
+      onPointerDown={onPointerDown}
+      onDragStart={(event) => event.preventDefault()}
       className={cn(
         'w-full rounded-2xl border bg-sa-surface p-4 text-left shadow-sa transition duration-200 hover:-translate-y-1 hover:border-sa-border-strong hover:shadow-sa',
-        locked ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+        locked ? 'cursor-pointer' : 'cursor-grab select-none',
         active ? 'border-sa-border-strong ring-4 focus:ring-sa-accent/20' : 'border-sa-border',
-        dragging ? 'scale-[0.97] opacity-40' : '',
-        dropTarget ? 'border-sa-border-strong shadow-sa' : '',
       )}
     >
       <div className="flex items-center justify-between gap-3">
