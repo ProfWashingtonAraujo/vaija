@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, MessageCircle, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Check, CheckCircle2, Info, MessageCircle, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
@@ -82,58 +82,106 @@ function PlanCheckoutForm({ plans }: { plans: PricingPlan[] }) {
     return <Navigate to={`/subscription?plano=${encodeURIComponent(planName)}`} replace />
   }
 
+  const fieldClass = 'bg-white border-orange-100 focus:border-orange-400 focus:ring-orange-100 placeholder:text-slate-400 text-slate-800'
+  const labelClass = 'grid gap-2 text-sm font-semibold text-slate-700'
+
   return (
     <main className="min-h-screen bg-[#fff8f1] text-slate-900">
-      <section className="bg-slate-950 px-4 py-10 text-white sm:px-6 lg:px-8">
+      <section className="bg-slate-950 px-4 pb-12 pt-8 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
-          <Link to="/#planos" className="inline-flex items-center gap-2 text-sm font-semibold text-orange-100 hover:text-white"><ArrowLeft className="h-4 w-4" />Voltar aos planos</Link>
-          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+          <Link to="/#planos" className="inline-flex items-center gap-2 text-sm font-semibold text-orange-100 transition hover:text-white"><ArrowLeft className="h-4 w-4" />Voltar aos planos</Link>
+          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
             <div>
-              <p className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-orange-50">Contratação assistida</p>
-              <h1 className="mt-5 max-w-3xl font-heading text-4xl font-black tracking-tight sm:text-6xl">Escolha seu plano e fale com nosso comercial</h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-orange-50">Registramos seu interesse e levamos você direto para o WhatsApp com a mensagem pronta.</p>
+              <p className="inline-flex rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-orange-100">Contratação assistida</p>
+              <h1 className="mt-4 max-w-2xl font-heading text-3xl font-black leading-[1.1] tracking-tight sm:text-5xl">Escolha seu plano e fale com nosso comercial</h1>
+              <p className="mt-4 max-w-xl text-base leading-7 text-orange-50/90">Registramos seu interesse e levamos você direto para o WhatsApp com a mensagem pronta.</p>
             </div>
-            <div className="rounded-[30px] border border-white/15 bg-white/10 p-5 backdrop-blur">
-              <p className="text-sm text-orange-50">Plano selecionado</p>
-              <p className="mt-2 font-heading text-4xl font-bold">{currentPlan.name}</p>
-              <p className="mt-2 text-orange-50">{currentPlan.price}</p>
-            </div>
+            <ol className="grid gap-3 rounded-[28px] border border-white/15 bg-white/[0.06] p-5 backdrop-blur">
+              {[
+                ['Escolha o plano', 'Veja o que cada um inclui no resumo.'],
+                ['Preencha seus dados', 'Leva menos de um minuto.'],
+                ['Converse no WhatsApp', 'Nosso comercial configura tudo com você.'],
+              ].map(([title, text], index) => (
+                <li key={title} className="flex items-start gap-3">
+                  <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white">{index + 1}</span>
+                  <span><span className="block text-sm font-semibold">{title}</span><span className="block text-sm text-orange-50/75">{text}</span></span>
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8">
-        <form onSubmit={submitLead} className="rounded-[34px] border border-orange-100 bg-white p-6 shadow-[0_18px_42px_rgba(15,23,42,0.08)]">
-          <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-orange-500" /><h2 className="font-heading text-2xl font-bold">Dados para contratação</h2></div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <label className="grid gap-2 text-sm font-semibold text-slate-700">Plano<select value={planName} onChange={(event) => setPlanName(event.target.value as PlanKey)} className="h-11 rounded-2xl border border-orange-100 bg-white px-4 text-sm text-slate-800 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100">{plans.map((plan) => <option key={plan.name} value={plan.name}>{plan.name} - {plan.price}</option>)}</select></label>
-            <label className="grid gap-2 text-sm font-semibold text-slate-700">Restaurante<Input value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} placeholder="Nome do restaurante" /></label>
-            <label className="grid gap-2 text-sm font-semibold text-slate-700">Responsável<Input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} placeholder="Seu nome" /></label>
-            <label className="grid gap-2 text-sm font-semibold text-slate-700">WhatsApp<Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(00) 99999-9999" inputMode="tel" /></label>
-            <label className="grid gap-2 text-sm font-semibold text-slate-700">E-mail<Input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="email@empresa.com" type="email" /></label>
-            <label className="grid gap-2 text-sm font-semibold text-slate-700">Cidade/UF<Input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Ex: Recife/PE" /></label>
-            <label className="grid gap-2 text-sm font-semibold text-slate-700 md:col-span-2">Observações<textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Conte rapidamente o que sua operação precisa" className="min-h-24 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100" /></label>
+        <form onSubmit={submitLead} className="rounded-[28px] border border-orange-100 bg-white p-6 shadow-[0_18px_42px_rgba(15,23,42,0.08)] sm:p-8">
+          <h2 className="flex items-center gap-2.5 font-heading text-xl font-bold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white">1</span>Escolha o plano</h2>
+          <div role="radiogroup" aria-label="Plano" className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(140px,1fr))]">
+            {plans.map((plan) => {
+              const active = plan.name === currentPlan.name
+              return (
+                <button
+                  key={plan.name}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setPlanName(plan.name)}
+                  className={cn(
+                    'relative rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-100',
+                    active ? 'border-orange-400 bg-orange-50 shadow-[0_8px_20px_rgba(255,107,0,0.14)]' : 'border-orange-100 bg-white hover:border-orange-300',
+                  )}
+                >
+                  {plan.highlight ? <span className="absolute -top-2.5 right-3 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">{plan.badge ?? 'Popular'}</span> : null}
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="font-heading text-base font-bold">{plan.name}</span>
+                    <span className={cn('flex h-5 w-5 items-center justify-center rounded-full border transition', active ? 'border-orange-500 bg-orange-500 text-white' : 'border-slate-300')}>{active ? <Check className="h-3 w-3" strokeWidth={3} /> : null}</span>
+                  </span>
+                  <span className="mt-1 block text-sm font-semibold text-slate-600">{plan.price}</span>
+                </button>
+              )
+            })}
           </div>
-          <Button type="submit" className="mt-6 w-full shadow-[0_16px_30px_rgba(255,107,0,0.22)]"><MessageCircle className="mr-2 h-4 w-4" />Solicitar contratação pelo WhatsApp</Button>
+
+          <h2 className="mt-8 flex items-center gap-2.5 font-heading text-xl font-bold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white">2</span>Dados para contratação</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <label className={labelClass}>Restaurante<Input className={fieldClass} value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} placeholder="Nome do restaurante" autoComplete="organization" required /></label>
+            <label className={labelClass}>Responsável<Input className={fieldClass} value={ownerName} onChange={(event) => setOwnerName(event.target.value)} placeholder="Seu nome" autoComplete="name" required /></label>
+            <label className={labelClass}>WhatsApp<Input className={fieldClass} value={phone} onChange={(event) => setPhone(formatPhone(event.target.value))} placeholder="(00) 99999-9999" inputMode="tel" autoComplete="tel" required /></label>
+            <label className={labelClass}>E-mail<Input className={fieldClass} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="email@empresa.com" type="email" autoComplete="email" required /></label>
+            <label className={cn(labelClass, 'md:col-span-2')}>Cidade/UF<Input className={fieldClass} value={city} onChange={(event) => setCity(event.target.value)} placeholder="Ex: Recife/PE" autoComplete="address-level2" required /></label>
+            <label className={cn(labelClass, 'md:col-span-2')}>Observações <span className="font-normal text-slate-400">(opcional)</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Conte rapidamente o que sua operação precisa" className="min-h-24 resize-y rounded-xl border border-orange-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100" /></label>
+          </div>
+          <Button type="submit" className="mt-6 h-12 w-full shadow-[0_16px_30px_rgba(255,107,0,0.22)]"><MessageCircle className="mr-2 h-4 w-4" />Solicitar contratação pelo WhatsApp</Button>
+          <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-slate-500"><ShieldCheck className="h-3.5 w-3.5 text-orange-500" />Seus dados são usados só para o contato comercial.</p>
         </form>
 
-        <aside className="rounded-[34px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-6 shadow-[0_18px_42px_rgba(15,23,42,0.08)] lg:sticky lg:top-6 lg:self-start">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Resumo</p>
-          <h2 className="mt-2 font-heading text-3xl font-bold text-slate-900">{currentPlan.name}</h2>
-          <p className="mt-3 font-heading text-4xl font-extrabold text-slate-900">{currentPlan.price}</p>
+        <aside className="rounded-[28px] border border-orange-100 bg-gradient-to-br from-white to-[#fffaf5] p-6 shadow-[0_18px_42px_rgba(15,23,42,0.08)] sm:p-8 lg:sticky lg:top-6 lg:self-start">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">Resumo do plano</p>
+          <div className="mt-2 flex items-baseline justify-between gap-3">
+            <h2 className="font-heading text-2xl font-bold text-slate-900">{currentPlan.name}</h2>
+            <p className="font-heading text-2xl font-extrabold text-orange-600">{currentPlan.price}</p>
+          </div>
           <p className="mt-3 text-sm leading-6 text-slate-600">{currentPlan.description}</p>
-          <div className="mt-6 rounded-[24px] border border-orange-100 bg-white p-4">
+          <div className="mt-5 rounded-2xl border border-orange-100 bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">Telas inclusas</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {currentPlan.screens.map((screen) => <span key={screen} className="rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-xs font-semibold text-slate-700">{screen}</span>)}
             </div>
           </div>
-          <div className="mt-6 space-y-3">
-            {currentPlan.features.map((feature) => <div key={feature} className="flex items-start gap-3 text-sm text-slate-700"><CheckCircle2 className="mt-0.5 h-4 w-4 text-orange-500" />{feature}</div>)}
-          </div>
-          <div className={cn('mt-6 rounded-[24px] border p-4 text-sm leading-6', currentPlan.highlight ? 'border-orange-200 bg-orange-50 text-orange-800' : 'border-slate-100 bg-white text-slate-600')}>Sem pagamento automático ainda. O fechamento acontece com nosso comercial para configurar cobrança, implantação e acesso inicial.</div>
+          <ul className="mt-5 space-y-2.5">
+            {currentPlan.features.map((feature) => <li key={feature} className="flex items-start gap-3 text-sm text-slate-700"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-none text-orange-500" />{feature}</li>)}
+          </ul>
+          <p className="mt-5 flex items-start gap-2.5 rounded-2xl border border-slate-100 bg-white p-4 text-sm leading-6 text-slate-600"><Info className="mt-0.5 h-4 w-4 flex-none text-slate-400" />Sem pagamento automático ainda. O fechamento acontece com nosso comercial para configurar cobrança, implantação e acesso inicial.</p>
         </aside>
       </section>
     </main>
   )
+}
+
+/** Máscara de telefone brasileiro: (11) 91234-5678 ou (11) 1234-5678. */
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 11)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
 }
