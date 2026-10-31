@@ -48,7 +48,13 @@ def _is_valid(settings: dict) -> bool:
 @settings_router.get("/api/settings")
 async def read_settings(auth: CurrentAuth, db: AsyncSession = Depends(get_db)):
     row = await db.get(RestaurantSettings, auth.tenant_id)
-    return {"settings": row.data if row else None}
+    if row:
+        return {"settings": row.data}
+    # Loja ainda sem configurações: parte do cadastro dela, nunca de nome e telefone de exemplo.
+    tenant = await db.get(Tenant, auth.tenant_id)
+    if tenant:
+        return {"settings": {"restaurant": {"name": tenant.restaurant_name, "phone": tenant.phone}}}
+    return {"settings": None}
 
 
 @settings_router.put("/api/settings")
@@ -72,6 +78,8 @@ async def get_public_settings(tenant_id: str, db: AsyncSession = Depends(get_db)
     row = await db.get(RestaurantSettings, tenant_id)
     data = row.data if row else {}
     restaurant = data.get("restaurant") or {}
+    if not restaurant and (tenant := await db.get(Tenant, tenant_id)):
+        restaurant = {"name": tenant.restaurant_name, "phone": tenant.phone}
     delivery = data.get("delivery") or {}
     public: dict = {}
     if restaurant:

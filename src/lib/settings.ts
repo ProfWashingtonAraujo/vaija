@@ -83,8 +83,8 @@ export const defaultDeliverySettings: DeliverySettings = {
 }
 
 export const defaultRestaurantSettings: RestaurantSettings = {
-  name: 'Taperas Pizzaria',
-  phone: '(11) 4002-8922',
+  name: '',
+  phone: '',
 }
 
 export const defaultSubscriptionSettings: SubscriptionSettings = {

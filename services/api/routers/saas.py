@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import asaas
 from auth import CurrentAuth, PlatformAdmin, hash_password, new_session, set_auth_cookies
 from database import get_db
-from models import AuditLog, Category, Lead, PlanConfig, Subscription, Tenant, User
+from models import AuditLog, Category, Lead, PlanConfig, RestaurantSettings, Subscription, Tenant, User
 from plans_service import PLAN_KEYS, load_plans
 from tenants_service import (
     PLANS, PLATFORM_TENANT_ID, RESERVED_TENANT_IDS, slug_error, tenant_payload, tenant_to_dict, unique_tenant_id,
@@ -351,6 +351,7 @@ async def signup(body: SignupIn, request: Request, response: Response, db: Async
         raise
     for index, name in enumerate(BUSINESS_CATEGORIES[body.business_type]):
         db.add(Category(name=name, tenant_id=tenant.id, menu_enabled=True, pos_enabled=True, sort_index=index))
+    db.add(RestaurantSettings(tenant_id=tenant.id, data={"restaurant": {"name": tenant.restaurant_name, "phone": tenant.phone}}))
     db.add(Lead(
         plan=body.plan, restaurant_name=tenant.restaurant_name, owner_name=tenant.owner_name, phone=tenant.phone,
         email=email, city=tenant.city, notes="Cadastro feito pelo próprio cliente.", status="Convertido",
