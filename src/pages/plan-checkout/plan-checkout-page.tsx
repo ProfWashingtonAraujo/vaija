@@ -219,7 +219,7 @@ function PlanCheckoutForm({ plans }: { plans: PricingPlan[] }) {
 
           <h2 className="mt-8 flex items-center gap-2.5 font-heading text-xl font-bold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white">3</span>Acesso ao painel</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className={labelClass}>Usuário<Input className={fieldClass} value={username} onChange={(event) => setUsername(event.target.value.toLowerCase().replace(/\s/g, ''))} placeholder="ex: denise" autoComplete="username" required minLength={3} maxLength={30} pattern="[a-z0-9][a-z0-9._-]{2,29}" title="3 a 30 caracteres: letras minúsculas, números, ponto, hífen ou sublinhado" /></label>
+            <label className={labelClass}>Usuário<Input className={fieldClass} value={username} onChange={(event) => setUsername(event.target.value.toLowerCase().replace(/\s/g, ''))} placeholder="ex: minha.loja" autoComplete="username" required minLength={3} maxLength={30} pattern="[a-z0-9][a-z0-9._-]{2,29}" title="3 a 30 caracteres: letras minúsculas, números, ponto, hífen ou sublinhado" /></label>
             <label className={labelClass}>Senha<Input className={fieldClass} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo de 8 caracteres" type="password" autoComplete="new-password" required minLength={8} /></label>
           </div>
 
