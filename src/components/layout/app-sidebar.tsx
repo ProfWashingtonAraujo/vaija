@@ -117,11 +117,18 @@ export function AppSidebar() {
 
       {/* Brand */}
       <div className={cn('flex items-center gap-3 px-5 pb-5 pt-6', collapsed && 'justify-center px-0')}>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-[0_8px_20px_rgba(255,107,0,0.3)]">
+        <div
+          className={cn(
+            'flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl',
+            settings.restaurant.logo
+              ? 'border border-sa-border bg-white shadow-sa'
+              : 'bg-gradient-to-br from-orange-500 to-orange-600 shadow-[0_8px_20px_rgba(255,107,0,0.3)]',
+          )}
+        >
           {settings.restaurant.logo ? (
-            <img src={settings.restaurant.logo} alt={tenant.restaurantName} className="h-full w-full object-contain p-1" />
+            <img src={settings.restaurant.logo} alt={tenant.restaurantName} className="h-full w-full object-cover" />
           ) : (
-            <span className="font-heading text-lg font-bold text-white">V</span>
+            <span className="font-heading text-lg font-bold uppercase text-white">{tenant.restaurantName.trim().charAt(0) || 'V'}</span>
           )}
         </div>
         {!collapsed && (
