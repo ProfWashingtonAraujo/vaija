@@ -16,6 +16,23 @@ function toRgb(hex: string) {
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255] as const
 }
 
+export type Cmyk = { c: number; m: number; y: number; k: number }
+
+/** HEX para CMYK (0 a 100). Conversão matemática simples; não usa perfil de impressão. */
+export function hexToCmyk(hex: string): Cmyk {
+  const [r, g, b] = toRgb(hex).map((channel) => channel / 255)
+  const k = 1 - Math.max(r, g, b)
+  if (k >= 1) return { c: 0, m: 0, y: 0, k: 100 }
+  const part = (channel: number) => Math.round(((1 - channel - k) / (1 - k)) * 100)
+  return { c: part(r), m: part(g), y: part(b), k: Math.round(k * 100) }
+}
+
+/** CMYK (0 a 100) para HEX. */
+export function cmykToHex({ c, m, y, k }: Cmyk) {
+  const channel = (ink: number) => Math.round(255 * (1 - ink / 100) * (1 - k / 100)).toString(16).padStart(2, '0')
+  return `#${channel(c)}${channel(m)}${channel(y)}`
+}
+
 function mixWith(hex: string, amount: number) {
   const target = amount >= 0 ? 255 : 0
   const ratio = Math.abs(amount)

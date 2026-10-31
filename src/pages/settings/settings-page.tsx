@@ -1,4 +1,4 @@
-import { defaultBrandColor, normalizeHex } from '@/lib/brand'
+import { normalizeHex } from '@/lib/brand'
 import { useEffect, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -8,6 +8,7 @@ import { AdminLayout } from '@/components/layout/admin-layout'
 import { useAuth, useTenant } from '@/contexts/auth-context'
 import { changeOwnPassword, createUser, fetchUsers, type AppUser } from '@/lib/users-api'
 import { Input } from '@/components/ui/input'
+import { BrandColorField } from '@/components/settings/brand-color-field'
 import { Button } from '@/components/ui/button'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Plus, X } from 'lucide-react'
@@ -399,11 +400,7 @@ function SettingsForm() {
                 </div>
               </Row>
               <Row label="Cor da marca" hint="Colore o app do cliente (botões, destaques e tela inicial).">
-                <div className="flex items-center gap-3">
-                  <input type="color" value={brandColor} onChange={(event) => setBrandColor(event.target.value)} className="h-10 w-14 cursor-pointer rounded-lg border border-sa-border bg-sa-surface p-1" aria-label="Cor da marca" />
-                  <span className="font-mono text-sm text-sa-text-2">{brandColor.toUpperCase()}</span>
-                  {brandColor !== defaultBrandColor ? <button type="button" className="text-sm font-medium text-sa-text-2 hover:text-sa-text" onClick={() => setBrandColor(defaultBrandColor)}>Restaurar padrão</button> : null}
-                </div>
+                <BrandColorField value={brandColor} onChange={setBrandColor} />
               </Row>
               <Row label="Nome do restaurante">
                 <Input {...register('restaurantName')} placeholder="Nome do restaurante" className={fieldClass} />
