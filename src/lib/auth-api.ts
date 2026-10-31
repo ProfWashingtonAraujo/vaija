@@ -167,6 +167,36 @@ export async function loginRequest(username: string, password: string) {
   return { user, tenant: result.tenant }
 }
 
+export type SignupInput = {
+  plan: string
+  restaurantName: string
+  ownerName: string
+  phone: string
+  email: string
+  city: string
+  businessType: string
+  username: string
+  password: string
+}
+
+/** Cadastro público: cria a loja e o administrador e já deixa a sessão aberta. */
+export async function signupRequest(input: SignupInput) {
+  if (offlineMode) throw new Error('server_unavailable')
+  const response = await apiFetch('/api/public/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  }, false)
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({})) as { error?: string }
+    throw new Error(data.error ?? 'server_unavailable')
+  }
+  const result = await response.json() as { user: Omit<AuthUser, 'restaurantId'>; tenant: Tenant }
+  const user = normalizeRemoteUser(result.user)
+  localStorage.setItem(localSessionKey, JSON.stringify(user))
+  return { user, tenant: result.tenant }
+}
+
 export async function fetchMe() {
   const storedUser = localStorage.getItem(localSessionKey)
 

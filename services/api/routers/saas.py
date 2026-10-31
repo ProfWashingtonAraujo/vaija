@@ -4,23 +4,25 @@ import time
 from collections import defaultdict, deque
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import asaas
-from auth import CurrentAuth, PlatformAdmin
+from auth import CurrentAuth, PlatformAdmin, hash_password, new_session, set_auth_cookies
 from database import get_db
-from models import AuditLog, Lead, PlanConfig, Subscription, Tenant, User
+from models import AuditLog, Category, Lead, PlanConfig, Subscription, Tenant, User
 from plans_service import PLAN_KEYS, load_plans
 from tenants_service import (
     PLANS, PLATFORM_TENANT_ID, RESERVED_TENANT_IDS, slug_error, tenant_payload, tenant_to_dict, unique_tenant_id,
 )
 from slug_resolver import invalidate_slug_cache
-from user_utils import BUSINESS_CATEGORIES
+from user_utils import BUSINESS_CATEGORIES, is_unique_violation, is_valid_username, normalize_username
+from .auth import _to_user_out
 from .billing import sync_subscription_plan
 
 logger = logging.getLogger(__name__)
@@ -285,6 +287,79 @@ async def create_lead(body: LeadIn, request: Request, db: AsyncSession = Depends
     db.add(lead)
     await db.flush()
     return JSONResponse({"ok": True}, status_code=201)
+
+
+# ── Cadastro self-service ─────────────────────────────────────────────────────
+
+class SignupIn(_CamelModel):
+    plan: Plan
+    restaurant_name: str = Field(min_length=2, max_length=120)
+    owner_name: str = Field(min_length=2, max_length=120)
+    phone: str = Field(min_length=8, max_length=40)
+    email: str = Field(min_length=5, max_length=160)
+    city: str = Field(min_length=2, max_length=80)
+    business_type: str = "pizzeria"
+    username: str = Field(min_length=3, max_length=30)
+    password: str = Field(min_length=8, max_length=128)
+
+
+_SIGNUPS_PER_HOUR = 8
+_signup_attempts: dict[str, deque[float]] = defaultdict(deque)
+
+
+@public_leads_router.post("/signup", status_code=201)
+async def signup(body: SignupIn, request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    """Cria a loja e o administrador e já abre a sessão. A cobrança do plano pago vem depois, em /api/billing/checkout."""
+    attempts = _signup_attempts[_client_ip(request)]
+    now = time.monotonic()
+    while attempts and now - attempts[0] > 3600:
+        attempts.popleft()
+    if len(attempts) >= _SIGNUPS_PER_HOUR:
+        return _error(429, "too_many_requests")
+    attempts.append(now)
+
+    username = normalize_username(body.username)
+    email = body.email.strip().lower()
+    if not is_valid_username(username):
+        return _error(400, "invalid_username")
+    if "@" not in email:
+        return _error(400, "invalid_email")
+    if body.business_type not in BUSINESS_CATEGORIES:
+        return _error(400, "invalid_business_type")
+    if (await db.execute(select(User.id).where(User.username == username))).first() is not None:
+        return _error(400, "username_already_exists")
+
+    # A loja nasce no Free; o plano pago só passa a valer quando o Asaas aceitar a assinatura.
+    tenant = Tenant(
+        id=await unique_tenant_id(db, body.restaurant_name),
+        restaurant_name=body.restaurant_name.strip(), owner_name=body.owner_name.strip(), email=email,
+        phone=body.phone.strip(), city=body.city.strip(), business_type=body.business_type, plan="Free", status="active",
+    )
+    db.add(tenant)
+    await db.flush()
+    user = User(
+        tenant_id=tenant.id, name=body.owner_name.strip(), username=username, email=email,
+        role="Administrador", role_key="admin", shift="Gestão", password_hash=hash_password(body.password), permissions=[],
+    )
+    db.add(user)
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        if is_unique_violation(exc):
+            await db.rollback()
+            return _error(400, "username_already_exists")
+        raise
+    for index, name in enumerate(BUSINESS_CATEGORIES[body.business_type]):
+        db.add(Category(name=name, tenant_id=tenant.id, menu_enabled=True, pos_enabled=True, sort_index=index))
+    db.add(Lead(
+        plan=body.plan, restaurant_name=tenant.restaurant_name, owner_name=tenant.owner_name, phone=tenant.phone,
+        email=email, city=tenant.city, notes="Cadastro feito pelo próprio cliente.", status="Convertido",
+    ))
+    await db.flush()
+
+    access, refresh = await new_session(db, user)
+    set_auth_cookies(response, access, refresh)
+    return {"ok": True, "user": _to_user_out(user), "tenantId": tenant.id, "tenant": tenant_to_dict(tenant)}
 
 
 @saas_router.get("/leads")

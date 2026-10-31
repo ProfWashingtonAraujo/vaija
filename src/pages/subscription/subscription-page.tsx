@@ -12,7 +12,7 @@ import {
   type BillingInvoice, type BillingOverview, type BillingType,
 } from '@/lib/billing-api'
 import { invalidateBillingAccess } from '@/lib/billing-access'
-import { formatCurrency } from '@/lib/formatters'
+import { formatCurrency, maskCpfCnpj } from '@/lib/formatters'
 import type { PlanKey } from '@/lib/plan-access'
 import { cn } from '@/lib/utils'
 
@@ -27,14 +27,6 @@ const fieldClass = 'h-11 rounded-2xl border border-sa-border bg-sa-surface px-4 
 const formatDate = (value: string) => new Date(value).toLocaleDateString('pt-BR')
 // Vencimento e pagamento chegam como data (meia-noite UTC); no fuso do Brasil cairiam no dia anterior.
 const formatCalendarDate = (value: string) => new Date(value).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
-
-function maskCpfCnpj(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 14)
-  if (digits.length <= 11) {
-    return digits.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2')
-  }
-  return digits.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2')
-}
 
 export function SubscriptionPage() {
   const { refreshTenant } = useAuth()

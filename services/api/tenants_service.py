@@ -14,7 +14,7 @@ RESERVED_TENANT_IDS = {PLATFORM_TENANT_ID}
 # Endereços que não podem virar slug: confundiriam rotas do site e da API.
 RESERVED_SLUGS = {
     "default", "admin", "saas", "api", "login", "pedido", "checkout", "acompanhar", "entregador", "plans", "leads",
-    "vaija", "painel", "dashboard", "suporte", "support", "assinatura", "planos", "app", "www",
+    "signup", "vaija", "painel", "dashboard", "suporte", "support", "assinatura", "planos", "app", "www",
 }
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 

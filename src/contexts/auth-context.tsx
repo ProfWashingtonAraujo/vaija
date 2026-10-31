@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type PropsWithChildren } from 'react'
-import { fetchMe, loginRequest, logoutRequest, type AuthUser } from '@/lib/auth-api'
+import { fetchMe, loginRequest, logoutRequest, signupRequest, type AuthUser, type SignupInput } from '@/lib/auth-api'
 import { fetchMyTenant, placeholderTenant, type Tenant } from '@/lib/tenants-api'
 
 type AuthContextValue = {
@@ -9,6 +9,8 @@ type AuthContextValue = {
   isAuthenticated: boolean
   isLoading: boolean
   login: (username: string, password: string) => Promise<{ user: AuthUser; tenant: Tenant }>
+  /** Cria a loja e entra nela; o plano pago é cobrado depois, em Assinatura. */
+  signup: (input: SignupInput) => Promise<{ user: AuthUser; tenant: Tenant }>
   logout: () => Promise<void>
   /** Recarrega o cadastro da loja, por exemplo depois de contratar um plano. */
   refreshTenant: () => Promise<void>
@@ -43,6 +45,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return session
   }
 
+  const signup = async (input: SignupInput) => {
+    const session = await signupRequest(input)
+    setUser(session.user)
+    setTenant(session.tenant)
+    return session
+  }
+
   const logout = async () => {
     await logoutRequest()
     setUser(null)
@@ -53,7 +62,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setTenant(await fetchMyTenant())
   }, [])
 
-  return <AuthContext.Provider value={{ user, tenant, isAuthenticated: Boolean(user), isLoading, login, logout, refreshTenant }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, tenant, isAuthenticated: Boolean(user), isLoading, login, signup, logout, refreshTenant }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
