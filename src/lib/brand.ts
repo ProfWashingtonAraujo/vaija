@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
+import { readSettings, settingsUpdatedEvent } from '@/lib/settings'
 
 export const defaultBrandColor = '#ff6b00'
 
@@ -75,4 +76,50 @@ export function useBrandTheme(color: string | undefined) {
       if (previousTheme) themeMeta?.setAttribute('content', previousTheme)
     }
   }, [color])
+}
+
+const luminance = (hex: string) => {
+  const [r, g, b] = toRgb(hex)
+  return (r * 299 + g * 587 + b * 114) / 1000
+}
+
+/** Escurece a cor, se preciso, até o texto branco dos botões do painel ficar legível sobre ela. */
+function accentForWhiteText(hex: string) {
+  let color = hex
+  for (let step = 1; step <= 12 && luminance(color) > 150; step += 1) color = mixWith(hex, -0.06 * step)
+  return color
+}
+
+/** Variáveis do painel da loja: o destaque (botões, menu ativo, selos) passa a ser a cor da marca. */
+export function buildPanelBrandVars(color: string | undefined, dark: boolean) {
+  const accent = accentForWhiteText(normalizeHex(color))
+  const vars: Record<string, string> = {
+    '--sa-accent': accent,
+    '--sa-accent-text': mixWith(accent, dark ? 0.35 : -0.25),
+    '--sa-accent-soft': mixWith(accent, dark ? -0.82 : 0.9),
+  }
+  // classes antigas "orange-*" espalhadas pelo painel acompanham a marca
+  for (const shade of shades) vars[`--color-orange-${shade}`] = mixWith(accent, mix[shade])
+  return vars
+}
+
+/** Pinta o painel da loja com a cor da marca salva em Configurações, atualizando assim que ela é salva. */
+export function usePanelBrand(dark: boolean, enabled = true) {
+  const [color, setColor] = useState(() => readSettings().restaurant.brandColor)
+
+  useEffect(() => {
+    const update = () => setColor(readSettings().restaurant.brandColor)
+    window.addEventListener(settingsUpdatedEvent, update)
+    return () => window.removeEventListener(settingsUpdatedEvent, update)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!enabled || !color || normalizeHex(color) === defaultBrandColor) return
+    const root = document.documentElement
+    const vars = buildPanelBrandVars(color, dark)
+    for (const [name, value] of Object.entries(vars)) root.style.setProperty(name, value)
+    return () => {
+      for (const name of Object.keys(vars)) root.style.removeProperty(name)
+    }
+  }, [color, dark, enabled])
 }

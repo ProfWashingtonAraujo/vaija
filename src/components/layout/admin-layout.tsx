@@ -4,12 +4,16 @@ import { MobileTabBar } from '@/components/layout/mobile-tab-bar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppHeader, PageTitle } from '@/components/layout/app-header'
 import { SidebarProvider, useSidebar } from '@/components/layout/sidebar-context'
+import { useAuth } from '@/contexts/auth-context'
+import { usePanelBrand } from '@/lib/brand'
 import { useStoreTheme } from '@/lib/saas-theme'
 import { cn } from '@/lib/utils'
 
 function LayoutInner({ title, description, children }: PropsWithChildren<{ title: string; description?: string }>) {
   const { collapsed } = useSidebar()
   const { theme, setTheme } = useStoreTheme()
+  const { user } = useAuth()
+  usePanelBrand(theme === 'dark', !user?.isPlatformAdmin)
 
   return (
     <div className="flex h-dvh overflow-hidden bg-sa-bg text-sa-text">
